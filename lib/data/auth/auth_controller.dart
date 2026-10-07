@@ -165,8 +165,16 @@ class AuthController extends Notifier<AuthState> {
 
   // ── UM-01 ────────────────────────────────────────────────────────────────
 
-  Future<void> bootstrap() async {
+  /// [minDuration]: splash tampil minimal selama ini agar animasi mekar selesai (UM-01: maks 2 dtk).
+  Future<void> bootstrap({Duration minDuration = Duration.zero}) async {
     state = const AuthState();
+    final minWait = Future<void>.delayed(minDuration);
+    final next = await _resolveBoot();
+    await minWait;
+    state = next;
+  }
+
+  Future<AuthState> _resolveBoot() async {
     final token = await _store.read(SessionKeys.token);
     final userJson = await _store.read(SessionKeys.user);
     final user = userJson == null
@@ -182,17 +190,11 @@ class AuthController extends Notifier<AuthState> {
     }
 
     if (token == null || user == null) {
-      state = AuthState(
+      return AuthState(
         phase: offline ? AuthPhase.needsConnection : AuthPhase.signedOut,
       );
-      return;
     }
-    state = await _afterAuthenticated(
-      user,
-      token,
-      offline: offline,
-      coldStart: true,
-    );
+    return _afterAuthenticated(user, token, offline: offline, coldStart: true);
   }
 
   // ── UM-04 ────────────────────────────────────────────────────────────────

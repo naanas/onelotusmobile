@@ -32,35 +32,21 @@ class PlaceholderTabPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final name = ref.watch(authProvider.select((s) => s.user?.firstName ?? ''));
     final sync = ref.watch(syncStatusProvider);
-    return Column(
+    return OlPageBody(
+      heroOverlap: hero,
+      header: OlAppHeader(
+        hero: hero,
+        title: hero && screenId == 'TR-01' ? _greeting(name) : title,
+        context_: headerContext(ref, DateTime.now()),
+        below: SyncIndicator(status: sync, onHero: hero),
+      ),
       children: [
-        OlAppHeader(
-          hero: hero,
-          title: hero && screenId == 'TR-01' ? _greeting(name) : title,
-          context_: headerContext(ref, DateTime.now()),
-          below: SyncIndicator(status: sync, onHero: hero),
-        ),
-        Expanded(
-          child: Transform.translate(
-            offset: Offset(0, hero ? -56 : 0),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                OlSpace.screen,
-                0,
-                OlSpace.screen,
-                24,
-              ),
-              children: [
-                const FeedbackBannerHost(),
-                OlCard(
-                  child: EmptyState(
-                    illustration: illustration,
-                    title: '$screenId · $title',
-                    message: 'Layar ini dibangun di $stage.',
-                  ),
-                ),
-              ],
-            ),
+        const FeedbackBannerHost(),
+        OlCard(
+          child: EmptyState(
+            illustration: illustration,
+            title: '$screenId · $title',
+            message: 'Layar ini dibangun di $stage.',
           ),
         ),
       ],

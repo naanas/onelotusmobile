@@ -53,7 +53,6 @@ class _RoleShellState extends ConsumerState<RoleShell> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.ol;
     final tabs = widget.tabs;
     final fab = widget.fab;
     // Dengan FAB: 2 tab kiri · FAB · 2 tab kanan.
@@ -76,41 +75,68 @@ class _RoleShellState extends ConsumerState<RoleShell> {
 
     return Scaffold(
       body: widget.shell,
-      bottomNavigationBar: DecoratedBox(
-        decoration: BoxDecoration(
-          color: c.surface.withValues(alpha: 0.96),
-          border: Border(top: BorderSide(color: c.line)),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x400B1F2E),
-              offset: Offset(0, -10),
-              blurRadius: 30,
-              spreadRadius: -18,
-            ),
+      bottomNavigationBar: _TabBar(
+        fab: fab,
+        children: [
+          for (var i = 0; i < half; i++) tab(i),
+          // Ruang kosong selebar satu tab di bawah FAB.
+          if (fab != null) ...[
+            const Expanded(child: SizedBox()),
+            for (var i = half; i < tabs.length; i++) tab(i),
           ],
-        ),
-        child: SafeArea(
-          top: false,
-          minimum: const EdgeInsets.only(bottom: 8),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 8, 6, 0),
-            // Tinggi tetap: tanpa ini Center di FAB memakan seluruh tinggi layar.
-            child: SizedBox(
-              height: 60,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  for (var i = 0; i < half; i++) tab(i),
-                  if (fab != null) ...[
-                    Expanded(child: _Fab(spec: fab)),
-                    for (var i = half; i < tabs.length; i++) tab(i),
-                  ],
-                ],
-              ),
-            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Bar bawah: latar putih opak (bayangan tidak tembus), FAB menumpuk di tengah atas.
+class _TabBar extends StatelessWidget {
+  const _TabBar({required this.children, this.fab});
+
+  final List<Widget> children;
+  final FabSpec? fab;
+
+  static const _height = 60.0;
+  static const _fabRise = 22.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ol;
+    final bar = DecoratedBox(
+      decoration: BoxDecoration(
+        color: c.surface,
+        // Hanya garis atas: bayangan ke atas akan terpotong di ruang FAB.
+        border: Border(top: BorderSide(color: c.line)),
+      ),
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.only(bottom: 8),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(6, 8, 6, 0),
+          child: SizedBox(
+            height: _height,
+            child: Row(children: children),
           ),
         ),
       ),
+    );
+    if (fab == null) return bar;
+    // FAB menonjol 22dp di atas bar. Ruang itu ikut dihitung dalam ukuran widget
+    // (transparan) agar seluruh FAB bisa diketuk — hit-test tidak menjangkau luar batas.
+    return Stack(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: _fabRise),
+          child: bar,
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Center(child: _Fab(spec: fab!)),
+        ),
+      ],
     );
   }
 }
@@ -130,6 +156,7 @@ class _TabItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.ol;
     final color = selected ? c.brand : c.faint;
+    final duration = OlMotion.of(context, OlMotion.normal);
     return Semantics(
       selected: selected,
       button: true,
@@ -137,94 +164,114 @@ class _TabItem extends StatelessWidget {
       excludeSemantics: true,
       child: InkResponse(
         onTap: onTap,
-        containedInkWell: true,
-        highlightShape: BoxShape.rectangle,
-        borderRadius: BorderRadius.circular(16),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 56),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedContainer(
-                duration: OlMotion.of(context, OlMotion.fast),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: selected ? c.brandSoft : Colors.transparent,
-                  borderRadius: BorderRadius.circular(OlRadius.pill),
+        radius: 36,
+        highlightColor: Colors.transparent,
+        splashColor: c.brandSoft,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: duration,
+              curve: OlMotion.curve,
+              padding: EdgeInsets.symmetric(
+                horizontal: selected ? 18 : 12,
+                vertical: 4,
+              ),
+              decoration: BoxDecoration(
+                color: selected
+                    ? c.brandSoft
+                    : c.brandSoft.withValues(alpha: 0),
+                borderRadius: BorderRadius.circular(OlRadius.pill),
+              ),
+              // Ikon regular → fill dengan sedikit "pop".
+              child: AnimatedSwitcher(
+                duration: duration,
+                switchInCurve: Curves.easeOutBack,
+                transitionBuilder: (child, a) => ScaleTransition(
+                  scale: Tween(begin: 0.8, end: 1.0).animate(a),
+                  child: FadeTransition(opacity: a, child: child),
                 ),
                 child: OlIcon(
                   spec.icon,
+                  key: ValueKey(selected),
                   color: color,
                   weight: selected ? OlIconWeight.fill : OlIconWeight.regular,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
+            ),
+            const SizedBox(height: 4),
+            AnimatedDefaultTextStyle(
+              duration: duration,
+              style: context.olText.caption.copyWith(
+                fontSize: 11.5,
+                color: color,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+              ),
+              child: Text(
                 spec.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: context.olText.caption.copyWith(
-                  fontSize: 11.5,
-                  color: color,
-                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _Fab extends StatelessWidget {
+/// FAB tengah (D.5): lingkaran 56dp, cincin putih 6dp, bayangan brand lembut.
+class _Fab extends StatefulWidget {
   const _Fab({required this.spec});
   final FabSpec spec;
 
   @override
+  State<_Fab> createState() => _FabState();
+}
+
+class _FabState extends State<_Fab> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
     final c = context.ol;
-    return Center(
-      child: Transform.translate(
-        offset: const Offset(0, -18),
-        child: Semantics(
-          button: true,
-          label: spec.semanticLabel,
-          excludeSemantics: true,
-          child: Container(
-            width: OlSize.fab + 12,
-            height: OlSize.fab + 12,
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(color: c.surface, shape: BoxShape.circle),
-            child: Material(
-              color: c.brand,
-              shape: const CircleBorder(),
-              elevation: 0,
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  context.push(spec.route);
-                },
-                child: Ink(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0xD90277B5),
-                        offset: Offset(0, 14),
-                        blurRadius: 24,
-                        spreadRadius: -10,
-                      ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: OlIcon(OlIcons.plus, size: 26, color: Colors.white),
-                  ),
-                ),
+    return Semantics(
+      button: true,
+      label: widget.spec.semanticLabel,
+      excludeSemantics: true,
+      child: AnimatedScale(
+        scale: _pressed ? 0.92 : 1,
+        duration: OlMotion.of(context, OlMotion.fast),
+        curve: OlMotion.curve,
+        child: Container(
+          width: OlSize.fab + 12,
+          height: OlSize.fab + 12,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: c.surface,
+            // Bayangan netral tipis: cincin putih tetap terpisah dari latar halaman
+            // tanpa "ekor" biru di atas bar putih.
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x1F0B1F2E),
+                offset: Offset(0, 2),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(6),
+          child: Material(
+            color: c.brand,
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onHighlightChanged: (v) => setState(() => _pressed = v),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                context.push(widget.spec.route);
+              },
+              child: const Center(
+                child: OlIcon(OlIcons.plus, size: 26, color: Colors.white),
               ),
             ),
           ),

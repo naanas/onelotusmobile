@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 
@@ -79,37 +80,45 @@ class OlAppHeader extends StatelessWidget {
       ),
     );
 
-    if (!hero) return content;
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(
-        bottom: Radius.circular(OlRadius.heroBottom),
-      ),
-      child: Container(
-        color: c.brandDeep,
-        child: Stack(
-          children: [
-            // Lingkaran dekoratif kanan atas (`.hd.hero::after`).
-            Positioned(
-              right: -60,
-              top: -70,
-              child: Transform.rotate(
-                angle: -0.785,
-                child: Container(
-                  width: 220,
-                  height: 220,
-                  decoration: const BoxDecoration(
-                    color: Color(0x2938BDF8),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(110),
-                      topRight: Radius.circular(110),
-                      bottomRight: Radius.circular(110),
+    if (!hero) {
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: OlStatusBar.dark,
+        child: content,
+      );
+    }
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: OlStatusBar.light,
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(
+          bottom: Radius.circular(OlRadius.heroBottom),
+        ),
+        child: Container(
+          color: c.brandDeep,
+          child: Stack(
+            children: [
+              // Lingkaran dekoratif kanan atas (`.hd.hero::after`).
+              Positioned(
+                right: -60,
+                top: -70,
+                child: Transform.rotate(
+                  angle: -0.785,
+                  child: Container(
+                    width: 220,
+                    height: 220,
+                    decoration: const BoxDecoration(
+                      color: Color(0x2938BDF8),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(110),
+                        topRight: Radius.circular(110),
+                        bottomRight: Radius.circular(110),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            content,
-          ],
+              content,
+            ],
+          ),
         ),
       ),
     );

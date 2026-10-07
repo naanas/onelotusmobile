@@ -24,6 +24,12 @@ GoRoute _tab(String path, Widget page) => GoRoute(
   pageBuilder: (context, state) => NoTransitionPage(child: page),
 );
 
+Widget _fadeThrough(
+  BuildContext context,
+  StatefulNavigationShell shell,
+  List<Widget> children,
+) => FadeThroughBranches(currentIndex: shell.currentIndex, children: children);
+
 StatefulShellBranch _branch(String path, Widget page) =>
     StatefulShellBranch(routes: [_tab(path, page)]);
 
@@ -40,24 +46,34 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) =>
         authRedirect(ref.read(authProvider), state.matchedLocation),
     routes: [
-      GoRoute(path: Routes.splash, builder: (_, _) => const SplashPage()),
-      GoRoute(path: Routes.login, builder: (_, _) => const LoginPage()),
+      GoRoute(
+        path: Routes.splash,
+        pageBuilder: (_, state) => olFadePage(state, const SplashPage()),
+      ),
+      GoRoute(
+        path: Routes.login,
+        pageBuilder: (_, state) => olFadePage(state, const LoginPage()),
+      ),
       GoRoute(
         path: Routes.forgotPassword,
         builder: (_, _) => const ForgotPasswordPage(),
       ),
       GoRoute(
         path: Routes.firstLogin,
-        builder: (_, _) => const FirstLoginPage(),
+        pageBuilder: (_, state) => olFadePage(state, const FirstLoginPage()),
       ),
       GoRoute(
         path: Routes.chooseContext,
-        builder: (_, _) => const ChooseContextPage(),
+        pageBuilder: (_, state) => olFadePage(state, const ChooseContextPage()),
       ),
-      GoRoute(path: Routes.lock, builder: (_, _) => const LockPage()),
+      GoRoute(
+        path: Routes.lock,
+        pageBuilder: (_, state) => olFadePage(state, const LockPage()),
+      ),
       GoRoute(
         path: Routes.sessionExpired,
-        builder: (_, _) => const SessionExpiredPage(),
+        pageBuilder: (_, state) =>
+            olFadePage(state, const SessionExpiredPage()),
       ),
       GoRoute(
         path: Routes.devComponents,
@@ -65,19 +81,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       // ── Terapis: Jadwal · Pasien · + · Riwayat · Akun ─────────────────────
-      StatefulShellRoute.indexedStack(
-        builder: (context, state, shell) => RoleShell(
-          shell: shell,
-          fab: const FabSpec(
-            'Rekam sesi atau pilih pasien',
-            Routes.terapisPilihPasien,
+      StatefulShellRoute(
+        navigatorContainerBuilder: _fadeThrough,
+        pageBuilder: (context, state, shell) => olFadePage(
+          state,
+          RoleShell(
+            shell: shell,
+            fab: const FabSpec(
+              'Rekam sesi atau pilih pasien',
+              Routes.terapisPilihPasien,
+            ),
+            tabs: const [
+              TabSpec('Jadwal', OlIcons.calendar),
+              TabSpec('Pasien', OlIcons.users),
+              TabSpec('Riwayat', OlIcons.history),
+              TabSpec('Akun', OlIcons.user),
+            ],
           ),
-          tabs: const [
-            TabSpec('Jadwal', OlIcons.calendar),
-            TabSpec('Pasien', OlIcons.users),
-            TabSpec('Riwayat', OlIcons.history),
-            TabSpec('Akun', OlIcons.user),
-          ],
         ),
         branches: [
           _branch(
@@ -121,19 +141,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       // ── Kasir: Antrian · Pasien · + · Kasir · Akun ────────────────────────
-      StatefulShellRoute.indexedStack(
-        builder: (context, state, shell) => RoleShell(
-          shell: shell,
-          fab: const FabSpec(
-            'Pasien baru atau tampilkan QR intake',
-            Routes.kasirIntake,
+      StatefulShellRoute(
+        navigatorContainerBuilder: _fadeThrough,
+        pageBuilder: (context, state, shell) => olFadePage(
+          state,
+          RoleShell(
+            shell: shell,
+            fab: const FabSpec(
+              'Pasien baru atau tampilkan QR intake',
+              Routes.kasirIntake,
+            ),
+            tabs: const [
+              TabSpec('Antrian', OlIcons.queue),
+              TabSpec('Pasien', OlIcons.users),
+              TabSpec('Kasir', OlIcons.receipt),
+              TabSpec('Akun', OlIcons.user),
+            ],
           ),
-          tabs: const [
-            TabSpec('Antrian', OlIcons.queue),
-            TabSpec('Pasien', OlIcons.users),
-            TabSpec('Kasir', OlIcons.receipt),
-            TabSpec('Akun', OlIcons.user),
-          ],
         ),
         branches: [
           _branch(
@@ -177,16 +201,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       // ── Owner: Ringkasan · Jadwal · Pasien · Laporan · Akun (tanpa FAB) ──
-      StatefulShellRoute.indexedStack(
-        builder: (context, state, shell) => RoleShell(
-          shell: shell,
-          tabs: const [
-            TabSpec('Ringkasan', OlIcons.chart),
-            TabSpec('Jadwal', OlIcons.calendar),
-            TabSpec('Pasien', OlIcons.users),
-            TabSpec('Laporan', OlIcons.report),
-            TabSpec('Akun', OlIcons.user),
-          ],
+      StatefulShellRoute(
+        navigatorContainerBuilder: _fadeThrough,
+        pageBuilder: (context, state, shell) => olFadePage(
+          state,
+          RoleShell(
+            shell: shell,
+            tabs: const [
+              TabSpec('Ringkasan', OlIcons.chart),
+              TabSpec('Jadwal', OlIcons.calendar),
+              TabSpec('Pasien', OlIcons.users),
+              TabSpec('Laporan', OlIcons.report),
+              TabSpec('Akun', OlIcons.user),
+            ],
+          ),
         ),
         branches: [
           _branch(

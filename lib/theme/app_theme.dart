@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../ui/transitions.dart';
 
 import 'ol_colors.dart';
 import 'ol_tokens.dart';
@@ -29,6 +32,13 @@ ThemeData buildOlTheme([OlColors c = OlColors.light]) {
     fontFamily: kFontBody,
     extensions: [c],
     splashFactory: InkSparkle.splashFactory,
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {
+        TargetPlatform.android: OlPageTransitionsBuilder(),
+        // iOS tetap Cupertino agar gesture geser-kembali bekerja.
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      },
+    ),
     textTheme: TextTheme(
       displaySmall: t.display,
       headlineSmall: t.title,
@@ -89,6 +99,39 @@ ThemeData buildOlTheme([OlColors c = OlColors.light]) {
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       titleTextStyle: t.heading,
+      systemOverlayStyle: OlStatusBar.dark,
     ),
+  );
+}
+
+/// Gaya status bar & navigation bar. Ikon gelap di atas latar terang,
+/// ikon terang di atas header hero / splash biru tua.
+abstract final class OlStatusBar {
+  static const dark = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light, // iOS
+    systemNavigationBarColor: Colors.white,
+    systemNavigationBarIconBrightness: Brightness.dark,
+    systemNavigationBarDividerColor: Colors.transparent,
+  );
+
+  static const light = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    statusBarBrightness: Brightness.dark, // iOS
+    systemNavigationBarColor: Colors.white,
+    systemNavigationBarIconBrightness: Brightness.dark,
+    systemNavigationBarDividerColor: Colors.transparent,
+  );
+
+  /// Splash: navigation bar ikut biru tua agar layar penuh satu warna.
+  static const splash = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light,
+    statusBarBrightness: Brightness.dark,
+    systemNavigationBarColor: Color(0xFF0C4A6E),
+    systemNavigationBarIconBrightness: Brightness.light,
+    systemNavigationBarDividerColor: Colors.transparent,
   );
 }

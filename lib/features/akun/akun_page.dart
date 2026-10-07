@@ -62,91 +62,70 @@ class AkunPage extends ConsumerWidget {
     final roleBranch =
         '${role == Role.kasir ? 'Kasir' : role.label} · ${branch.name}';
 
-    return Column(
+    return OlPageBody(
+      header: const OlAppHeader(title: 'Akun'),
       children: [
-        const OlAppHeader(title: 'Akun'),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(
-              OlSpace.screen,
-              0,
-              OlSpace.screen,
-              24,
-            ),
+        OlCard(
+          child: Row(
             children: [
-              OlCard(
-                child: Row(
+              OlAvatar(name: user.name, large: true),
+              const SizedBox(width: OlSpace.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    OlAvatar(name: user.name, large: true),
-                    const SizedBox(width: OlSpace.lg),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            user.name,
-                            style: t.heading.copyWith(fontSize: 17),
-                          ),
-                          Text(
-                            roleBranch,
-                            style: t.caption.copyWith(fontSize: 13),
-                          ),
-                          const SizedBox(height: 6),
-                          SyncIndicator(status: sync),
-                        ],
-                      ),
-                    ),
+                    Text(user.name, style: t.heading.copyWith(fontSize: 17)),
+                    Text(roleBranch, style: t.caption.copyWith(fontSize: 13)),
+                    const SizedBox(height: 6),
+                    SyncIndicator(status: sync),
                   ],
                 ),
               ),
-              const SizedBox(height: OlSpace.gap),
-              _Group(
-                children: [
-                  if (user.needsContextChoice)
-                    OlListItem(
-                      title: 'Ganti peran / cabang',
-                      subtitle: roleBranch,
-                      showChevron: true,
-                      onTap: () => context.push(Routes.chooseContext),
-                    ),
-                  OlListItem(
-                    title: 'Status sinkron',
-                    trailing: Text(
-                      '$pending menunggu',
-                      style: t.body.copyWith(color: c.muted),
-                    ),
-                  ),
-                  if (kDebugMode)
-                    OlListItem(
-                      title: 'Galeri komponen',
-                      subtitle: 'Khusus build debug',
-                      showChevron: true,
-                      onTap: () => context.push(Routes.devComponents),
-                    ),
-                ],
-              ),
-              const SizedBox(height: OlSpace.gap),
-              OlButton(
-                label: 'Keluar',
-                variant: OlButtonVariant.dangerSecondary,
-                onPressed: () => _logout(context, ref),
-              ),
-              const SizedBox(height: OlSpace.md),
-              Center(
-                child: Text.rich(
-                  TextSpan(
-                    children: [
-                      const TextSpan(text: 'Versi '),
-                      TextSpan(
-                        text: kAppVersion,
-                        style: t.mono.copyWith(color: c.muted),
-                      ),
-                    ],
-                  ),
-                  style: t.caption.copyWith(fontSize: 13),
-                ),
-              ),
             ],
+          ),
+        ),
+        _Group(
+          children: [
+            if (user.needsContextChoice)
+              OlListItem(
+                title: 'Ganti peran / cabang',
+                subtitle: roleBranch,
+                showChevron: true,
+                onTap: () => context.push(Routes.chooseContext),
+              ),
+            OlListItem(
+              title: 'Status sinkron',
+              trailing: Text(
+                '$pending menunggu',
+                style: t.body.copyWith(color: c.muted),
+              ),
+            ),
+            if (kDebugMode)
+              OlListItem(
+                title: 'Galeri komponen',
+                subtitle: 'Khusus build debug',
+                showChevron: true,
+                onTap: () => context.push(Routes.devComponents),
+              ),
+          ],
+        ),
+        OlButton(
+          label: 'Keluar',
+          variant: OlButtonVariant.dangerSecondary,
+          onPressed: () => _logout(context, ref),
+        ),
+        Center(
+          child: Text.rich(
+            TextSpan(
+              children: [
+                const TextSpan(text: 'Versi '),
+                TextSpan(
+                  text: kAppVersion,
+                  style: t.mono.copyWith(color: c.muted),
+                ),
+              ],
+            ),
+            style: t.caption.copyWith(fontSize: 13),
           ),
         ),
       ],

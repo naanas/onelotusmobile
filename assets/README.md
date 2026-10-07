@@ -51,3 +51,7 @@ Alternatif ikon: paket `phosphor_flutter` di pub.dev memuat set Phosphor yang sa
 
 - Logo merek pihak ketiga (WhatsApp, QRIS, bank) tidak disertakan; pakai aset resmi masing-masing atau ikon generik `ic_chat`, `ic_qris`, `ic_transfer`.
 - Semua animasi sudah diuji render dengan lottie-web. Uji sekali di perangkat Flutter sebelum rilis.
+
+## Font
+
+`fonts/` — Plus Jakarta Sans (400–800) & JetBrains Mono (500, 700), subset latin dari Fontsource. Lisensi SIL Open Font License 1.1.

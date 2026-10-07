@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Galeri banner dan inline error</title>
+<link rel="stylesheet" href="ol.css">
+</head>
+<body>
+<div class="dc">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap">
+<style>body{margin:0}</style>
+
+<div class="scr" style="height: 980px">
+  <div class="hd"><span class="ctx">§12.1–12.4</span><h1 class="ttl">Banner &amp; inline error</h1></div>
+  <div class="bd" style="gap: 12px">
+    <span class="lbl">Banner · sampai kondisi selesai</span>
+    <div class="ban b-wr"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M53.92,34.62A8,8,0,1,0,42.08,45.38L81.32,88.55l-.06.12A65,65,0,0,0,72,88a64,64,0,0,0,0,128h88a87.34,87.34,0,0,0,31.8-5.93l10.28,11.31a8,8,0,1,0,11.84-10.76ZM160,200H72a48,48,0,0,1,0-96c1.1,0,2.2,0,3.3.12A88.4,88.4,0,0,0,72,128a8,8,0,0,0,16,0,72.25,72.25,0,0,1,5.06-26.54l87,95.7A71.66,71.66,0,0,1,160,200Zm88-72a87.89,87.89,0,0,1-22.35,58.61A8,8,0,0,1,213.71,176,72,72,0,0,0,117.37,70a8,8,0,0,1-9.48-12.89A88,88,0,0,1,248,128Z"/></svg><span>Kamu sedang offline. Data tersimpan di HP.</span></div>
+    <div class="ban b-cr"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM222.93,203.8a8.5,8.5,0,0,1-7.48,4.2H40.55a8.5,8.5,0,0,1-7.48-4.2,7.59,7.59,0,0,1,0-7.72L120.52,44.21a8.75,8.75,0,0,1,15,0l87.45,151.87A7.59,7.59,0,0,1,222.93,203.8ZM120,144V104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,180Z"/></svg><span>Riwayat LBP kronis — hindari tekanan kuat di L4–L5.</span></div>
+    <div class="ban b-wr"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/></svg><span style="flex: 1">Menunggu konfirmasi pembayaran. Jangan tagih ulang dulu.</span></div>
+    <div class="ban b-in"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm16-40a8,8,0,0,1-8,8,16,16,0,0,1-16-16V128a8,8,0,0,1,0-16,16,16,0,0,1,16,16v40A8,8,0,0,1,144,176ZM112,84a12,12,0,1,1,12,12A12,12,0,0,1,112,84Z"/></svg><span>Bukti transfer menunggu verifikasi.</span></div>
+    <div class="ban b-wr"><svg class="ic" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM222.93,203.8a8.5,8.5,0,0,1-7.48,4.2H40.55a8.5,8.5,0,0,1-7.48-4.2,7.59,7.59,0,0,1,0-7.72L120.52,44.21a8.75,8.75,0,0,1,15,0l87.45,151.87A7.59,7.59,0,0,1,222.93,203.8ZM120,144V104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm20,36a12,12,0,1,1-12-12A12,12,0,0,1,140,180Z"/></svg><span>Diskon menunggu persetujuan owner.</span></div>
+    <span class="lbl" style="margin-top: 6px">Inline field error · hilang saat diperbaiki</span>
+    <div class="fld"><label for="e1">Nomor HP <span class="req">*</span></label><input id="e1" class="inp err" value="0812 3456"><span class="etx">Nomor HP belum lengkap — minimal 10 digit.</span></div>
+    <div class="fld"><label for="e2">Berat badan</label><div id="e2" class="inp err"><span class="mono">5S</span><span class="mu">kg</span></div><span class="etx">Berat badan harus angka, mis. 58</span></div>
+    <div class="fld"><span class="fl">Poin Lotus</span><div class="inp err"><span class="mono">500 poin</span></div><span class="etx">Poin belum cukup. Saldo: 240 poin.</span></div>
+    <div class="fld"><span class="fl">Pakai paket</span><div class="inp" style="opacity: .6">Cedera Ringan 5× · kuota 0</div><span class="etx">Kuota paket habis. Pilih metode lain atau beli paket baru.</span></div>
+  </div>
+</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,286 @@
+{
+ "custom": {
+  "an_splash_lotus": {
+   "duration_s": 1.2,
+   "loop": false,
+   "frames": 72,
+   "size": [
+    120,
+    120
+   ],
+   "bytes": 4885
+  },
+  "an_loading": {
+   "duration_s": 1.0,
+   "loop": true,
+   "frames": 60,
+   "size": [
+    80,
+    80
+   ],
+   "bytes": 2765
+  },
+  "an_success": {
+   "duration_s": 0.8,
+   "loop": false,
+   "frames": 48,
+   "size": [
+    100,
+    100
+   ],
+   "bytes": 1610
+  },
+  "an_error": {
+   "duration_s": 0.6,
+   "loop": false,
+   "frames": 36,
+   "size": [
+    100,
+    100
+   ],
+   "bytes": 2603
+  },
+  "an_sync": {
+   "duration_s": 1.2,
+   "loop": true,
+   "frames": 72,
+   "size": [
+    80,
+    80
+   ],
+   "bytes": 2500
+  },
+  "an_qris_wait": {
+   "duration_s": 1.6,
+   "loop": true,
+   "frames": 96,
+   "size": [
+    100,
+    100
+   ],
+   "bytes": 3285
+  },
+  "an_payment_success": {
+   "duration_s": 1.2,
+   "loop": false,
+   "frames": 72,
+   "size": [
+    110,
+    100
+   ],
+   "bytes": 5353
+  },
+  "an_checkin": {
+   "duration_s": 0.9,
+   "loop": false,
+   "frames": 54,
+   "size": [
+    100,
+    100
+   ],
+   "bytes": 2242
+  },
+  "an_offline": {
+   "duration_s": 2.0,
+   "loop": true,
+   "frames": 120,
+   "size": [
+    100,
+    100
+   ],
+   "bytes": 1850
+  },
+  "an_points": {
+   "duration_s": 1.2,
+   "loop": false,
+   "frames": 72,
+   "size": [
+    100,
+    100
+   ],
+   "bytes": 5544
+  },
+  "an_recording": {
+   "duration_s": 1.0,
+   "loop": true,
+   "frames": 60,
+   "size": [
+    80,
+    80
+   ],
+   "bytes": 1455
+  },
+  "an_refresh": {
+   "duration_s": 0.8,
+   "loop": true,
+   "frames": 48,
+   "size": [
+    64,
+    64
+   ],
+   "bytes": 1011
+  }
+ },
+ "useAnimations": [
+  {
+   "file": "an_ua_loading.json",
+   "source": "useAnimations/loading2",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#0277B5",
+   "use": "Memuat data / tombol loading",
+   "fr": 30,
+   "op": 46,
+   "w": 32
+  },
+  {
+   "file": "an_ua_checkmark.json",
+   "source": "useAnimations/checkmark",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#127A3E",
+   "use": "Konfirmasi berhasil (toast, field valid)",
+   "fr": 30,
+   "op": 45,
+   "w": 32
+  },
+  {
+   "file": "an_ua_alert.json",
+   "source": "useAnimations/alertCircle",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#C0262D",
+   "use": "Error inline / gagal simpan",
+   "fr": 30,
+   "op": 45,
+   "w": 32
+  },
+  {
+   "file": "an_ua_warning.json",
+   "source": "useAnimations/alertTriangle",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#9A4A07",
+   "use": "Peringatan (sinkron tertunda, kuota)",
+   "fr": 30,
+   "op": 30,
+   "w": 32
+  },
+  {
+   "file": "an_ua_bell.json",
+   "source": "useAnimations/notification",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#0277B5",
+   "use": "Lonceng notifikasi baru",
+   "fr": 30,
+   "op": 25,
+   "w": 32
+  },
+  {
+   "file": "an_ua_lock.json",
+   "source": "useAnimations/lock",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#0277B5",
+   "use": "Kunci layar / PIN / sesi berakhir",
+   "fr": 30,
+   "op": 10,
+   "w": 32
+  },
+  {
+   "file": "an_ua_mic.json",
+   "source": "useAnimations/microphone2",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#C0262D",
+   "use": "Rekam catatan suara terapis",
+   "fr": 30,
+   "op": 25,
+   "w": 32
+  },
+  {
+   "file": "an_ua_calendar.json",
+   "source": "useAnimations/calendar",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#0277B5",
+   "use": "Booking terkonfirmasi / ubah jadwal",
+   "fr": 30,
+   "op": 8,
+   "w": 32
+  },
+  {
+   "file": "an_ua_star.json",
+   "source": "useAnimations/star",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#A85E05",
+   "use": "Poin Lotus / rating sesi",
+   "fr": 30,
+   "op": 10,
+   "w": 32
+  },
+  {
+   "file": "an_ua_download.json",
+   "source": "useAnimations/download",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#0277B5",
+   "use": "Unduh struk / update aplikasi",
+   "fr": 30,
+   "op": 120,
+   "w": 32
+  },
+  {
+   "file": "an_ua_checkbox.json",
+   "source": "useAnimations/checkBox",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#127A3E",
+   "use": "Centang latihan selesai",
+   "fr": 30,
+   "op": 30,
+   "w": 32
+  },
+  {
+   "file": "an_ua_info.json",
+   "source": "useAnimations/info",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#0277B5",
+   "use": "Tooltip / info harga",
+   "fr": 30,
+   "op": 10,
+   "w": 32
+  },
+  {
+   "file": "an_ua_trash.json",
+   "source": "useAnimations/trash2",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#C0262D",
+   "use": "Hapus draf / item",
+   "fr": 30,
+   "op": 5,
+   "w": 32
+  },
+  {
+   "file": "an_ua_eye.json",
+   "source": "useAnimations/visibility",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#0277B5",
+   "use": "Tampil/sembunyi password",
+   "fr": 30,
+   "op": 25,
+   "w": 32
+  },
+  {
+   "file": "an_ua_heart.json",
+   "source": "useAnimations/heart",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#C0262D",
+   "use": "Feedback pasien / favorit",
+   "fr": 30,
+   "op": 10,
+   "w": 32
+  },
+  {
+   "file": "an_ua_search.json",
+   "source": "useAnimations/searchToX",
+   "license": "CC BY 4.0 — atribusi: useAnimations (useanimations.com)",
+   "color": "#0277B5",
+   "use": "Buka/tutup pencarian",
+   "fr": 30,
+   "op": 30,
+   "w": 32
+  }
+ ]
+}

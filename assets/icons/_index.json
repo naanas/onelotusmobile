@@ -1,0 +1,584 @@
+{
+ "pack": "Phosphor Icons v2 (MIT)",
+ "source": "https://github.com/phosphor-icons/core",
+ "viewBox": "0 0 256 256",
+ "usage": "regular = default, fill = tab aktif/selected, duotone = status berwarna",
+ "icons": {
+  "home": {
+   "phosphor": "house",
+   "files": [
+    "ic_home.svg",
+    "ic_home_fill.svg",
+    "ic_home_duotone.svg"
+   ]
+  },
+  "calendar": {
+   "phosphor": "calendar-blank",
+   "files": [
+    "ic_calendar.svg",
+    "ic_calendar_fill.svg",
+    "ic_calendar_duotone.svg"
+   ]
+  },
+  "calendar_week": {
+   "phosphor": "calendar-dots",
+   "files": [
+    "ic_calendar_week.svg",
+    "ic_calendar_week_fill.svg",
+    "ic_calendar_week_duotone.svg"
+   ]
+  },
+  "calendar_plus": {
+   "phosphor": "calendar-plus",
+   "files": [
+    "ic_calendar_plus.svg",
+    "ic_calendar_plus_fill.svg",
+    "ic_calendar_plus_duotone.svg"
+   ]
+  },
+  "users": {
+   "phosphor": "users",
+   "files": [
+    "ic_users.svg",
+    "ic_users_fill.svg",
+    "ic_users_duotone.svg"
+   ]
+  },
+  "user": {
+   "phosphor": "user",
+   "files": [
+    "ic_user.svg",
+    "ic_user_fill.svg",
+    "ic_user_duotone.svg"
+   ]
+  },
+  "history": {
+   "phosphor": "clock-counter-clockwise",
+   "files": [
+    "ic_history.svg",
+    "ic_history_fill.svg",
+    "ic_history_duotone.svg"
+   ]
+  },
+  "queue": {
+   "phosphor": "queue",
+   "files": [
+    "ic_queue.svg",
+    "ic_queue_fill.svg",
+    "ic_queue_duotone.svg"
+   ]
+  },
+  "receipt": {
+   "phosphor": "receipt",
+   "files": [
+    "ic_receipt.svg",
+    "ic_receipt_fill.svg",
+    "ic_receipt_duotone.svg"
+   ]
+  },
+  "chart": {
+   "phosphor": "chart-bar",
+   "files": [
+    "ic_chart.svg",
+    "ic_chart_fill.svg",
+    "ic_chart_duotone.svg"
+   ]
+  },
+  "report": {
+   "phosphor": "presentation-chart",
+   "files": [
+    "ic_report.svg",
+    "ic_report_fill.svg",
+    "ic_report_duotone.svg"
+   ]
+  },
+  "exercise": {
+   "phosphor": "barbell",
+   "files": [
+    "ic_exercise.svg",
+    "ic_exercise_fill.svg",
+    "ic_exercise_duotone.svg"
+   ]
+  },
+  "grid": {
+   "phosphor": "squares-four",
+   "files": [
+    "ic_grid.svg",
+    "ic_grid_fill.svg",
+    "ic_grid_duotone.svg"
+   ]
+  },
+  "plus": {
+   "phosphor": "plus",
+   "files": [
+    "ic_plus.svg",
+    "ic_plus_fill.svg",
+    "ic_plus_duotone.svg"
+   ]
+  },
+  "search": {
+   "phosphor": "magnifying-glass",
+   "files": [
+    "ic_search.svg",
+    "ic_search_fill.svg",
+    "ic_search_duotone.svg"
+   ]
+  },
+  "bell": {
+   "phosphor": "bell",
+   "files": [
+    "ic_bell.svg",
+    "ic_bell_fill.svg",
+    "ic_bell_duotone.svg"
+   ]
+  },
+  "back": {
+   "phosphor": "caret-left",
+   "files": [
+    "ic_back.svg",
+    "ic_back_fill.svg",
+    "ic_back_duotone.svg"
+   ]
+  },
+  "chevron_right": {
+   "phosphor": "caret-right",
+   "files": [
+    "ic_chevron_right.svg",
+    "ic_chevron_right_fill.svg",
+    "ic_chevron_right_duotone.svg"
+   ]
+  },
+  "chevron_down": {
+   "phosphor": "caret-down",
+   "files": [
+    "ic_chevron_down.svg",
+    "ic_chevron_down_fill.svg",
+    "ic_chevron_down_duotone.svg"
+   ]
+  },
+  "close": {
+   "phosphor": "x",
+   "files": [
+    "ic_close.svg",
+    "ic_close_fill.svg",
+    "ic_close_duotone.svg"
+   ]
+  },
+  "more": {
+   "phosphor": "dots-three",
+   "files": [
+    "ic_more.svg",
+    "ic_more_fill.svg",
+    "ic_more_duotone.svg"
+   ]
+  },
+  "edit": {
+   "phosphor": "pencil-simple",
+   "files": [
+    "ic_edit.svg",
+    "ic_edit_fill.svg",
+    "ic_edit_duotone.svg"
+   ]
+  },
+  "archive": {
+   "phosphor": "archive",
+   "files": [
+    "ic_archive.svg",
+    "ic_archive_fill.svg",
+    "ic_archive_duotone.svg"
+   ]
+  },
+  "filter": {
+   "phosphor": "funnel-simple",
+   "files": [
+    "ic_filter.svg",
+    "ic_filter_fill.svg",
+    "ic_filter_duotone.svg"
+   ]
+  },
+  "sort": {
+   "phosphor": "arrows-down-up",
+   "files": [
+    "ic_sort.svg",
+    "ic_sort_fill.svg",
+    "ic_sort_duotone.svg"
+   ]
+  },
+  "share": {
+   "phosphor": "share-network",
+   "files": [
+    "ic_share.svg",
+    "ic_share_fill.svg",
+    "ic_share_duotone.svg"
+   ]
+  },
+  "download": {
+   "phosphor": "download-simple",
+   "files": [
+    "ic_download.svg",
+    "ic_download_fill.svg",
+    "ic_download_duotone.svg"
+   ]
+  },
+  "upload": {
+   "phosphor": "upload-simple",
+   "files": [
+    "ic_upload.svg",
+    "ic_upload_fill.svg",
+    "ic_upload_duotone.svg"
+   ]
+  },
+  "camera": {
+   "phosphor": "camera",
+   "files": [
+    "ic_camera.svg",
+    "ic_camera_fill.svg",
+    "ic_camera_duotone.svg"
+   ]
+  },
+  "mic": {
+   "phosphor": "microphone",
+   "files": [
+    "ic_mic.svg",
+    "ic_mic_fill.svg",
+    "ic_mic_duotone.svg"
+   ]
+  },
+  "attach": {
+   "phosphor": "paperclip",
+   "files": [
+    "ic_attach.svg",
+    "ic_attach_fill.svg",
+    "ic_attach_duotone.svg"
+   ]
+  },
+  "send": {
+   "phosphor": "paper-plane-tilt",
+   "files": [
+    "ic_send.svg",
+    "ic_send_fill.svg",
+    "ic_send_duotone.svg"
+   ]
+  },
+  "refresh": {
+   "phosphor": "arrow-clockwise",
+   "files": [
+    "ic_refresh.svg",
+    "ic_refresh_fill.svg",
+    "ic_refresh_duotone.svg"
+   ]
+  },
+  "copy": {
+   "phosphor": "copy",
+   "files": [
+    "ic_copy.svg",
+    "ic_copy_fill.svg",
+    "ic_copy_duotone.svg"
+   ]
+  },
+  "phone": {
+   "phosphor": "phone",
+   "files": [
+    "ic_phone.svg",
+    "ic_phone_fill.svg",
+    "ic_phone_duotone.svg"
+   ]
+  },
+  "chat": {
+   "phosphor": "chat-circle-dots",
+   "files": [
+    "ic_chat.svg",
+    "ic_chat_fill.svg",
+    "ic_chat_duotone.svg"
+   ]
+  },
+  "print": {
+   "phosphor": "printer",
+   "files": [
+    "ic_print.svg",
+    "ic_print_fill.svg",
+    "ic_print_duotone.svg"
+   ]
+  },
+  "eye": {
+   "phosphor": "eye",
+   "files": [
+    "ic_eye.svg",
+    "ic_eye_fill.svg",
+    "ic_eye_duotone.svg"
+   ]
+  },
+  "eye_off": {
+   "phosphor": "eye-slash",
+   "files": [
+    "ic_eye_off.svg",
+    "ic_eye_off_fill.svg",
+    "ic_eye_off_duotone.svg"
+   ]
+  },
+  "logout": {
+   "phosphor": "sign-out",
+   "files": [
+    "ic_logout.svg",
+    "ic_logout_fill.svg",
+    "ic_logout_duotone.svg"
+   ]
+  },
+  "check": {
+   "phosphor": "check",
+   "files": [
+    "ic_check.svg",
+    "ic_check_fill.svg",
+    "ic_check_duotone.svg"
+   ]
+  },
+  "check_circle": {
+   "phosphor": "check-circle",
+   "files": [
+    "ic_check_circle.svg",
+    "ic_check_circle_fill.svg",
+    "ic_check_circle_duotone.svg"
+   ]
+  },
+  "alert": {
+   "phosphor": "warning",
+   "files": [
+    "ic_alert.svg",
+    "ic_alert_fill.svg",
+    "ic_alert_duotone.svg"
+   ]
+  },
+  "info": {
+   "phosphor": "info",
+   "files": [
+    "ic_info.svg",
+    "ic_info_fill.svg",
+    "ic_info_duotone.svg"
+   ]
+  },
+  "error": {
+   "phosphor": "x-circle",
+   "files": [
+    "ic_error.svg",
+    "ic_error_fill.svg",
+    "ic_error_duotone.svg"
+   ]
+  },
+  "clock": {
+   "phosphor": "clock",
+   "files": [
+    "ic_clock.svg",
+    "ic_clock_fill.svg",
+    "ic_clock_duotone.svg"
+   ]
+  },
+  "lock": {
+   "phosphor": "lock-simple",
+   "files": [
+    "ic_lock.svg",
+    "ic_lock_fill.svg",
+    "ic_lock_duotone.svg"
+   ]
+  },
+  "fingerprint": {
+   "phosphor": "fingerprint",
+   "files": [
+    "ic_fingerprint.svg",
+    "ic_fingerprint_fill.svg",
+    "ic_fingerprint_duotone.svg"
+   ]
+  },
+  "offline": {
+   "phosphor": "cloud-slash",
+   "files": [
+    "ic_offline.svg",
+    "ic_offline_fill.svg",
+    "ic_offline_duotone.svg"
+   ]
+  },
+  "sync": {
+   "phosphor": "arrows-clockwise",
+   "files": [
+    "ic_sync.svg",
+    "ic_sync_fill.svg",
+    "ic_sync_duotone.svg"
+   ]
+  },
+  "cloud_ok": {
+   "phosphor": "cloud-check",
+   "files": [
+    "ic_cloud_ok.svg",
+    "ic_cloud_ok_fill.svg",
+    "ic_cloud_ok_duotone.svg"
+   ]
+  },
+  "cloud_alert": {
+   "phosphor": "cloud-warning",
+   "files": [
+    "ic_cloud_alert.svg",
+    "ic_cloud_alert_fill.svg",
+    "ic_cloud_alert_duotone.svg"
+   ]
+  },
+  "settings": {
+   "phosphor": "sliders-horizontal",
+   "files": [
+    "ic_settings.svg",
+    "ic_settings_fill.svg",
+    "ic_settings_duotone.svg"
+   ]
+  },
+  "help": {
+   "phosphor": "question",
+   "files": [
+    "ic_help.svg",
+    "ic_help_fill.svg",
+    "ic_help_duotone.svg"
+   ]
+  },
+  "body": {
+   "phosphor": "person",
+   "files": [
+    "ic_body.svg",
+    "ic_body_fill.svg",
+    "ic_body_duotone.svg"
+   ]
+  },
+  "pain": {
+   "phosphor": "gauge",
+   "files": [
+    "ic_pain.svg",
+    "ic_pain_fill.svg",
+    "ic_pain_duotone.svg"
+   ]
+  },
+  "hands": {
+   "phosphor": "hand",
+   "files": [
+    "ic_hands.svg",
+    "ic_hands_fill.svg",
+    "ic_hands_duotone.svg"
+   ]
+  },
+  "infrared": {
+   "phosphor": "lamp",
+   "files": [
+    "ic_infrared.svg",
+    "ic_infrared_fill.svg",
+    "ic_infrared_duotone.svg"
+   ]
+  },
+  "stretch": {
+   "phosphor": "person-simple-tai-chi",
+   "files": [
+    "ic_stretch.svg",
+    "ic_stretch_fill.svg",
+    "ic_stretch_duotone.svg"
+   ]
+  },
+  "tape": {
+   "phosphor": "bandaids",
+   "files": [
+    "ic_tape.svg",
+    "ic_tape_fill.svg",
+    "ic_tape_duotone.svg"
+   ]
+  },
+  "needle": {
+   "phosphor": "syringe",
+   "files": [
+    "ic_needle.svg",
+    "ic_needle_fill.svg",
+    "ic_needle_duotone.svg"
+   ]
+  },
+  "xray": {
+   "phosphor": "scan",
+   "files": [
+    "ic_xray.svg",
+    "ic_xray_fill.svg",
+    "ic_xray_duotone.svg"
+   ]
+  },
+  "home_visit": {
+   "phosphor": "house-line",
+   "files": [
+    "ic_home_visit.svg",
+    "ic_home_visit_fill.svg",
+    "ic_home_visit_duotone.svg"
+   ]
+  },
+  "pin": {
+   "phosphor": "map-pin",
+   "files": [
+    "ic_pin.svg",
+    "ic_pin_fill.svg",
+    "ic_pin_duotone.svg"
+   ]
+  },
+  "cash": {
+   "phosphor": "money",
+   "files": [
+    "ic_cash.svg",
+    "ic_cash_fill.svg",
+    "ic_cash_duotone.svg"
+   ]
+  },
+  "qris": {
+   "phosphor": "qr-code",
+   "files": [
+    "ic_qris.svg",
+    "ic_qris_fill.svg",
+    "ic_qris_duotone.svg"
+   ]
+  },
+  "transfer": {
+   "phosphor": "arrows-left-right",
+   "files": [
+    "ic_transfer.svg",
+    "ic_transfer_fill.svg",
+    "ic_transfer_duotone.svg"
+   ]
+  },
+  "package": {
+   "phosphor": "package",
+   "files": [
+    "ic_package.svg",
+    "ic_package_fill.svg",
+    "ic_package_duotone.svg"
+   ]
+  },
+  "points": {
+   "phosphor": "star",
+   "files": [
+    "ic_points.svg",
+    "ic_points_fill.svg",
+    "ic_points_duotone.svg"
+   ]
+  },
+  "voucher": {
+   "phosphor": "ticket",
+   "files": [
+    "ic_voucher.svg",
+    "ic_voucher_fill.svg",
+    "ic_voucher_duotone.svg"
+   ]
+  },
+  "percent": {
+   "phosphor": "percent",
+   "files": [
+    "ic_percent.svg",
+    "ic_percent_fill.svg",
+    "ic_percent_duotone.svg"
+   ]
+  },
+  "branch": {
+   "phosphor": "buildings",
+   "files": [
+    "ic_branch.svg",
+    "ic_branch_fill.svg",
+    "ic_branch_duotone.svg"
+   ]
+  }
+ }
+}

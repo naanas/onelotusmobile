@@ -1,0 +1,779 @@
+[
+ {
+  "id": "Main",
+  "title": "Indeks prototipe",
+  "page": "indeks",
+  "w": 1280,
+  "h": 844
+ },
+ {
+  "id": "UM-01",
+  "title": "UM-01 — Splash",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-02",
+  "title": "UM-02 — Perbarui aplikasi",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-03",
+  "title": "UM-03 — Pemeliharaan",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-04",
+  "title": "UM-04 — Login",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-04b",
+  "title": "UM-04 — Login terkunci",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-05",
+  "title": "UM-05 — Login pertama",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-06",
+  "title": "UM-06 — Lupa password",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-07",
+  "title": "UM-07 — Kunci aplikasi",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-08",
+  "title": "UM-08 — Pilih cabang & peran",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-09",
+  "title": "UM-09 — Pusat notifikasi",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-10",
+  "title": "UM-10 — Pencarian global",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-11",
+  "title": "UM-11 — Akun",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-12",
+  "title": "UM-12 — Ubah password & PIN",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-13",
+  "title": "UM-13 — Pengaturan notifikasi",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-14",
+  "title": "UM-14 — Status sinkron",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "UM-15",
+  "title": "UM-15 — Bantuan & kebijakan",
+  "page": "umum",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "TR-01",
+  "title": "TR-01 — Jadwal hari ini",
+  "page": "terapis",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "TR-02",
+  "title": "TR-02 — Jadwal minggu & ketersediaan",
+  "page": "terapis",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "TR-03",
+  "title": "TR-03 — Ajukan cuti",
+  "page": "terapis",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "TR-04",
+  "title": "TR-04 — Rekam sesi",
+  "page": "terapis",
+  "w": 390,
+  "h": 1500
+ },
+ {
+  "id": "TR-05",
+  "title": "TR-05 — Detail pasien",
+  "page": "terapis",
+  "w": 390,
+  "h": 1240
+ },
+ {
+  "id": "TR-06",
+  "title": "TR-06 — Pasien saya",
+  "page": "terapis",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "TR-07",
+  "title": "TR-07 — Riwayat",
+  "page": "terapis",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "TR-08",
+  "title": "TR-08 — Detail sesi & addendum",
+  "page": "terapis",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "TR-09",
+  "title": "TR-09 — Home visit",
+  "page": "terapis",
+  "w": 390,
+  "h": 980
+ },
+ {
+  "id": "TR-10",
+  "title": "TR-10 — Tagih di lokasi",
+  "page": "terapis",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "TR-11",
+  "title": "TR-11 — Kas dibawa & serah terima",
+  "page": "terapis",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "TR-12",
+  "title": "TR-12 — Komisi saya",
+  "page": "terapis",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "TR-13",
+  "title": "TR-13 — Kirim program latihan",
+  "page": "terapis",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "TR-14",
+  "title": "TR-14 — Pilih pasien (FAB)",
+  "page": "terapis",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-01",
+  "title": "KS-01 — Antrian hari ini",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-02",
+  "title": "KS-02 — Intake QR & verifikasi",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-03",
+  "title": "KS-03 — Daftar pasien",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-04",
+  "title": "KS-04 — Tambah / edit pasien",
+  "page": "kasir",
+  "w": 390,
+  "h": 1240
+ },
+ {
+  "id": "KS-05",
+  "title": "KS-05 — Detail pasien (kasir)",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-06",
+  "title": "KS-06 — Buat / ubah jadwal",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-07",
+  "title": "KS-07 — Booking masuk",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-08",
+  "title": "KS-08 — Pindah sesi massal",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-09",
+  "title": "KS-09 — Tagihan",
+  "page": "kasir",
+  "w": 390,
+  "h": 980
+ },
+ {
+  "id": "KS-10a",
+  "title": "KS-10 — Bayar tunai",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-10b",
+  "title": "KS-10 — Bayar QRIS",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-10c",
+  "title": "KS-10 — Pembayaran gabungan",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-11",
+  "title": "KS-11 — Konfirmasi & struk",
+  "page": "kasir",
+  "w": 390,
+  "h": 980
+ },
+ {
+  "id": "KS-12",
+  "title": "KS-12 — Jual paket",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-13",
+  "title": "KS-13 — Riwayat transaksi",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-14",
+  "title": "KS-14 — Refund / batal",
+  "page": "kasir",
+  "w": 390,
+  "h": 980
+ },
+ {
+  "id": "KS-15",
+  "title": "KS-15 — Verifikasi transfer",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-16",
+  "title": "KS-16 — Terima kas terapis",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-17",
+  "title": "KS-17 — Tutup kas harian",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "KS-18",
+  "title": "KS-18 — Piutang",
+  "page": "kasir",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-01",
+  "title": "OW-01 — Ringkasan bisnis",
+  "page": "owner",
+  "w": 390,
+  "h": 1100
+ },
+ {
+  "id": "OW-02",
+  "title": "OW-02 — Jadwal semua terapis",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-03",
+  "title": "OW-03 — Pasien (owner)",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-04",
+  "title": "OW-04 — Laporan",
+  "page": "owner",
+  "w": 390,
+  "h": 980
+ },
+ {
+  "id": "OW-05",
+  "title": "OW-05 — Ekspor",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-06",
+  "title": "OW-06 — Persetujuan",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-07",
+  "title": "OW-07 — Rekap komisi",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-08",
+  "title": "OW-08 — Kelola staf",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-09",
+  "title": "OW-09 — Layanan & harga",
+  "page": "owner",
+  "w": 390,
+  "h": 980
+ },
+ {
+  "id": "OW-10",
+  "title": "OW-10 — Paket & membership",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-11",
+  "title": "OW-11 — Aturan komisi",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-12",
+  "title": "OW-12 — Voucher & promo",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-13",
+  "title": "OW-13 — Aturan poin & referral",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-14",
+  "title": "OW-14 — Template",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-15",
+  "title": "OW-15 — Pustaka latihan",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-16",
+  "title": "OW-16 — Pengumuman",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-17",
+  "title": "OW-17 — Cabang & ruang",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-18",
+  "title": "OW-18 — Audit log",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-19",
+  "title": "OW-19 — Rekonsiliasi gateway",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "OW-20",
+  "title": "OW-20 — Kirim pengingat massal",
+  "page": "owner",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-01",
+  "title": "PS-01 — Onboarding",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-02",
+  "title": "PS-02 — Masuk OTP",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-03",
+  "title": "PS-03 — Hubungkan data lama",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-04",
+  "title": "PS-04 — Persetujuan data",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-05",
+  "title": "PS-05 — Beranda",
+  "page": "pasien",
+  "w": 390,
+  "h": 1100
+ },
+ {
+  "id": "PS-06",
+  "title": "PS-06 — Latihan",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-07",
+  "title": "PS-07 — Detail latihan",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-08",
+  "title": "PS-08 — Booking",
+  "page": "pasien",
+  "w": 390,
+  "h": 980
+ },
+ {
+  "id": "PS-09",
+  "title": "PS-09 — Pembayaran online",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-10",
+  "title": "PS-10 — Jadwal saya",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-11",
+  "title": "PS-11 — Ubah / batalkan jadwal",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-12",
+  "title": "PS-12 — Riwayat sesi",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-13",
+  "title": "PS-13 — Paket & pembayaran",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-14",
+  "title": "PS-14 — Beli paket",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-15",
+  "title": "PS-15 — Struk",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-16",
+  "title": "PS-16 — Poin & referral",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-17",
+  "title": "PS-17 — Notifikasi",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-18",
+  "title": "PS-18 — Profil",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-19",
+  "title": "PS-19 — Alamat tersimpan",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "PS-20",
+  "title": "PS-20 — Hapus akun",
+  "page": "pasien",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "WB-01",
+  "title": "WB-01 — Form intake QR",
+  "page": "web",
+  "w": 390,
+  "h": 1500
+ },
+ {
+  "id": "WB-01b",
+  "title": "WB-01 — Terima kasih",
+  "page": "web",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "WB-02",
+  "title": "WB-02 — Status pembayaran",
+  "page": "web",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "WB-03",
+  "title": "WB-03 — Booking website",
+  "page": "web",
+  "w": 390,
+  "h": 980
+ },
+ {
+  "id": "ST-01",
+  "title": "State — Kosong (TR-01)",
+  "page": "state",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "ST-02",
+  "title": "State — Loading (TR-01)",
+  "page": "state",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "ST-03",
+  "title": "State — Error (TR-01)",
+  "page": "state",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "ST-04",
+  "title": "State — Offline + toast",
+  "page": "state",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "ST-05",
+  "title": "Feedback — Galeri toast",
+  "page": "state",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "ST-06",
+  "title": "Feedback — Banner & inline error",
+  "page": "state",
+  "w": 390,
+  "h": 980
+ },
+ {
+  "id": "ST-07",
+  "title": "Bottom sheet — Sinkron gagal",
+  "page": "state",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "ST-08",
+  "title": "Bottom sheet — Pasien ganda",
+  "page": "state",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "ST-09",
+  "title": "Bottom sheet — Konflik edit",
+  "page": "state",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "ST-10",
+  "title": "Dialog — Arsipkan pasien",
+  "page": "state",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "ST-11",
+  "title": "Dialog — Batalkan transaksi",
+  "page": "state",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "ST-12",
+  "title": "Dialog — Keluar tanpa simpan",
+  "page": "state",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "ST-13",
+  "title": "Dialog — Kirim WA massal",
+  "page": "state",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "ST-14",
+  "title": "Dialog — Logout belum sinkron",
+  "page": "state",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "ST-15",
+  "title": "Layar error penuh — Sesi berakhir",
+  "page": "state",
+  "w": 390,
+  "h": 844
+ },
+ {
+  "id": "ST-16",
+  "title": "Galeri status & badge",
+  "page": "state",
+  "w": 860,
+  "h": 844
+ }
+]

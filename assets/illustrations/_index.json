@@ -1,0 +1,82 @@
+{
+ "il_onboard_recovery": {
+  "source": "unDraw \u00b7 medicine",
+  "bytes": 46500
+ },
+ "il_onboard_booking": {
+  "source": "unDraw \u00b7 booking",
+  "bytes": 12947
+ },
+ "il_onboard_exercise": {
+  "source": "unDraw \u00b7 personal-trainer",
+  "bytes": 16897
+ },
+ "il_empty_schedule": {
+  "source": "unDraw \u00b7 calendar",
+  "bytes": 6905
+ },
+ "il_empty_search": {
+  "source": "unDraw \u00b7 searching",
+  "bytes": 9982
+ },
+ "il_empty_inbox": {
+  "source": "unDraw \u00b7 my-notifications",
+  "bytes": 9364
+ },
+ "il_empty_exercise": {
+  "source": "unDraw \u00b7 meditation",
+  "bytes": 19721
+ },
+ "il_empty_payment": {
+  "source": "unDraw \u00b7 done-checking",
+  "bytes": 13852
+ },
+ "il_success_payment": {
+  "source": "unDraw \u00b7 order-confirmed",
+  "bytes": 8476
+ },
+ "il_offline": {
+  "source": "unDraw \u00b7 going-offline",
+  "bytes": 3289
+ },
+ "il_maintenance": {
+  "source": "unDraw \u00b7 maintenance",
+  "bytes": 9145
+ },
+ "il_update": {
+  "source": "unDraw \u00b7 os-upgrade",
+  "bytes": 12002
+ },
+ "il_server_error": {
+  "source": "unDraw \u00b7 server-down",
+  "bytes": 6475
+ },
+ "il_session_locked": {
+  "source": "unDraw \u00b7 security-on",
+  "bytes": 5421
+ },
+ "il_home_visit": {
+  "source": "unDraw \u00b7 my-current-location",
+  "bytes": 6444
+ },
+ "il_thanks_intake": {
+  "source": "unDraw \u00b7 confirmed",
+  "bytes": 3235
+ },
+ "il_login_staff": {
+  "source": "unDraw \u00b7 doctors",
+  "bytes": 11837
+ },
+ "il_payment_online": {
+  "source": "unDraw \u00b7 pay-online",
+  "bytes": 10107
+ },
+ "il_reminder": {
+  "source": "unDraw \u00b7 reminder",
+  "bytes": 8727
+ },
+ "il_progress": {
+  "source": "unDraw \u00b7 progress-tracking",
+  "bytes": 6070
+ }
+}

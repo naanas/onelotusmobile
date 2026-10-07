@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Galeri status dan komponen</title>
+<link rel="stylesheet" href="ol.css">
+</head>
+<body>
+<div class="dc">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap">
+<style>body{margin:0}</style>
+
+<div class="scr" style="width: 860px; height: 844px; padding: 32px; gap: 22px">
+  <div class="col" style="gap: 4px"><span class="ctx">§4 Komponen inti · §6.2 & §6.4.1 siklus status</span><h1 class="ttl" style="font-size: 26px">Galeri status &amp; komponen</h1></div>
+  <div class="grid2" style="gap: 20px; align-items: start">
+    <div class="col" style="gap: 18px">
+      <div class="col" style="gap: 8px"><span class="lbl">SyncIndicator</span><div class="chips"><span class="sync"><i></i>Tersinkron</span><span class="sync m"><i></i>Menyimpan…</span><span class="sync w"><i></i>Offline — 2 catatan menunggu</span><span class="sync c"><i></i>Gagal sinkron</span></div></div>
+      <div class="col" style="gap: 8px"><span class="lbl">StatusTag · siklus sesi</span><div class="chips"><span class="tag t-mu">Menunggu konfirmasi</span><span class="tag t-out">Dijadwalkan</span><span class="tag">Hadir</span><span class="tag t-fill">Berjalan</span><span class="tag t-ok">Selesai</span><span class="tag t-wr">Belum bayar</span><span class="tag t-ok">Lunas</span><span class="tag t-cr">Tidak datang</span><span class="tag t-strike">Dibatalkan</span></div><div class="chips"><span class="tag t-wr">Home visit</span><span class="tag t-out">Pasien baru</span></div></div>
+      <div class="col" style="gap: 8px"><span class="lbl">PaymentStatusBadge</span><div class="chips"><span class="tag t-mu">Draft</span><span class="tag t-wr">Belum bayar</span><span class="tag t-wr">Menunggu pembayaran</span><span class="tag">Menunggu verifikasi</span><span class="tag t-wr">Belum lunas · Rp300.000</span><span class="tag t-ok">Lunas</span><span class="tag t-cr">Gagal</span><span class="tag t-mu">Kedaluwarsa</span><span class="tag t-strike">Dibatalkan</span><span class="tag t-mu">Refund sebagian</span><span class="tag t-mu">Refund penuh</span></div></div>
+      <div class="col" style="gap: 8px"><span class="lbl">Tombol</span><div class="rowl" style="gap: 8px"><button class="btn btns" style="width: auto">Utama</button><button class="btn btn2 btns" style="width: auto">Sekunder</button><button class="btn btn3 btns" style="width: auto">Teks</button><button class="btn btnc btns" style="width: auto">Berisiko</button><span class="btn btns btnd" style="width: auto">Nonaktif</span></div></div>
+    </div>
+    <div class="col" style="gap: 18px">
+      <div class="col" style="gap: 8px"><span class="lbl">PainScale</span><div class="card"><div class="row"><b>Skala nyeri</b><span class="mono b" style="font-size: 20px">7 → <span class="hl">3</span></span></div><div class="pain"><span>0</span><span>1</span><span>2</span><span class="af">3</span><span>4</span><span>5</span><span>6</span><span class="bf">7</span><span>8</span><span>9</span><span>10</span></div></div></div>
+      <div class="col" style="gap: 8px"><span class="lbl">Chip, toggle, checkbox</span><div class="chips"><span class="chip on">Adjustment</span><span class="chip">Infrared</span><span class="chip sm on">Lumbal ×</span><span class="chip sm">+ Lainnya</span></div><div class="rowl" style="gap: 14px"><span class="tgl on" role="switch" aria-checked="true" aria-label="Contoh aktif"></span><span class="tgl" role="switch" aria-checked="false" aria-label="Contoh nonaktif"></span><span class="chk on"><svg style="width: 14px; height: 14px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="chk"></span></div></div>
+      <div class="col" style="gap: 8px"><span class="lbl">SlotPicker</span><div class="slots"><span class="slot">10.00</span><span class="slot on">11.00</span><span class="slot full">12.00<br>Penuh</span></div></div>
+      <div class="col" style="gap: 8px"><span class="lbl">KpiTile</span><div class="grid2"><div class="kpi"><b>Rp38,4 jt</b><span class="cap">omzet · <span style="color: #13703A; font-weight: 700">▲ 12%</span></span></div><div class="kpi"><b>81%</b><span class="cap">slot terisi</span></div></div></div>
+    </div>
+  </div>
+</div>
+</div>
+</body>
+</html>

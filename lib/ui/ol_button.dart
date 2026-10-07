@@ -3,7 +3,15 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import 'ol_icon.dart';
 
-enum OlButtonVariant { primary, secondary, text, danger }
+enum OlButtonVariant {
+  primary,
+  secondary,
+  text,
+  danger,
+
+  /// Putih bergaris dengan teks `crit` — aksi berisiko yang tidak dominan (Keluar di UM-11).
+  dangerSecondary,
+}
 
 /// Tombol One Lotus (spec §4 / D.5): tinggi 52, radius 16.
 /// `onPressed == null` → nonaktif. `loading` → spinner + tidak bisa diketuk (cegah kirim ganda, A.0).
@@ -85,6 +93,12 @@ class OlButton extends StatelessWidget {
         c.brand,
         const <BoxShadow>[],
         null,
+      ),
+      OlButtonVariant.dangerSecondary => (
+        c.surface,
+        c.crit,
+        const <BoxShadow>[],
+        Border.all(color: c.line, width: 1.5),
       ),
       OlButtonVariant.danger => (
         c.crit,

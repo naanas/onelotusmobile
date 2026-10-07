@@ -24,6 +24,18 @@ class OlListItem extends StatelessWidget {
   final bool showChevron;
   final bool divider;
 
+  /// Salinan tanpa garis bawah — untuk item terakhir di dalam kartu.
+  OlListItem withoutDivider() => OlListItem(
+    key: key,
+    title: title,
+    subtitle: subtitle,
+    leading: leading,
+    trailing: trailing,
+    onTap: onTap,
+    showChevron: showChevron,
+    divider: false,
+  );
+
   @override
   Widget build(BuildContext context) {
     final c = context.ol;

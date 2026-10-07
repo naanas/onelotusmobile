@@ -1,18 +1,233 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../data/auth/auth_controller.dart';
+import '../features/akun/akun_page.dart';
+import '../features/auth/choose_context_page.dart';
+import '../features/auth/first_login_page.dart';
+import '../features/auth/forgot_password_page.dart';
+import '../features/auth/lock_page.dart';
+import '../features/auth/login_page.dart';
+import '../features/auth/session_expired_page.dart';
+import '../features/auth/splash_page.dart';
 import '../features/dev/component_gallery_page.dart';
+import '../features/shell/placeholder_tab_page.dart';
+import '../features/shell/role_shell.dart';
+import '../ui/ui.dart';
+import 'routes.dart';
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
-// TODO(tahap-3): splash → login → tab bar per peran, redirect berdasarkan status login & peran.
-final appRouter = GoRouter(
-  navigatorKey: rootNavigatorKey,
-  initialLocation: '/dev/komponen',
-  routes: [
-    GoRoute(
-      path: '/dev/komponen',
-      builder: (context, state) => const ComponentGalleryPage(),
-    ),
-  ],
+GoRoute _tab(String path, Widget page) => GoRoute(
+  path: path,
+  pageBuilder: (context, state) => NoTransitionPage(child: page),
 );
+
+StatefulShellBranch _branch(String path, Widget page) =>
+    StatefulShellBranch(routes: [_tab(path, page)]);
+
+final routerProvider = Provider<GoRouter>((ref) {
+  // Router dibuat sekali; perubahan status login memicu redirect lewat refreshListenable.
+  final refresh = ValueNotifier<int>(0);
+  ref.listen(authProvider, (_, _) => refresh.value++);
+  ref.onDispose(refresh.dispose);
+
+  return GoRouter(
+    navigatorKey: rootNavigatorKey,
+    initialLocation: Routes.splash,
+    refreshListenable: refresh,
+    redirect: (context, state) =>
+        authRedirect(ref.read(authProvider), state.matchedLocation),
+    routes: [
+      GoRoute(path: Routes.splash, builder: (_, _) => const SplashPage()),
+      GoRoute(path: Routes.login, builder: (_, _) => const LoginPage()),
+      GoRoute(
+        path: Routes.forgotPassword,
+        builder: (_, _) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: Routes.firstLogin,
+        builder: (_, _) => const FirstLoginPage(),
+      ),
+      GoRoute(
+        path: Routes.chooseContext,
+        builder: (_, _) => const ChooseContextPage(),
+      ),
+      GoRoute(path: Routes.lock, builder: (_, _) => const LockPage()),
+      GoRoute(
+        path: Routes.sessionExpired,
+        builder: (_, _) => const SessionExpiredPage(),
+      ),
+      GoRoute(
+        path: Routes.devComponents,
+        builder: (_, _) => const ComponentGalleryPage(),
+      ),
+
+      // ── Terapis: Jadwal · Pasien · + · Riwayat · Akun ─────────────────────
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => RoleShell(
+          shell: shell,
+          fab: const FabSpec(
+            'Rekam sesi atau pilih pasien',
+            Routes.terapisPilihPasien,
+          ),
+          tabs: const [
+            TabSpec('Jadwal', OlIcons.calendar),
+            TabSpec('Pasien', OlIcons.users),
+            TabSpec('Riwayat', OlIcons.history),
+            TabSpec('Akun', OlIcons.user),
+          ],
+        ),
+        branches: [
+          _branch(
+            Routes.terapisJadwal,
+            const PlaceholderTabPage(
+              title: 'Jadwal hari ini',
+              screenId: 'TR-01',
+              stage: 'Tahap 5',
+              hero: true,
+            ),
+          ),
+          _branch(
+            Routes.terapisPasien,
+            const PlaceholderTabPage(
+              title: 'Pasien saya',
+              screenId: 'TR-06',
+              stage: 'Tahap 5',
+              illustration: OlIllustration.emptySearch,
+            ),
+          ),
+          _branch(
+            Routes.terapisRiwayat,
+            const PlaceholderTabPage(
+              title: 'Riwayat',
+              screenId: 'TR-07',
+              stage: 'Tahap 5',
+              illustration: OlIllustration.emptyInbox,
+            ),
+          ),
+          _branch(Routes.terapisAkun, const AkunPage()),
+        ],
+      ),
+      GoRoute(
+        path: Routes.terapisPilihPasien,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PlaceholderScreen(
+          title: 'Pilih pasien',
+          screenId: 'TR-14',
+          stage: 'Tahap 5',
+        ),
+      ),
+
+      // ── Kasir: Antrian · Pasien · + · Kasir · Akun ────────────────────────
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => RoleShell(
+          shell: shell,
+          fab: const FabSpec(
+            'Pasien baru atau tampilkan QR intake',
+            Routes.kasirIntake,
+          ),
+          tabs: const [
+            TabSpec('Antrian', OlIcons.queue),
+            TabSpec('Pasien', OlIcons.users),
+            TabSpec('Kasir', OlIcons.receipt),
+            TabSpec('Akun', OlIcons.user),
+          ],
+        ),
+        branches: [
+          _branch(
+            Routes.kasirAntrian,
+            const PlaceholderTabPage(
+              title: 'Antrian',
+              screenId: 'KS-01',
+              stage: 'Tahap 7',
+              hero: true,
+            ),
+          ),
+          _branch(
+            Routes.kasirPasien,
+            const PlaceholderTabPage(
+              title: 'Pasien',
+              screenId: 'KS-03',
+              stage: 'Fase 1',
+              illustration: OlIllustration.emptySearch,
+            ),
+          ),
+          _branch(
+            Routes.kasirKasir,
+            const PlaceholderTabPage(
+              title: 'Kasir',
+              screenId: 'KS-09',
+              stage: 'Fase 2',
+              illustration: OlIllustration.emptyPayment,
+            ),
+          ),
+          _branch(Routes.kasirAkun, const AkunPage()),
+        ],
+      ),
+      GoRoute(
+        path: Routes.kasirIntake,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PlaceholderScreen(
+          title: 'Intake QR',
+          screenId: 'KS-02',
+          stage: 'Tahap 7',
+        ),
+      ),
+
+      // ── Owner: Ringkasan · Jadwal · Pasien · Laporan · Akun (tanpa FAB) ──
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => RoleShell(
+          shell: shell,
+          tabs: const [
+            TabSpec('Ringkasan', OlIcons.chart),
+            TabSpec('Jadwal', OlIcons.calendar),
+            TabSpec('Pasien', OlIcons.users),
+            TabSpec('Laporan', OlIcons.report),
+            TabSpec('Akun', OlIcons.user),
+          ],
+        ),
+        branches: [
+          _branch(
+            Routes.ownerRingkasan,
+            const PlaceholderTabPage(
+              title: 'Ringkasan bisnis',
+              screenId: 'OW-01',
+              stage: 'Fase 2',
+              hero: true,
+              illustration: OlIllustration.progress,
+            ),
+          ),
+          _branch(
+            Routes.ownerJadwal,
+            const PlaceholderTabPage(
+              title: 'Jadwal',
+              screenId: 'OW-02',
+              stage: 'Fase 2',
+            ),
+          ),
+          _branch(
+            Routes.ownerPasien,
+            const PlaceholderTabPage(
+              title: 'Pasien',
+              screenId: 'OW-03',
+              stage: 'Fase 2',
+              illustration: OlIllustration.emptySearch,
+            ),
+          ),
+          _branch(
+            Routes.ownerLaporan,
+            const PlaceholderTabPage(
+              title: 'Laporan',
+              screenId: 'OW-04',
+              stage: 'Fase 2',
+              illustration: OlIllustration.progress,
+            ),
+          ),
+          _branch(Routes.ownerAkun, const AkunPage()),
+        ],
+      ),
+    ],
+  );
+});

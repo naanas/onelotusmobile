@@ -150,6 +150,17 @@ class AkunPage extends ConsumerWidget {
                       ref.read(mockOfflineProvider.notifier).set(v),
                 ),
               ),
+            if (kDebugMode && AppConfig.useMock)
+              OlListItem(
+                title: 'Simulasi gangguan server',
+                subtitle: 'Mode mock · tarik jadwal untuk memuat ulang',
+                trailing: OlToggle(
+                  semanticLabel: 'Simulasi gangguan server',
+                  value: ref.watch(mockServerDownProvider),
+                  onChanged: (v) =>
+                      ref.read(mockServerDownProvider.notifier).set(v),
+                ),
+              ),
             if (kDebugMode)
               OlListItem(
                 title: 'Galeri komponen',

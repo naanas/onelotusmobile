@@ -14,6 +14,7 @@ import '../../../router/routes.dart';
 import '../../../theme/app_theme.dart';
 import '../../../ui/ui.dart';
 import '../../shell/role_shell.dart';
+import '../../umum/sync_details.dart';
 import 'jadwal_controller.dart';
 
 /// TR-01 Beranda / Jadwal hari ini (tab Jadwal terapis).
@@ -155,6 +156,7 @@ class _JadwalPageState extends ConsumerState<JadwalPage> {
 
   @override
   Widget build(BuildContext context) {
+    final sync = ref.watch(syncStatusProvider);
     final day = ref.watch(selectedDayProvider);
     final async = ref.watch(therapistScheduleProvider(day));
     final filter = ref.watch(scheduleFilterProvider);
@@ -182,11 +184,24 @@ class _JadwalPageState extends ConsumerState<JadwalPage> {
           onPressed: () => context.push(Routes.notifications),
         ),
       ],
-      below: SyncIndicator(
-        status: ref.watch(syncStatusProvider),
-        onHero: true,
-        onTap: () => context.push(Routes.syncStatus),
-      ),
+      // ST-02/03: pill ikut menunjukkan "Memuat…" / "Gagal memuat" jadwal.
+      below: switch (async) {
+        _ when async.hasError && schedule == null => SyncIndicator(
+          status: const SyncFailed(0),
+          label: 'Gagal memuat',
+          onHero: true,
+        ),
+        _ when async.isLoading && schedule == null => const SyncIndicator(
+          status: SyncSaving(),
+          label: 'Memuat…',
+          onHero: true,
+        ),
+        _ => SyncIndicator(
+          status: sync,
+          onHero: true,
+          onTap: () => openSyncDetails(context, sync),
+        ),
+      },
     );
 
     final children = <Widget>[
@@ -225,13 +240,13 @@ class _JadwalPageState extends ConsumerState<JadwalPage> {
     final isToday = d.day == dateOnly(now);
     final next = isToday ? d.nextAfter(now) : null;
     return [
-      if (d.stale) ...[
+      if (d.stale || ref.watch(syncStatusProvider) is SyncOffline) ...[
         const OlBanner(
           tone: OlBannerTone.warn,
           icon: OlIcons.offline,
           message: 'Kamu sedang offline. Data tersimpan di HP.',
         ),
-        if (d.fetchedAt != null)
+        if (d.stale && d.fetchedAt != null)
           Text(
             'Data terakhir diperbarui ${Fmt.time(d.fetchedAt!)}',
             style: context.olText.caption,
@@ -244,9 +259,11 @@ class _JadwalPageState extends ConsumerState<JadwalPage> {
             title: filter == ScheduleFilter.all
                 ? 'Tidak ada sesi ${isToday ? 'hari ini' : 'di tanggal ini'}'
                 : 'Tidak ada sesi yang cocok',
-            message: filter == ScheduleFilter.all
-                ? 'Belum ada sesi terjadwal untukmu.'
-                : 'Ketuk ringkasan yang sama untuk menampilkan semua sesi.',
+            message: filter != ScheduleFilter.all
+                ? 'Ketuk ringkasan yang sama untuk menampilkan semua sesi.'
+                : d.day.weekday == DateTime.sunday
+                ? 'Klinik tutup di hari Minggu. Selamat beristirahat!'
+                : 'Belum ada sesi terjadwal untukmu.',
             actionLabel: filter == ScheduleFilter.all
                 ? 'Lihat jadwal minggu ini'
                 : 'Tampilkan semua',

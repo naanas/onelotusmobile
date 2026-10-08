@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 
-enum _State { failed, sending, waiting }
+enum _State { conflict, failed, sending, waiting }
 
 class _Item {
   _Item(this.title, this.meta, this.state, {this.error});
@@ -36,7 +36,32 @@ class _SyncStatusPageState extends State<SyncStatusPage> {
       _State.sending,
     ),
     _Item('Checklist alat · Budi Hartono', 'Dibuat 12.31', _State.waiting),
+    _Item(
+      'Kesimpulan sesi · Rina Setiawati',
+      'Diubah 09.51 · juga diubah di tablet ruang 2',
+      _State.conflict,
+      error: 'Versi berbeda — pilih yang dipakai.',
+    ),
   ];
+
+  Future<void> _resolve(_Item i) async {
+    final pick = await showConflictSheet(
+      context,
+      mine: const ConflictVersion(
+        label: 'Versi HP ini · 09.51',
+        text: 'Lanjut calf raise 3×12, kontrol Kamis.',
+      ),
+      theirs: const ConflictVersion(
+        label: 'Versi tablet ruang 2 · 09.53',
+        text: 'Lanjut calf raise 3×12 + kompres hangat, kontrol Kamis.',
+      ),
+    );
+    if (pick == null || !mounted) return;
+    setState(() => i.state = _State.sending);
+    context.feedback.success(
+      pick == 0 ? 'Versi HP ini dipakai.' : 'Versi tablet ruang 2 dipakai.',
+    );
+  }
 
   void _retry(_Item i) {
     setState(() => i.state = _State.sending);
@@ -47,7 +72,9 @@ class _SyncStatusPageState extends State<SyncStatusPage> {
   Widget build(BuildContext context) {
     final c = context.ol;
     final t = context.olText;
-    final failed = _items.where((i) => i.state == _State.failed).length;
+    final failed = _items
+        .where((i) => i.state == _State.failed || i.state == _State.conflict)
+        .length;
     final waiting = _items.length - failed;
     return OlDetailScaffold(
       title: 'Status sinkron',
@@ -100,11 +127,13 @@ class _SyncStatusPageState extends State<SyncStatusPage> {
                       OlIcon(
                         switch (i.state) {
                           _State.failed => OlIcons.cloudAlert,
+                          _State.conflict => OlIcons.alert,
                           _State.sending => OlIcons.sync,
                           _State.waiting => OlIcons.clock,
                         },
                         color: switch (i.state) {
                           _State.failed => c.crit,
+                          _State.conflict => c.warn,
                           _State.sending => c.warn,
                           _State.waiting => c.muted,
                         },
@@ -123,7 +152,9 @@ class _SyncStatusPageState extends State<SyncStatusPage> {
                               i.meta,
                               style: t.body.copyWith(color: c.muted),
                             ),
-                            if (i.state == _State.failed && i.error != null)
+                            if ((i.state == _State.failed ||
+                                    i.state == _State.conflict) &&
+                                i.error != null)
                               Text(
                                 i.error!,
                                 style: t.body.copyWith(
@@ -141,6 +172,12 @@ class _SyncStatusPageState extends State<SyncStatusPage> {
                           small: true,
                           expand: false,
                           onPressed: () => _retry(i),
+                        ),
+                        _State.conflict => OlButton.secondary(
+                          label: 'Pilih versi',
+                          small: true,
+                          expand: false,
+                          onPressed: () => _resolve(i),
                         ),
                         _State.sending => const OlTag(
                           'Mengirim',

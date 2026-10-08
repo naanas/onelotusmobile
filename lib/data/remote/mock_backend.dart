@@ -21,6 +21,9 @@ class MockBackend {
   /// Simulasi tanpa sinyal — diubah dari Akun (build debug) untuk mencoba mode offline.
   bool offline = false;
 
+  /// Simulasi gangguan server (ST-03) — setiap panggilan gagal dengan `server_error`.
+  bool serverDown = false;
+
   final patients = <String, Patient>{};
   final sessions = <String, Session>{};
   final records = <String, SessionRecord>{};
@@ -36,6 +39,9 @@ class MockBackend {
   Future<void> wait() async {
     await Future<void>.delayed(latency);
     if (offline) throw const AppError(ErrorCode.networkOffline);
+    if (serverDown) {
+      throw const AppError(ErrorCode.serverError, refId: 'OL-7F3A');
+    }
   }
 
   // ── Data contoh ──────────────────────────────────────────────────────────

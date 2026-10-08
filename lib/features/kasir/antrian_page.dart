@@ -9,6 +9,7 @@ import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import '../shell/role_shell.dart';
+import '../umum/sync_details.dart';
 import 'demo_data.dart';
 
 /// KS-01 Antrian hari ini (tab Antrian kasir): tandai hadir, ganti terapis/ruang,
@@ -87,7 +88,7 @@ class _AntrianPageState extends ConsumerState<AntrianPage> {
       below: SyncIndicator(
         status: sync,
         onHero: true,
-        onTap: () => context.push(Routes.syncStatus),
+        onTap: () => openSyncDetails(context, sync),
       ),
     );
 

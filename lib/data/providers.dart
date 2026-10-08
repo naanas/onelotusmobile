@@ -161,3 +161,18 @@ class MockOfflineNotifier extends Notifier<bool> {
     state = offline;
   }
 }
+
+/// Simulasi gangguan server di mode mock (build debug) — untuk melihat ST-03.
+final mockServerDownProvider = NotifierProvider<MockServerDownNotifier, bool>(
+  MockServerDownNotifier.new,
+);
+
+class MockServerDownNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void set(bool down) {
+    ref.read(mockBackendProvider).serverDown = down;
+    state = down;
+  }
+}

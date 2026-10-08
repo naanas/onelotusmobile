@@ -80,13 +80,30 @@ class _PengingatPageState extends State<PengingatPage> {
 
   Future<void> _send() async {
     final n = _count;
+    final c = context.ol;
+    final t = context.olText;
     final ok = await context.feedback.confirm(
       ConfirmSpec(
-        title: 'Kirim WhatsApp ke $n pasien?',
+        title: 'Kirim pengingat ke $n pasien?',
         message:
-            'Pesan dikirim bertahap dari nomor klinik. Pasien yang sudah diingatkan 7 hari terakhir dilewati.',
-        confirmLabel: 'Kirim',
+            'Pesan dikirim lewat WhatsApp sekarang dan tidak bisa ditarik kembali.',
+        confirmLabel: 'Kirim ke $n pasien',
         danger: false,
+        extra: Container(
+          padding: const EdgeInsets.all(OlSpace.lg),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE7F0EA),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: c.surface,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(_preview, style: t.body.copyWith(fontSize: 14)),
+          ),
+        ),
       ),
     );
     if (ok && mounted) {

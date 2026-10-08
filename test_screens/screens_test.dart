@@ -74,7 +74,7 @@ void main() {
     await t.tap(find.text('Akun'));
     await pumpFor(t, const Duration(milliseconds: 600));
     await shot(t, '07_kasir_akun');
-    await t.tap(find.byType(OlToggle));
+    await t.tap(find.byType(OlToggle).first);
     await pumpFor(t, const Duration(milliseconds: 600));
     await shot(t, '07b_akun_offline');
   });

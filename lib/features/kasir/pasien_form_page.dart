@@ -67,19 +67,22 @@ class _PasienFormPageState extends State<PasienFormPage> {
     if (!mounted) return;
     setState(() => _busy = false);
     // Contoh alur §12.4 duplicate_patient sebelum membuat nomor baru.
-    final openOld = await context.feedback.sheet<bool>(
-      title: 'Pasien dengan nama & tanggal lahir ini sudah ada.',
-      message:
-          'Sari Wulandari · lahir 14 Feb 1994 · #0291 (terakhir datang 2025)',
-      actions: const [
-        SheetAction('Buka data lama', true),
-        SheetAction(
-          'Tetap buat baru',
-          false,
-          variant: OlButtonVariant.secondary,
-        ),
-      ],
+    final choice = await showDuplicatePatientSheet(
+      context,
+      existing: const PatientBrief(
+        name: 'Sari Wulandari',
+        number: '#0291',
+        detail: '14 Feb 1994 · HP berakhiran 4417 · 6 sesi',
+      ),
+      incoming: PatientBrief(
+        name: 'Sari Wulandari',
+        detail:
+            'Sari Wulandari · 14 Feb 1994 · HP berakhiran ${_digits.length >= 4 ? _digits.substring(_digits.length - 4) : '–'}',
+      ),
     );
+    final openOld = choice == null
+        ? null
+        : choice == DuplicateChoice.openExisting;
     if (!mounted || openOld == null) return;
     context.feedback.success(
       openOld

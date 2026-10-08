@@ -27,6 +27,10 @@ abstract final class Routes {
   static String terapisKirimLatihan(String patientId) =>
       '/terapis/pasien/$patientId/latihan';
   static const terapisAjukanCuti = '/terapis/cuti';
+  static String terapisTagih(String sessionId) =>
+      '/terapis/home-visit/$sessionId/tagih';
+  static const terapisKas = '/terapis/kas';
+  static const terapisKomisi = '/terapis/komisi';
 
   // Umum (semua peran)
   static const notifications = '/notifikasi';

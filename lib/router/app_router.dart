@@ -14,7 +14,13 @@ import '../features/auth/splash_page.dart';
 import '../features/dev/component_gallery_page.dart';
 import '../features/shell/placeholder_tab_page.dart';
 import '../features/shell/role_shell.dart';
+import '../features/terapis/akun/kas_dibawa_page.dart';
+import '../features/terapis/akun/komisi_page.dart';
+import '../features/terapis/home_visit/home_visit_page.dart';
+import '../features/terapis/home_visit/tagih_page.dart';
 import '../features/terapis/jadwal/ajukan_cuti_page.dart';
+import '../features/terapis/jadwal/pilih_pasien_page.dart';
+import '../features/terapis/pasien/program_latihan_page.dart';
 import '../features/terapis/jadwal/jadwal_minggu_page.dart';
 import '../features/terapis/pasien/detail_pasien_page.dart';
 import '../features/terapis/pasien/pasien_saya_page.dart';
@@ -124,22 +130,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.terapisPilihPasien,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PlaceholderScreen(
-          title: 'Pilih pasien',
-          screenId: 'TR-14',
-          stage: 'Tahap 5',
-        ),
+        builder: (_, _) => const PilihPasienPage(),
       ),
 
       for (final (path, title, id, stage) in const [
         ('/terapis/rekam/:id', 'Rekam sesi', 'TR-04', 'Tahap 6'),
-        ('/terapis/home-visit/:id', 'Home visit', 'TR-09', 'Tahap 5'),
-        (
-          '/terapis/pasien/:id/latihan',
-          'Kirim program latihan',
-          'TR-13',
-          'slicing',
-        ),
         ('/notifikasi', 'Notifikasi', 'UM-09', 'Fase 0'),
         ('/cari', 'Cari', 'UM-10', 'Fase 0'),
         ('/status-sinkron', 'Status sinkron', 'UM-14', 'Tahap 7'),
@@ -170,6 +165,33 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/terapis/sesi/:id',
         parentNavigatorKey: rootNavigatorKey,
         builder: (_, s) => DetailSesiPage(sessionId: s.pathParameters['id']!),
+      ),
+
+      GoRoute(
+        path: '/terapis/home-visit/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, s) => HomeVisitPage(sessionId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/terapis/home-visit/:id/tagih',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const TagihPage(),
+      ),
+      GoRoute(
+        path: '/terapis/pasien/:id/latihan',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, s) =>
+            ProgramLatihanPage(patientId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: Routes.terapisKas,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const KasDibawaPage(),
+      ),
+      GoRoute(
+        path: Routes.terapisKomisi,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const KomisiPage(),
       ),
 
       // ── Kasir: Antrian · Pasien · + · Kasir · Akun ────────────────────────

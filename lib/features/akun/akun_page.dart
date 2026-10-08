@@ -95,6 +95,19 @@ class AkunPage extends ConsumerWidget {
                 showChevron: true,
                 onTap: () => context.push(Routes.chooseContext),
               ),
+            if (role == Role.terapis) ...[
+              OlListItem(
+                title: 'Kas dibawa',
+                subtitle: 'Rp445.000 belum diserahkan',
+                trailing: const OlTag('1', tone: OlTagTone.warn),
+                onTap: () => context.push(Routes.terapisKas),
+              ),
+              OlListItem(
+                title: 'Komisi saya',
+                showChevron: true,
+                onTap: () => context.push(Routes.terapisKomisi),
+              ),
+            ],
             OlListItem(
               title: 'Status sinkron',
               trailing: Text(

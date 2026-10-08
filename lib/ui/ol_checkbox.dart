@@ -10,9 +10,13 @@ class OlCheckbox extends StatelessWidget {
     required this.label,
     required this.value,
     required this.onChanged,
+    this.strikeWhenChecked = false,
   });
 
   final String label;
+
+  /// Coret label saat dicentang (checklist alat TR-09).
+  final bool strikeWhenChecked;
   final bool value;
   final ValueChanged<bool> onChanged;
 
@@ -50,7 +54,13 @@ class OlCheckbox extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: context.olText.body.copyWith(fontSize: 15),
+                  style: context.olText.body.copyWith(
+                    fontSize: 15,
+                    color: strikeWhenChecked && value ? context.ol.muted : null,
+                    decoration: strikeWhenChecked && value
+                        ? TextDecoration.lineThrough
+                        : null,
+                  ),
                 ),
               ),
             ],

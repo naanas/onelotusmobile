@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -11,7 +10,10 @@ import 'package:onelotus_staff/router/app_router.dart';
 import '../test/auth/fakes.dart';
 import 'shot.dart';
 
-Future<void> pumpFor(WidgetTester t, [Duration d = const Duration(milliseconds: 800)]) async {
+Future<void> pumpFor(
+  WidgetTester t, [
+  Duration d = const Duration(milliseconds: 800),
+]) async {
   for (var i = 0; i < d.inMilliseconds ~/ 50; i++) {
     await t.pump(const Duration(milliseconds: 50));
   }
@@ -28,10 +30,17 @@ Future<void> openAsTherapist(WidgetTester t) async {
     await a.login('dimas.terapis', 'terapis123', remember: false);
     await a.setPin('123456');
     await a.completeFirstLogin();
-    await a.chooseContext(Role.terapis, c.read(authProvider).user!.branches.first);
+    await a.chooseContext(
+      Role.terapis,
+      c.read(authProvider).user!.branches.first,
+    );
   });
   addTearDown(c.dispose);
-  await t.pumpWidget(shootable(UncontrolledProviderScope(container: c, child: const OneLotusApp())));
+  await t.pumpWidget(
+    shootable(
+      UncontrolledProviderScope(container: c, child: const OneLotusApp()),
+    ),
+  );
   await pumpFor(t, const Duration(seconds: 2));
 }
 
@@ -65,6 +74,12 @@ void main() {
       ('/terapis/cuti', 'TR-03'),
       ('/terapis/pasien/p0387', 'TR-05'),
       ('/terapis/sesi/s1', 'TR-08'),
+      ('/terapis/home-visit/s4', 'TR-09'),
+      ('/terapis/home-visit/s4/tagih', 'TR-10'),
+      ('/terapis/kas', 'TR-11'),
+      ('/terapis/komisi', 'TR-12'),
+      ('/terapis/pasien/p0387/latihan', 'TR-13'),
+      ('/terapis/pilih-pasien', 'TR-14'),
     ]) {
       await go(t, path);
       await shot(t, name);

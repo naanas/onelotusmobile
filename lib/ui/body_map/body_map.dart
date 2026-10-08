@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -24,31 +25,51 @@ abstract final class BodyColors {
   static const calmInk = Color(0xFF8A4B06);
 
   static Color of(BodyMode? m) => switch (m) {
-        BodyMode.treated => treated,
-        BodyMode.calming => calming,
-        null => base,
-      };
+    BodyMode.treated => treated,
+    BodyMode.calming => calming,
+    null => base,
+  };
 }
 
 /// BodyMap (§4, D.2b): siluet depan & belakang, ketuk otot → tandai dengan [mode] aktif.
 /// Ketuk lagi dengan mode sama → hapus. Area sama di dua tampak ikut tertandai.
 class BodyMap extends StatefulWidget {
-  const BodyMap({super.key, required this.selection, required this.mode, required this.onChanged});
+  const BodyMap({
+    super.key,
+    required this.selection,
+    required this.mode,
+    required this.onChanged,
+    this.data,
+  });
 
   final BodyMapSelection selection;
   final BodyMode mode;
   final ValueChanged<BodyMapSelection> onChanged;
+
+  /// Data jalur yang sudah dimuat (tes / pramuat). Null = muat dari aset.
+  final BodyMapData? data;
 
   @override
   State<BodyMap> createState() => _BodyMapState();
 }
 
 class _BodyMapState extends State<BodyMap> with TickerProviderStateMixin {
-  late final Future<BodyMapData> _data = BodyMapData.load();
+  late final Future<BodyMapData> _data = widget.data != null
+      ? SynchronousFuture(widget.data!)
+      : BodyMapData.load();
 
-  late final _color = AnimationController(vsync: this, duration: const Duration(milliseconds: 150));
-  late final _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 320));
-  late final _flash = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
+  late final _color = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 150),
+  );
+  late final _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 320),
+  );
+  late final _flash = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 500),
+  );
 
   String? _colorKey;
   Color _colorFrom = BodyColors.base;
@@ -103,7 +124,10 @@ class _BodyMapState extends State<BodyMap> with TickerProviderStateMixin {
 
   void _onTapFigure(BodyView view, Offset local, Size size) {
     final s = size.width / view.viewBox.width;
-    final p = Offset(local.dx / s + view.viewBox.left, local.dy / s + view.viewBox.top);
+    final p = Offset(
+      local.dx / s + view.viewBox.left,
+      local.dy / s + view.viewBox.top,
+    );
     final m = view.hit(p);
     if (m != null) _tapKey(m.key);
   }
@@ -112,11 +136,13 @@ class _BodyMapState extends State<BodyMap> with TickerProviderStateMixin {
     final keys = <String>{
       for (final m in data.front.muscles) m.key,
       for (final m in data.back.muscles) m.key,
-    }.toList()
-      ..sort((a, b) => bodyAreaLabel(a).compareTo(bodyAreaLabel(b)));
+    }.toList()..sort((a, b) => bodyAreaLabel(a).compareTo(bodyAreaLabel(b)));
     await context.feedback.formSheet<void>(
-      title: widget.mode == BodyMode.treated ? 'Pilih area ditangani' : 'Pilih area penenang',
-      message: 'Untuk otot kecil atau pembaca layar. Ketuk lagi untuk menghapus.',
+      title: widget.mode == BodyMode.treated
+          ? 'Pilih area ditangani'
+          : 'Pilih area penenang',
+      message:
+          'Untuk otot kecil atau pembaca layar. Ketuk lagi untuk menghapus.',
       builder: (context, close) => _AreaList(
         keys: keys,
         selection: widget.selection,
@@ -149,50 +175,107 @@ class _BodyMapState extends State<BodyMap> with TickerProviderStateMixin {
           children: [
             Semantics(
               label: 'Peta tubuh. $summary.',
-              hint: 'Gunakan tombol Daftar area untuk memilih dengan pembaca layar.',
+              hint:
+                  'Gunakan tombol Daftar area untuk memilih dengan pembaca layar.',
               child: Container(
-                decoration: BoxDecoration(color: BodyColors.silhouette, borderRadius: BorderRadius.circular(18)),
+                decoration: BoxDecoration(
+                  color: BodyColors.silhouette,
+                  borderRadius: BorderRadius.circular(18),
+                ),
                 padding: const EdgeInsets.fromLTRB(8, 16, 8, 10),
-                child: data == null
-                    ? const AspectRatio(aspectRatio: 1.05, child: Center(child: CircularProgressIndicator(strokeWidth: 2)))
+                child: snap.hasError
+                    ? Padding(
+                        padding: const EdgeInsets.all(OlSpace.lg),
+                        child: Text(
+                          'Peta tubuh gagal dimuat. Pakai tombol "Daftar area" untuk memilih.',
+                          textAlign: TextAlign.center,
+                          style: t.body.copyWith(color: c.muted),
+                        ),
+                      )
+                    : data == null
+                    ? const AspectRatio(
+                        aspectRatio: 1.05,
+                        child: Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
                     : Stack(
                         children: [
                           Row(
                             children: [
-                              for (final (view, label) in [(data.front, 'Depan'), (data.back, 'Belakang')])
+                              for (final (view, label) in [
+                                (data.front, 'Depan'),
+                                (data.back, 'Belakang'),
+                              ])
                                 Expanded(
                                   child: Column(
                                     children: [
                                       AspectRatio(
-                                        aspectRatio: view.viewBox.width / view.viewBox.height,
+                                        aspectRatio:
+                                            view.viewBox.width /
+                                            view.viewBox.height,
                                         child: LayoutBuilder(
-                                          builder: (context, box) => GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTapUp: (d) => _onTapFigure(view, d.localPosition, box.biggest),
-                                            child: ExcludeSemantics(
-                                              child: AnimatedBuilder(
-                                                animation: Listenable.merge([_color, _pulse, _flash]),
-                                                builder: (context, _) => CustomPaint(
-                                                  size: box.biggest,
-                                                  painter: _BodyPainter(
-                                                    view: view,
-                                                    selection: sel,
-                                                    colorKey: _colorKey,
-                                                    colorFrom: _colorFrom,
-                                                    colorT: _color.isAnimating ? Curves.easeOut.transform(_color.value) : 1,
-                                                    pulseKey: _pulse.isAnimating ? _pulseKey : null,
-                                                    pulseT: _pulse.value,
-                                                    flashKeys: _flash.isAnimating ? _flashKeys : const [],
-                                                    flashT: _flash.value,
+                                          builder: (context, box) =>
+                                              GestureDetector(
+                                                behavior:
+                                                    HitTestBehavior.opaque,
+                                                onTapUp: (d) => _onTapFigure(
+                                                  view,
+                                                  d.localPosition,
+                                                  box.biggest,
+                                                ),
+                                                child: ExcludeSemantics(
+                                                  child: AnimatedBuilder(
+                                                    animation: Listenable.merge(
+                                                      [_color, _pulse, _flash],
+                                                    ),
+                                                    builder: (context, _) =>
+                                                        CustomPaint(
+                                                          key: ValueKey(
+                                                            'bodymap-$label',
+                                                          ),
+                                                          size: box.biggest,
+                                                          painter: _BodyPainter(
+                                                            view: view,
+                                                            selection: sel,
+                                                            colorKey: _colorKey,
+                                                            colorFrom:
+                                                                _colorFrom,
+                                                            colorT:
+                                                                _color
+                                                                    .isAnimating
+                                                                ? Curves.easeOut
+                                                                      .transform(
+                                                                        _color
+                                                                            .value,
+                                                                      )
+                                                                : 1,
+                                                            pulseKey:
+                                                                _pulse
+                                                                    .isAnimating
+                                                                ? _pulseKey
+                                                                : null,
+                                                            pulseT:
+                                                                _pulse.value,
+                                                            flashKeys:
+                                                                _flash
+                                                                    .isAnimating
+                                                                ? _flashKeys
+                                                                : const [],
+                                                            flashT:
+                                                                _flash.value,
+                                                          ),
+                                                        ),
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                          ),
                                         ),
                                       ),
                                       const SizedBox(height: 8),
-                                      Text(label, style: t.body.copyWith(color: c.muted)),
+                                      Text(
+                                        label,
+                                        style: t.body.copyWith(color: c.muted),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -206,20 +289,34 @@ class _BodyMapState extends State<BodyMap> with TickerProviderStateMixin {
                             child: IgnorePointer(
                               child: Center(
                                 child: AnimatedSlide(
-                                  duration: _reduced ? Duration.zero : const Duration(milliseconds: 150),
-                                  offset: _tip == null ? const Offset(0, -0.25) : Offset.zero,
+                                  duration: _reduced
+                                      ? Duration.zero
+                                      : const Duration(milliseconds: 150),
+                                  offset: _tip == null
+                                      ? const Offset(0, -0.25)
+                                      : Offset.zero,
                                   child: AnimatedOpacity(
-                                    duration: _reduced ? Duration.zero : const Duration(milliseconds: 150),
+                                    duration: _reduced
+                                        ? Duration.zero
+                                        : const Duration(milliseconds: 150),
                                     opacity: _tip == null ? 0 : 1,
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 6,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: c.toastBg,
-                                        borderRadius: BorderRadius.circular(OlRadius.pill),
+                                        borderRadius: BorderRadius.circular(
+                                          OlRadius.pill,
+                                        ),
                                       ),
                                       child: Text(
                                         _tip ?? '',
-                                        style: t.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                                        style: t.caption.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -232,18 +329,21 @@ class _BodyMapState extends State<BodyMap> with TickerProviderStateMixin {
               ),
             ),
             const SizedBox(height: 10),
-            Row(
+            Wrap(
+              spacing: 14,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              alignment: WrapAlignment.spaceBetween,
               children: [
                 const _LegendDot(color: BodyColors.treated, label: 'Ditangani'),
-                const SizedBox(width: 14),
                 const _LegendDot(color: BodyColors.calming, label: 'Penenang'),
-                const Spacer(),
                 if (data != null)
                   TextButton(
                     onPressed: () => _openList(data),
                     style: TextButton.styleFrom(
                       foregroundColor: c.brand,
-                      textStyle: t.caption.copyWith(fontWeight: FontWeight.w700),
+                      textStyle: t.caption.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                       minimumSize: const Size(48, 40),
                     ),
                     child: const Text('Daftar area'),
@@ -296,7 +396,8 @@ class _BodyPainter extends CustomPainter {
   }
 
   /// Opasitas 1 → 0,35 (di 30%) → 1.
-  double get _flashOpacity => flashT < .3 ? 1 - .65 * (flashT / .3) : .35 + .65 * ((flashT - .3) / .7);
+  double get _flashOpacity =>
+      flashT < .3 ? 1 - .65 * (flashT / .3) : .35 + .65 * ((flashT - .3) / .7);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -320,20 +421,19 @@ class _BodyPainter extends CustomPainter {
 
     void drawMuscle(BodyMuscle m) {
       var color = BodyColors.of(selection.modeOf(m.key));
-      if (m.key == colorKey && colorT < 1) color = Color.lerp(colorFrom, color, colorT)!;
-      if (flashKeys.contains(m.key)) color = color.withValues(alpha: _flashOpacity);
+      if (m.key == colorKey && colorT < 1) {
+        color = Color.lerp(colorFrom, color, colorT)!;
+      }
+      if (flashKeys.contains(m.key)) {
+        color = color.withValues(alpha: _flashOpacity);
+      }
       canvas.drawPath(m.path, Paint()..color = color);
       canvas.drawPath(m.path, stroke);
     }
 
-    BodyMuscle? pulsing;
+    // Otot berdenyut digambar terakhir agar di atas tetangganya.
     for (final m in view.muscles) {
-      if (m.key == pulseKey) {
-        pulsing ??= m;
-        // Otot berdenyut digambar terakhir agar di atas tetangganya.
-        continue;
-      }
-      drawMuscle(m);
+      if (m.key != pulseKey) drawMuscle(m);
     }
     for (final m in view.muscles.where((m) => m.key == pulseKey)) {
       final c = m.bounds.center;
@@ -362,18 +462,29 @@ class _LegendDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(width: 12, height: 12, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3))),
-          const SizedBox(width: 6),
-          Text(label, style: context.olText.caption.copyWith(fontSize: 13)),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 12,
+        height: 12,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(3),
+        ),
+      ),
+      const SizedBox(width: 6),
+      Text(label, style: context.olText.caption.copyWith(fontSize: 13)),
+    ],
+  );
 }
 
 /// Chip area dengan animasi masuk (skala 0,85→1 + fade, 200ms) & keluar (150ms).
 class _AnimatedChips extends StatefulWidget {
-  const _AnimatedChips({required this.chips, required this.onTapChip, required this.onRemove});
+  const _AnimatedChips({
+    required this.chips,
+    required this.onTapChip,
+    required this.onRemove,
+  });
 
   final List<BodyAreaChip> chips;
   final ValueChanged<BodyAreaChip> onTapChip;
@@ -404,7 +515,10 @@ class _AnimatedChipsState extends State<_AnimatedChips> {
     if (_shown.isEmpty && _leaving.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Text('Belum ada area. Ketuk siluet untuk menandai.', style: context.olText.caption.copyWith(fontSize: 13)),
+        child: Text(
+          'Belum ada area. Ketuk siluet untuk menandai.',
+          style: context.olText.caption.copyWith(fontSize: 13),
+        ),
       );
     }
     return Wrap(
@@ -415,7 +529,11 @@ class _AnimatedChipsState extends State<_AnimatedChips> {
           _ChipMotion(
             key: ValueKey(ch.id),
             reduced: reduced,
-            child: _AreaChip(chip: ch, onTap: () => widget.onTapChip(ch), onRemove: () => widget.onRemove(ch)),
+            child: _AreaChip(
+              chip: ch,
+              onTap: () => widget.onTapChip(ch),
+              onRemove: () => widget.onRemove(ch),
+            ),
           ),
         if (!reduced)
           for (final ch in _leaving.values)
@@ -426,7 +544,9 @@ class _AnimatedChipsState extends State<_AnimatedChips> {
               onDone: () {
                 if (mounted) setState(() => _leaving.remove(ch.id));
               },
-              child: IgnorePointer(child: _AreaChip(chip: ch, onTap: () {}, onRemove: () {})),
+              child: IgnorePointer(
+                child: _AreaChip(chip: ch, onTap: () {}, onRemove: () {}),
+              ),
             ),
       ],
     );
@@ -434,7 +554,13 @@ class _AnimatedChipsState extends State<_AnimatedChips> {
 }
 
 class _ChipMotion extends StatelessWidget {
-  const _ChipMotion({super.key, required this.child, required this.reduced, this.leaving = false, this.onDone});
+  const _ChipMotion({
+    super.key,
+    required this.child,
+    required this.reduced,
+    this.leaving = false,
+    this.onDone,
+  });
 
   final Widget child;
   final bool reduced;
@@ -459,7 +585,11 @@ class _ChipMotion extends StatelessWidget {
 }
 
 class _AreaChip extends StatelessWidget {
-  const _AreaChip({required this.chip, required this.onTap, required this.onRemove});
+  const _AreaChip({
+    required this.chip,
+    required this.onTap,
+    required this.onRemove,
+  });
 
   final BodyAreaChip chip;
   final VoidCallback onTap;
@@ -475,7 +605,9 @@ class _AreaChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: treated ? context.ol.brandDeep : BodyColors.calmSoft,
         borderRadius: BorderRadius.circular(OlRadius.pill),
-        border: treated ? null : Border.all(color: BodyColors.calming, width: 1.5),
+        border: treated
+            ? null
+            : Border.all(color: BodyColors.calming, width: 1.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -487,10 +619,19 @@ class _AreaChip extends StatelessWidget {
             excludeSemantics: true,
             child: InkWell(
               onTap: onTap,
-              borderRadius: const BorderRadius.horizontal(left: Radius.circular(OlRadius.pill)),
+              borderRadius: const BorderRadius.horizontal(
+                left: Radius.circular(OlRadius.pill),
+              ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(14, 9, 4, 9),
-                child: Text(chip.text, style: t.body.copyWith(fontSize: 13.5, fontWeight: FontWeight.w600, color: fg)),
+                child: Text(
+                  chip.text,
+                  style: t.body.copyWith(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: fg,
+                  ),
+                ),
               ),
             ),
           ),
@@ -505,7 +646,16 @@ class _AreaChip extends StatelessWidget {
               child: SizedBox(
                 width: 36,
                 height: 40,
-                child: Center(child: Text('×', style: t.body.copyWith(fontSize: 16, fontWeight: FontWeight.w700, color: fg))),
+                child: Center(
+                  child: Text(
+                    '×',
+                    style: t.body.copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: fg,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -517,7 +667,13 @@ class _AreaChip extends StatelessWidget {
 
 /// Daftar area (alternatif untuk pembaca layar & otot kecil < 44dp, D.2b).
 class _AreaList extends StatefulWidget {
-  const _AreaList({required this.keys, required this.selection, required this.mode, required this.onToggle, required this.onDone});
+  const _AreaList({
+    required this.keys,
+    required this.selection,
+    required this.mode,
+    required this.onToggle,
+    required this.onDone,
+  });
 
   final List<String> keys;
   final BodyMapSelection selection;
@@ -540,7 +696,9 @@ class _AreaListState extends State<_AreaList> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: math.min(420, MediaQuery.sizeOf(context).height * .5)),
+          constraints: BoxConstraints(
+            maxHeight: math.min(420, MediaQuery.sizeOf(context).height * .5),
+          ),
           child: ListView(
             shrinkWrap: true,
             children: [
@@ -548,14 +706,22 @@ class _AreaListState extends State<_AreaList> {
                 CheckboxListTile(
                   value: _sel.modeOf(k) == widget.mode,
                   onChanged: (_) => setState(() => _sel = widget.onToggle(k)),
-                  title: Text(bodyAreaLabel(k), style: t.body.copyWith(fontSize: 15)),
-                  subtitle: _sel.modeOf(k) != null && _sel.modeOf(k) != widget.mode
+                  title: Text(
+                    bodyAreaLabel(k),
+                    style: t.body.copyWith(fontSize: 15),
+                  ),
+                  subtitle:
+                      _sel.modeOf(k) != null && _sel.modeOf(k) != widget.mode
                       ? Text(
-                          _sel.modeOf(k) == BodyMode.treated ? 'Saat ini: ditangani' : 'Saat ini: penenang',
+                          _sel.modeOf(k) == BodyMode.treated
+                              ? 'Saat ini: ditangani'
+                              : 'Saat ini: penenang',
                           style: t.caption,
                         )
                       : null,
-                  activeColor: widget.mode == BodyMode.treated ? BodyColors.treated : BodyColors.calming,
+                  activeColor: widget.mode == BodyMode.treated
+                      ? BodyColors.treated
+                      : BodyColors.calming,
                   controlAffinity: ListTileControlAffinity.leading,
                   contentPadding: EdgeInsets.zero,
                   dense: true,

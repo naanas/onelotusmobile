@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import 'package:onelotus_staff/app.dart';
 import 'package:onelotus_staff/data/auth/auth_controller.dart';
 import 'package:onelotus_staff/data/models/models.dart';
 import 'package:onelotus_staff/router/app_router.dart';
+import 'package:onelotus_staff/ui/body_map/body_map_data.dart';
 
 import '../test/auth/fakes.dart';
 import 'shot.dart';
@@ -58,6 +60,24 @@ void main() {
   setUpAll(() async {
     await initializeDateFormatting('id_ID');
     await loadFonts();
+  });
+
+  testWidgets('TR-04 rekam sesi', (t) async {
+    await openAsTherapist(t);
+    await t.runAsync(BodyMapData.load);
+    await go(t, '/terapis/rekam/s2');
+    await pumpFor(t, const Duration(seconds: 1));
+    await shot(t, 'TR-04a');
+    await t.drag(find.byType(ListView).last, const Offset(0, -380));
+    await pumpFor(t, const Duration(milliseconds: 600));
+    await shot(t, 'TR-04map');
+    await t.drag(find.byType(ListView).last, const Offset(0, 380));
+    await pumpFor(t, const Duration(milliseconds: 300));
+    for (final part in ['b', 'c', 'd']) {
+      await t.drag(find.byType(ListView).last, const Offset(0, -700));
+      await pumpFor(t, const Duration(milliseconds: 500));
+      await shot(t, 'TR-04$part');
+    }
   });
 
   testWidgets('modul terapis', (t) async {

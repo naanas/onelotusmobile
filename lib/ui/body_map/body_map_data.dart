@@ -14,7 +14,12 @@ class BodyMuscle {
 }
 
 class BodyView {
-  BodyView({required this.viewBox, required this.outline, required this.hair, required this.muscles});
+  BodyView({
+    required this.viewBox,
+    required this.outline,
+    required this.hair,
+    required this.muscles,
+  });
 
   final Rect viewBox;
   final Path outline;
@@ -48,7 +53,12 @@ class BodyMapData {
     BodyView view(Map<String, dynamic> v) {
       final vb = (v['viewBox'] as List).cast<num>();
       return BodyView(
-        viewBox: Rect.fromLTWH(vb[0].toDouble(), vb[1].toDouble(), vb[2].toDouble(), vb[3].toDouble()),
+        viewBox: Rect.fromLTWH(
+          vb[0].toDouble(),
+          vb[1].toDouble(),
+          vb[2].toDouble(),
+          vb[3].toDouble(),
+        ),
         outline: parseSvgPathData(v['outline'] as String),
         hair: v['hair'] == null ? null : parseSvgPathData(v['hair'] as String),
         muscles: [
@@ -58,6 +68,9 @@ class BodyMapData {
       );
     }
 
-    return BodyMapData(front: view(d['front'] as Map<String, dynamic>), back: view(d['back'] as Map<String, dynamic>));
+    return BodyMapData(
+      front: view(d['front'] as Map<String, dynamic>),
+      back: view(d['back'] as Map<String, dynamic>),
+    );
   }
 }

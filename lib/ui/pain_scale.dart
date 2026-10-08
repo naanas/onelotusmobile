@@ -5,7 +5,13 @@ import '../theme/app_theme.dart';
 
 /// PainScale (§4): 0–10, dua baris (sebelum & sesudah), angka besar `7 → 3` di atas.
 class PainScale extends StatelessWidget {
-  const PainScale({super.key, required this.before, required this.after, required this.onBefore, required this.onAfter});
+  const PainScale({
+    super.key,
+    required this.before,
+    required this.after,
+    required this.onBefore,
+    required this.onAfter,
+  });
 
   final int? before;
   final int? after;
@@ -21,18 +27,30 @@ class PainScale extends StatelessWidget {
       children: [
         Row(
           children: [
-            Expanded(child: Text('Skala nyeri', style: t.heading.copyWith(fontSize: 17))),
+            Expanded(
+              child: Text(
+                'Skala nyeri',
+                style: t.heading.copyWith(fontSize: 17),
+              ),
+            ),
             Semantics(
-              label: 'Nyeri ${before ?? 'belum diisi'} menjadi ${after ?? 'belum diisi'}',
+              label:
+                  'Nyeri ${before ?? 'belum diisi'} menjadi ${after ?? 'belum diisi'}',
               excludeSemantics: true,
               child: Row(
                 children: [
-                  Text('${before ?? '–'}', style: t.display.copyWith(fontSize: 26)),
+                  Text(
+                    '${before ?? '–'}',
+                    style: t.display.copyWith(fontSize: 26),
+                  ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: Text('→', style: t.heading.copyWith(color: c.muted)),
                   ),
-                  Text('${after ?? '–'}', style: t.display.copyWith(fontSize: 26, color: c.brand)),
+                  Text(
+                    '${after ?? '–'}',
+                    style: t.display.copyWith(fontSize: 26, color: c.brand),
+                  ),
                 ],
               ),
             ),
@@ -54,7 +72,11 @@ class PainScale extends StatelessWidget {
 enum _Kind { before, after }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.value, required this.kind, required this.onChanged});
+  const _Row({
+    required this.value,
+    required this.kind,
+    required this.onChanged,
+  });
 
   final int? value;
   final _Kind kind;
@@ -74,7 +96,8 @@ class _Row extends StatelessWidget {
               button: true,
               inMutuallyExclusiveGroup: true,
               selected: value == i,
-              label: 'Nyeri ${kind == _Kind.before ? 'sebelum' : 'sesudah'} sesi $i',
+              label:
+                  'Nyeri ${kind == _Kind.before ? 'sebelum' : 'sesudah'} sesi $i',
               excludeSemantics: true,
               child: GestureDetector(
                 onTap: () {
@@ -88,11 +111,22 @@ class _Row extends StatelessWidget {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),
                     color: value == i
-                        ? (kind == _Kind.before ? const Color(0xFFFDE2C4) : c.brand)
+                        ? (kind == _Kind.before
+                              ? const Color(0xFFFDE2C4)
+                              : c.brand)
                         : c.surfaceAlt,
-                    border: value == i && kind == _Kind.before ? Border.all(color: const Color(0xFFF6B26B), width: 2) : null,
+                    border: value == i && kind == _Kind.before
+                        ? Border.all(color: const Color(0xFFF6B26B), width: 2)
+                        : null,
                     boxShadow: value == i && kind == _Kind.after
-                        ? const [BoxShadow(color: Color(0xCC0277B5), offset: Offset(0, 6), blurRadius: 12, spreadRadius: -6)]
+                        ? const [
+                            BoxShadow(
+                              color: Color(0xCC0277B5),
+                              offset: Offset(0, 6),
+                              blurRadius: 12,
+                              spreadRadius: -6,
+                            ),
+                          ]
                         : null,
                   ),
                   child: FittedBox(
@@ -101,7 +135,9 @@ class _Row extends StatelessWidget {
                       style: t.body.copyWith(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color: value == i ? (kind == _Kind.before ? c.warn : Colors.white) : c.muted,
+                        color: value == i
+                            ? (kind == _Kind.before ? c.warn : Colors.white)
+                            : c.muted,
                       ),
                     ),
                   ),

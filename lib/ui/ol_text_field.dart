@@ -102,20 +102,22 @@ class _OlTextFieldState extends State<OlTextField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(text: widget.label),
-              if (widget.isRequired)
-                TextSpan(
-                  text: ' *',
-                  style: TextStyle(color: c.crit),
-                ),
-            ],
+        if (widget.label.isNotEmpty) ...[
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(text: widget.label),
+                if (widget.isRequired)
+                  TextSpan(
+                    text: ' *',
+                    style: TextStyle(color: c.crit),
+                  ),
+              ],
+            ),
+            style: t.fieldLabel,
           ),
-          style: t.fieldLabel,
-        ),
-        const SizedBox(height: 7),
+          const SizedBox(height: 7),
+        ],
         AnimatedContainer(
           duration: OlMotion.of(context, OlMotion.fast),
           constraints: BoxConstraints(minHeight: multiline ? 84 : OlSize.input),

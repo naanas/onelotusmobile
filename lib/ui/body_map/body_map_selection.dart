@@ -40,7 +40,11 @@ String bodyAreaLabel(String key) {
 /// Satu chip area: kiri+kanan dengan mode sama digabung jadi "(kedua sisi)".
 @immutable
 class BodyAreaChip {
-  const BodyAreaChip({required this.keys, required this.mode, required this.label});
+  const BodyAreaChip({
+    required this.keys,
+    required this.mode,
+    required this.label,
+  });
 
   final List<String> keys;
   final BodyMode mode;
@@ -49,7 +53,8 @@ class BodyAreaChip {
   String get id => '${mode.name}|${keys.join(',')}';
 
   /// Teks chip: penenang diberi awalan (TR-04).
-  String get text => mode == BodyMode.calming ? 'Penenang: ${label.toLowerCase()}' : label;
+  String get text =>
+      mode == BodyMode.calming ? 'Penenang: ${label.toLowerCase()}' : label;
 }
 
 /// Pilihan area tubuh — tak berubah (immutable), aman dipakai di setState.
@@ -73,10 +78,15 @@ class BodyMapSelection {
     return BodyMapSelection(next);
   }
 
-  BodyMapSelection removeAll(Iterable<String> keys) =>
-      BodyMapSelection({for (final e in areas.entries) if (!keys.contains(e.key)) e.key: e.value});
+  BodyMapSelection removeAll(Iterable<String> keys) => BodyMapSelection({
+    for (final e in areas.entries)
+      if (!keys.contains(e.key)) e.key: e.value,
+  });
 
-  List<String> keysOf(BodyMode mode) => [for (final e in areas.entries) if (e.value == mode) e.key];
+  List<String> keysOf(BodyMode mode) => [
+    for (final e in areas.entries)
+      if (e.value == mode) e.key,
+  ];
 
   /// Chip untuk ditampilkan, urut sesuai urutan pilih.
   List<BodyAreaChip> chips() {
@@ -92,7 +102,13 @@ class BodyMapSelection {
       };
       if (other != null && areas[other] == m) {
         seen.addAll([k, other]);
-        out.add(BodyAreaChip(keys: [k, other], mode: m, label: '${bodyAreaNames[slug] ?? slug} (kedua sisi)'));
+        out.add(
+          BodyAreaChip(
+            keys: [k, other],
+            mode: m,
+            label: '${bodyAreaNames[slug] ?? slug} (kedua sisi)',
+          ),
+        );
       } else {
         seen.add(k);
         out.add(BodyAreaChip(keys: [k], mode: m, label: bodyAreaLabel(k)));

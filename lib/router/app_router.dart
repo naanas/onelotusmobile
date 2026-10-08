@@ -15,6 +15,7 @@ import '../features/dev/component_gallery_page.dart';
 import '../features/shell/placeholder_tab_page.dart';
 import '../features/shell/role_shell.dart';
 import '../features/terapis/akun/kas_dibawa_page.dart';
+import '../features/terapis/rekam/rekam_sesi_page.dart';
 import '../features/terapis/akun/komisi_page.dart';
 import '../features/terapis/home_visit/home_visit_page.dart';
 import '../features/terapis/home_visit/tagih_page.dart';
@@ -134,7 +135,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       for (final (path, title, id, stage) in const [
-        ('/terapis/rekam/:id', 'Rekam sesi', 'TR-04', 'Tahap 6'),
         ('/notifikasi', 'Notifikasi', 'UM-09', 'Fase 0'),
         ('/cari', 'Cari', 'UM-10', 'Fase 0'),
         ('/status-sinkron', 'Status sinkron', 'UM-14', 'Tahap 7'),
@@ -192,6 +192,12 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.terapisKomisi,
         parentNavigatorKey: rootNavigatorKey,
         builder: (_, _) => const KomisiPage(),
+      ),
+
+      GoRoute(
+        path: '/terapis/rekam/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, s) => RekamSesiPage(sessionId: s.pathParameters['id']!),
       ),
 
       // ── Kasir: Antrian · Pasien · + · Kasir · Akun ────────────────────────

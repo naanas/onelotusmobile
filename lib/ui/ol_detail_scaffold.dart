@@ -15,6 +15,7 @@ class OlDetailScaffold extends StatelessWidget {
     required this.children,
     this.context_,
     this.below,
+    this.titleTrailing,
     this.actions = const [],
     this.foot = const [],
     this.close = false,
@@ -28,6 +29,9 @@ class OlDetailScaffold extends StatelessWidget {
 
   /// Widget di bawah judul (mis. deretan tag status).
   final Widget? below;
+
+  /// Widget di kanan judul (mis. timer sesi di TR-04).
+  final Widget? titleTrailing;
   final List<Widget> actions;
   final List<Widget> children;
   final List<Widget> foot;
@@ -80,7 +84,20 @@ class OlDetailScaffold extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                     ],
-                    Semantics(header: true, child: Text(title, style: t.title)),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Semantics(
+                            header: true,
+                            child: Text(title, style: t.title),
+                          ),
+                        ),
+                        if (titleTrailing != null) ...[
+                          const SizedBox(width: OlSpace.sm),
+                          titleTrailing!,
+                        ],
+                      ],
+                    ),
                     if (below != null) ...[const SizedBox(height: 10), below!],
                     const SizedBox(height: 18),
                     for (final (i, w) in children.indexed) ...[

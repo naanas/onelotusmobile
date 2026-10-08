@@ -14,6 +14,12 @@ import '../features/auth/splash_page.dart';
 import '../features/dev/component_gallery_page.dart';
 import '../features/shell/placeholder_tab_page.dart';
 import '../features/shell/role_shell.dart';
+import '../features/terapis/jadwal/ajukan_cuti_page.dart';
+import '../features/terapis/jadwal/jadwal_minggu_page.dart';
+import '../features/terapis/pasien/detail_pasien_page.dart';
+import '../features/terapis/pasien/pasien_saya_page.dart';
+import '../features/terapis/riwayat/detail_sesi_page.dart';
+import '../features/terapis/riwayat/riwayat_page.dart';
 import '../features/terapis/jadwal/jadwal_controller.dart';
 import '../features/terapis/jadwal/jadwal_page.dart';
 import '../ui/ui.dart';
@@ -110,24 +116,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
         branches: [
           _branch(Routes.terapisJadwal, const JadwalPage()),
-          _branch(
-            Routes.terapisPasien,
-            const PlaceholderTabPage(
-              title: 'Pasien saya',
-              screenId: 'TR-06',
-              stage: 'Tahap 5',
-              illustration: OlIllustration.emptySearch,
-            ),
-          ),
-          _branch(
-            Routes.terapisRiwayat,
-            const PlaceholderTabPage(
-              title: 'Riwayat',
-              screenId: 'TR-07',
-              stage: 'Tahap 5',
-              illustration: OlIllustration.emptyInbox,
-            ),
-          ),
+          _branch(Routes.terapisPasien, const PasienSayaPage()),
+          _branch(Routes.terapisRiwayat, const RiwayatPage()),
           _branch(Routes.terapisAkun, const AkunPage()),
         ],
       ),
@@ -142,11 +132,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
 
       for (final (path, title, id, stage) in const [
-        ('/terapis/jadwal-minggu', 'Jadwal minggu', 'TR-02', 'Tahap 5'),
         ('/terapis/rekam/:id', 'Rekam sesi', 'TR-04', 'Tahap 6'),
-        ('/terapis/sesi/:id', 'Detail sesi', 'TR-08', 'Tahap 5'),
         ('/terapis/home-visit/:id', 'Home visit', 'TR-09', 'Tahap 5'),
-        ('/terapis/pasien/:id', 'Detail pasien', 'TR-05', 'Tahap 5'),
+        (
+          '/terapis/pasien/:id/latihan',
+          'Kirim program latihan',
+          'TR-13',
+          'slicing',
+        ),
         ('/notifikasi', 'Notifikasi', 'UM-09', 'Fase 0'),
         ('/cari', 'Cari', 'UM-10', 'Fase 0'),
         ('/status-sinkron', 'Status sinkron', 'UM-14', 'Tahap 7'),
@@ -157,6 +150,27 @@ final routerProvider = Provider<GoRouter>((ref) {
           builder: (_, _) =>
               PlaceholderScreen(title: title, screenId: id, stage: stage),
         ),
+
+      GoRoute(
+        path: '/terapis/jadwal-minggu',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const JadwalMingguPage(),
+      ),
+      GoRoute(
+        path: Routes.terapisAjukanCuti,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const AjukanCutiPage(),
+      ),
+      GoRoute(
+        path: '/terapis/pasien/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, s) => DetailPasienPage(patientId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/terapis/sesi/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, s) => DetailSesiPage(sessionId: s.pathParameters['id']!),
+      ),
 
       // ── Kasir: Antrian · Pasien · + · Kasir · Akun ────────────────────────
       StatefulShellRoute(

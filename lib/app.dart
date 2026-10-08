@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/auth/auth_controller.dart';
@@ -59,6 +60,10 @@ class _OneLotusAppState extends ConsumerState<OneLotusApp> {
         title: 'One Lotus',
         debugShowCheckedModeBanner: false,
         theme: buildOlTheme(),
+        // Bahasa Indonesia untuk widget bawaan (pemilih tanggal, dsb.).
+        locale: const Locale('id'),
+        supportedLocales: const [Locale('id'), Locale('en')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
         scaffoldMessengerKey: rootMessengerKey,
         routerConfig: ref.watch(routerProvider),
         builder: (context, child) => Stack(

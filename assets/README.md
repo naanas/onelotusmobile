@@ -54,4 +54,4 @@ Alternatif ikon: paket `phosphor_flutter` di pub.dev memuat set Phosphor yang sa
 
 ## Font
 
-`fonts/` — Plus Jakarta Sans (400–800) & JetBrains Mono (500, 700), subset latin dari Fontsource. Lisensi SIL Open Font License 1.1.
+`fonts/` — Plus Jakarta Sans 400–800 (instans statis dari font variabel penuh google/fonts, termasuk simbol seperti →, ×, ±) & JetBrains Mono 500/700 (subset latin, Fontsource). Lisensi SIL Open Font License 1.1.

@@ -39,25 +39,32 @@ class OlIconButton extends StatelessWidget {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              Material(
-                color: onHero ? Colors.white.withValues(alpha: 0.1) : c.surface,
-                borderRadius: radius,
-                elevation: 0,
-                child: InkWell(
+              // Bayangan & warna di wadah luar; Material transparan di dalam.
+              // (Bayangan lewat Ink di dalam Material tampil sebagai lingkaran abu.)
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: onHero
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : c.surface,
                   borderRadius: radius,
-                  onTap: onPressed,
-                  child: Ink(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      borderRadius: radius,
-                      boxShadow: onHero ? null : OlShadow.sh1,
-                    ),
+                  boxShadow: onHero ? null : OlShadow.sh1,
+                ),
+                child: Material(
+                  type: MaterialType.transparency,
+                  child: InkWell(
+                    borderRadius: radius,
+                    onTap: onPressed,
                     child: Center(
-                      child: OlIcon(
-                        icon,
-                        size: 22,
-                        color: onHero ? Colors.white : c.fg,
+                      child: AnimatedOpacity(
+                        duration: OlMotion.of(context, OlMotion.fast),
+                        opacity: onPressed == null ? 0.35 : 1,
+                        child: OlIcon(
+                          icon,
+                          size: 22,
+                          color: onHero ? Colors.white : c.fg,
+                        ),
                       ),
                     ),
                   ),

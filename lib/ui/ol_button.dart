@@ -11,6 +11,9 @@ enum OlButtonVariant {
 
   /// Putih bergaris dengan teks `crit` — aksi berisiko yang tidak dominan (Keluar di UM-11).
   dangerSecondary,
+
+  /// Teks `crit` tanpa latar, mis. "Hapus catatan", "Batalkan tagihan".
+  dangerText,
 }
 
 /// Tombol One Lotus (spec §4 / D.5): tinggi 52, radius 16.
@@ -94,6 +97,12 @@ class OlButton extends StatelessWidget {
         const <BoxShadow>[],
         null,
       ),
+      OlButtonVariant.dangerText => (
+        Colors.transparent,
+        c.crit,
+        const <BoxShadow>[],
+        null,
+      ),
       OlButtonVariant.dangerSecondary => (
         c.surface,
         c.crit,
@@ -108,7 +117,8 @@ class OlButton extends StatelessWidget {
       ),
     };
     final disabled = onPressed == null;
-    final height = variant == OlButtonVariant.text
+    final height =
+        variant == OlButtonVariant.text || variant == OlButtonVariant.dangerText
         ? OlSize.minTouch
         : (small ? OlSize.buttonSmall : OlSize.button);
     final radius = BorderRadius.circular(

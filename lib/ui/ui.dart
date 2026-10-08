@@ -23,3 +23,7 @@ export 'transitions.dart';
 export 'ol_page_body.dart';
 export 'ol_toggle.dart';
 export 'session_card.dart';
+export 'ol_detail_scaffold.dart';
+export 'ol_info.dart';
+export 'ol_search_field.dart';
+export 'pain_trend_chart.dart';

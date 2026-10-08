@@ -12,6 +12,14 @@ import '../features/auth/login_page.dart';
 import '../features/auth/session_expired_page.dart';
 import '../features/auth/splash_page.dart';
 import '../features/dev/component_gallery_page.dart';
+import '../features/umum/change_password_page.dart';
+import '../features/umum/help_page.dart';
+import '../features/umum/maintenance_page.dart';
+import '../features/umum/notification_settings_page.dart';
+import '../features/umum/notifications_page.dart';
+import '../features/umum/search_page.dart';
+import '../features/umum/sync_status_page.dart';
+import '../features/umum/update_page.dart';
 import '../features/shell/placeholder_tab_page.dart';
 import '../features/shell/role_shell.dart';
 import '../features/terapis/akun/kas_dibawa_page.dart';
@@ -133,19 +141,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: rootNavigatorKey,
         builder: (_, _) => const PilihPasienPage(),
       ),
-
-      for (final (path, title, id, stage) in const [
-        ('/notifikasi', 'Notifikasi', 'UM-09', 'Fase 0'),
-        ('/cari', 'Cari', 'UM-10', 'Fase 0'),
-        ('/status-sinkron', 'Status sinkron', 'UM-14', 'Tahap 7'),
-      ])
-        GoRoute(
-          path: path,
-          parentNavigatorKey: rootNavigatorKey,
-          builder: (_, _) =>
-              PlaceholderScreen(title: title, screenId: id, stage: stage),
-        ),
-
       GoRoute(
         path: '/terapis/jadwal-minggu',
         parentNavigatorKey: rootNavigatorKey,
@@ -198,6 +193,47 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/terapis/rekam/:id',
         parentNavigatorKey: rootNavigatorKey,
         builder: (_, s) => RekamSesiPage(sessionId: s.pathParameters['id']!),
+      ),
+
+      GoRoute(
+        path: Routes.notifications,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const NotificationsPage(),
+      ),
+      GoRoute(
+        path: Routes.search,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const SearchPage(),
+      ),
+      GoRoute(
+        path: Routes.syncStatus,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const SyncStatusPage(),
+      ),
+      GoRoute(
+        path: Routes.changePassword,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const ChangePasswordPage(),
+      ),
+      GoRoute(
+        path: Routes.notificationSettings,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const NotificationSettingsPage(),
+      ),
+      GoRoute(
+        path: Routes.help,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const HelpPage(),
+      ),
+      GoRoute(
+        path: Routes.update,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const UpdatePage(),
+      ),
+      GoRoute(
+        path: Routes.maintenance,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const MaintenancePage(),
       ),
 
       // ── Kasir: Antrian · Pasien · + · Kasir · Akun ────────────────────────

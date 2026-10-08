@@ -13,16 +13,9 @@ class OlFootBar extends StatelessWidget {
     final c = context.ol;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: c.surface.withValues(alpha: 0.92),
+        // Opak: bayangan tidak tembus menjadi kotak terang di dalam bar.
+        color: c.surface,
         border: Border(top: BorderSide(color: c.line)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x400B1F2E),
-            offset: Offset(0, -12),
-            blurRadius: 24,
-            spreadRadius: -20,
-          ),
-        ],
       ),
       child: SafeArea(
         top: false,

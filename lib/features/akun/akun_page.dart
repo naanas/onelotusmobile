@@ -114,6 +114,7 @@ class AkunPage extends ConsumerWidget {
                 '$pending menunggu',
                 style: t.body.copyWith(color: c.muted),
               ),
+              onTap: () => context.push(Routes.syncStatus),
             ),
             if (kDebugMode && AppConfig.useMock)
               OlListItem(
@@ -133,6 +134,34 @@ class AkunPage extends ConsumerWidget {
                 showChevron: true,
                 onTap: () => context.push(Routes.devComponents),
               ),
+          ],
+        ),
+        _Group(
+          children: [
+            OlListItem(
+              title: 'Ubah password & PIN',
+              showChevron: true,
+              onTap: () => context.push(Routes.changePassword),
+            ),
+            OlListItem(
+              title: 'Pengaturan notifikasi',
+              showChevron: true,
+              onTap: () => context.push(Routes.notificationSettings),
+            ),
+            OlListItem(
+              title: 'Tampilan',
+              trailing: Text(
+                'Ikuti sistem',
+                style: t.body.copyWith(color: c.muted),
+              ),
+              onTap: () =>
+                  context.feedback.info('Tema gelap tersedia di Fase 3.'),
+            ),
+            OlListItem(
+              title: 'Bantuan & kebijakan',
+              showChevron: true,
+              onTap: () => context.push(Routes.help),
+            ),
           ],
         ),
         OlButton(

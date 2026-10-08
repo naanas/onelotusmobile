@@ -36,6 +36,11 @@ abstract final class Routes {
   static const notifications = '/notifikasi';
   static const search = '/cari';
   static const syncStatus = '/status-sinkron';
+  static const changePassword = '/ubah-password';
+  static const notificationSettings = '/pengaturan-notifikasi';
+  static const help = '/bantuan';
+  static const update = '/perbarui';
+  static const maintenance = '/pemeliharaan';
 
   // Kasir: Antrian · Pasien · + · Kasir · Akun
   static const kasirAntrian = '/kasir/antrian';

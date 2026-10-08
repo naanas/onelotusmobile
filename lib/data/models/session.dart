@@ -84,6 +84,17 @@ class Session {
   final DateTime? endedAt;
 
   bool get isHomeVisit => homeVisit != null;
+
+  /// Sudah selesai ditangani terapis (status pembayaran tidak relevan bagi terapis).
+  bool get isFinished =>
+      status == SessionStatus.done ||
+      status == SessionStatus.unpaid ||
+      status == SessionStatus.paid;
+
+  /// Pasien belum hadir > 15 mnt dari jadwal (§6.3).
+  bool isLateAt(DateTime now) =>
+      status == SessionStatus.scheduled &&
+      now.isAfter(startAt.add(const Duration(minutes: 15)));
   DateTime get endAt => startAt.add(Duration(minutes: durationMin));
 
   Session copyWith({

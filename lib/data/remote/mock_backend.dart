@@ -28,6 +28,9 @@ class MockBackend {
   final services = <Service>[];
   final invoices = <String, Invoice>{};
 
+  /// Permintaan pindah jadwal dari terapis (diterima front desk).
+  final rescheduleRequests = <Map<String, dynamic>>[];
+
   static DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
   Future<void> wait() async {
@@ -663,6 +666,9 @@ class MockOutboxSender implements OutboxSender {
           endedAt: status == SessionStatus.done ? at : null,
         );
         return SendOk(response: backend.sessions[s.id]!.toJson());
+      case OutboxKinds.rescheduleRequest:
+        backend.rescheduleRequests.add(item.payload);
+        return const SendOk();
       default:
         return const SendError(AppError(ErrorCode.unknown));
     }

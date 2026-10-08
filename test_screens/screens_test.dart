@@ -82,6 +82,7 @@ void main() {
   testWidgets('alur terapis multi peran', (t) async {
     phoneView(t);
     final h = AuthHarness()..device.available = false;
+    h.clock.now = DateTime(2026, 10, 6, 10, 42);
     await t.pumpWidget(
       shootable(
         ProviderScope(overrides: h.overrides, child: const OneLotusApp()),
@@ -98,7 +99,18 @@ void main() {
     await shot(t, '08_pilih_peran');
     await t.tap(find.text('Masuk sebagai Terapis'));
     await pumpFor(t, const Duration(seconds: 1));
+    await pumpFor(t, const Duration(seconds: 1));
     await shot(t, '09_terapis_jadwal');
+    await t.drag(find.byType(ListView).first, const Offset(0, -500));
+    await pumpFor(t, const Duration(milliseconds: 500));
+    await shot(t, '09b_terapis_jadwal_bawah');
+    await t.drag(find.byType(ListView).first, const Offset(0, 800));
+    await pumpFor(t, const Duration(milliseconds: 500));
+    await t.tap(find.text('home visit'));
+    await pumpFor(t, const Duration(milliseconds: 500));
+    await shot(t, '09c_filter_home_visit');
+    await t.tap(find.text('home visit'));
+    await pumpFor(t, const Duration(milliseconds: 300));
     await t.tap(find.text('Riwayat'));
     await pumpFor(t, const Duration(milliseconds: 600));
     await shot(t, '10_terapis_riwayat');

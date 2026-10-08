@@ -16,9 +16,12 @@ class TabSpec {
 }
 
 class FabSpec {
-  const FabSpec(this.semanticLabel, this.route);
+  const FabSpec(this.semanticLabel, this.route, {this.resolve});
   final String semanticLabel;
   final String route;
+
+  /// Tujuan dinamis saat diketuk (mis. sesi berjalan → rekam sesi). Null = [route].
+  final String Function(WidgetRef ref)? resolve;
 }
 
 /// Tab bar per peran (§3). Label selalu tampil; tab aktif = ikon fill dalam pil `brandSoft`.
@@ -222,15 +225,15 @@ class _TabItem extends StatelessWidget {
 }
 
 /// FAB tengah (D.5): lingkaran 56dp, cincin putih 6dp, bayangan brand lembut.
-class _Fab extends StatefulWidget {
+class _Fab extends ConsumerStatefulWidget {
   const _Fab({required this.spec});
   final FabSpec spec;
 
   @override
-  State<_Fab> createState() => _FabState();
+  ConsumerState<_Fab> createState() => _FabState();
 }
 
-class _FabState extends State<_Fab> {
+class _FabState extends ConsumerState<_Fab> {
   bool _pressed = false;
 
   @override
@@ -270,7 +273,9 @@ class _FabState extends State<_Fab> {
               onHighlightChanged: (v) => setState(() => _pressed = v),
               onTap: () {
                 HapticFeedback.lightImpact();
-                context.push(widget.spec.route);
+                context.push(
+                  widget.spec.resolve?.call(ref) ?? widget.spec.route,
+                );
               },
               child: const Center(
                 child: OlIcon(OlIcons.plus, size: 26, color: Colors.white),

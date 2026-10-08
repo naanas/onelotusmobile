@@ -44,6 +44,13 @@ abstract interface class ScheduleRepository {
     SessionStatus status, {
     String? reason,
   });
+
+  /// Terapis minta pindah jadwal → diteruskan ke front desk (TR-01). Lewat outbox.
+  Future<void> requestReschedule(
+    Session session, {
+    required String reason,
+    String? proposal,
+  });
 }
 
 abstract interface class PatientRepository {

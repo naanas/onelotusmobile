@@ -46,7 +46,11 @@ class AuthHarness {
   final outbox = MemoryOutboxStore();
   final drafts = MemoryKvStore();
   final cache = MemoryKvStore();
-  final backend = MockBackend(latency: Duration.zero);
+  // Tanggal sama dengan FakeClock agar jadwal contoh jatuh di "hari ini".
+  final backend = MockBackend(
+    today: DateTime(2026, 10, 6),
+    latency: Duration.zero,
+  );
 
   List<Override> get overrides => [
     authRepositoryProvider.overrideWithValue(repo),

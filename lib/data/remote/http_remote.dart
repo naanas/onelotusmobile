@@ -141,6 +141,13 @@ class ApiOutboxSender implements OutboxSender {
             asMap,
           );
           return SendOk(response: saved);
+        case OutboxKinds.rescheduleRequest:
+          await api.post(
+            '/v1/sessions/${item.payload['session_id']}/reschedule-requests',
+            item.payload,
+            (_) {},
+          );
+          return const SendOk();
         default:
           return const SendError(AppError(ErrorCode.unknown));
       }

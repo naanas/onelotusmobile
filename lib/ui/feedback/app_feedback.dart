@@ -315,6 +315,67 @@ class AppFeedback {
       },
     );
   }
+
+  /// Bottom sheet berisi form (mis. minta pindah jadwal). [builder] menerima fungsi
+  /// `close(hasil)`; menutup tanpa hasil = null. Keyboard tidak menutupi isian.
+  Future<T?> formSheet<T>({
+    required String title,
+    String? message,
+    required Widget Function(
+      BuildContext context,
+      void Function(T result) close,
+    )
+    builder,
+  }) async {
+    final ctx = _ctx;
+    if (ctx == null) return null;
+    return showModalBottomSheet<T>(
+      context: ctx,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (sheetCtx) {
+        final t = sheetCtx.olText;
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(sheetCtx).bottom,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(
+              OlSpace.xl,
+              0,
+              OlSpace.xl,
+              OlSpace.xxl,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    style: t.heading.copyWith(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                if (message != null) ...[
+                  const SizedBox(height: OlSpace.sm),
+                  Text(
+                    message,
+                    style: t.body.copyWith(color: sheetCtx.ol.muted),
+                  ),
+                ],
+                const SizedBox(height: OlSpace.lg),
+                builder(sheetCtx, (r) => Navigator.of(sheetCtx).pop(r)),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 enum _ToastKind { success, info, error }

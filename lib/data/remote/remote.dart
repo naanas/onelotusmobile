@@ -34,4 +34,5 @@ abstract interface class OneLotusRemote {
 abstract final class OutboxKinds {
   static const sessionRecordUpsert = 'session_record.upsert';
   static const sessionStatus = 'session.status';
+  static const rescheduleRequest = 'session.reschedule_request';
 }

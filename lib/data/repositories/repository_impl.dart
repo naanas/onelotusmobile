@@ -134,6 +134,22 @@ class ScheduleRepositoryImpl implements ScheduleRepository {
     );
     return _applyStatus(session, payload);
   }
+
+  @override
+  Future<void> requestReschedule(
+    Session session, {
+    required String reason,
+    String? proposal,
+  }) => engine.enqueue(
+    kind: OutboxKinds.rescheduleRequest,
+    entityId: newId(),
+    payload: {
+      'session_id': session.id,
+      'reason': reason,
+      'proposal': ?proposal,
+      'at': formatDate(_now()),
+    },
+  );
 }
 
 class PatientRepositoryImpl implements PatientRepository {

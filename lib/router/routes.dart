@@ -17,6 +17,18 @@ abstract final class Routes {
   static const terapisRiwayat = '/terapis/riwayat';
   static const terapisAkun = '/terapis/akun';
   static const terapisPilihPasien = '/terapis/pilih-pasien';
+  static const terapisJadwalMinggu = '/terapis/jadwal-minggu';
+  static String terapisRekam(String sessionId) => '/terapis/rekam/$sessionId';
+  static String terapisSesi(String sessionId) => '/terapis/sesi/$sessionId';
+  static String terapisHomeVisit(String sessionId) =>
+      '/terapis/home-visit/$sessionId';
+  static String terapisPasienDetail(String patientId) =>
+      '/terapis/pasien/$patientId';
+
+  // Umum (semua peran)
+  static const notifications = '/notifikasi';
+  static const search = '/cari';
+  static const syncStatus = '/status-sinkron';
 
   // Kasir: Antrian · Pasien · + · Kasir · Akun
   static const kasirAntrian = '/kasir/antrian';

@@ -52,6 +52,7 @@ Penguncian 5× gagal sebaiknya juga ditegakkan di server.
 |---|---|---|
 | GET | `/v1/sessions?branch_id=&from=&to=&therapist_id=` | Daftar sesi rentang waktu, urut `start_at` |
 | PATCH | `/v1/sessions/{id}/status` | `{ status, at, reason? }` — dikirim lewat outbox, bisa terlambat (offline) |
+| POST | `/v1/sessions/{id}/reschedule-requests` | `{ reason, proposal?, at }` — terapis minta pindah jadwal, notifikasi ke front desk (TR-01) |
 
 Sesi: `{ id, patient_id, patient_name, patient_number, therapist_id, therapist_name, service_id, service_name,
 branch_id, start_at, duration_min, status, room, home_visit: { address, landmark, distance_km, lat, lng } | null,

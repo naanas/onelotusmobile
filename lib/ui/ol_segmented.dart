@@ -32,6 +32,7 @@ class OlSegmented<T> extends StatelessWidget {
             if (e.key != segments.keys.first) const SizedBox(width: 4),
             Expanded(
               child: Semantics(
+                container: true,
                 button: true,
                 selected: e.key == value,
                 child: GestureDetector(

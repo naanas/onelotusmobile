@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../data/models/status.dart';
 import 'ol_icon.dart';
+
+export '../data/models/status.dart';
 
 enum OlTagTone { brand, outline, fill, ok, warn, crit, muted, strike, gold }
 
@@ -76,38 +79,32 @@ class OlTag extends StatelessWidget {
   }
 }
 
-/// Siklus status sesi (§6.2).
-enum SessionStatus {
-  awaitingConfirmation('Menunggu konfirmasi', OlTagTone.muted),
-  scheduled('Dijadwalkan', OlTagTone.outline),
-  arrived('Hadir', OlTagTone.brand),
-  running('Berjalan', OlTagTone.fill),
-  done('Selesai', OlTagTone.ok),
-  unpaid('Belum bayar', OlTagTone.warn),
-  paid('Lunas', OlTagTone.ok),
-  noShow('Tidak datang', OlTagTone.crit),
-  cancelled('Dibatalkan', OlTagTone.strike);
-
-  const SessionStatus(this.label, this.tone);
-  final String label;
-  final OlTagTone tone;
+/// Warna tag per status sesi (§4 StatusTag).
+extension SessionStatusTone on SessionStatus {
+  OlTagTone get tone => switch (this) {
+    SessionStatus.awaitingConfirmation => OlTagTone.muted,
+    SessionStatus.scheduled => OlTagTone.outline,
+    SessionStatus.arrived => OlTagTone.brand,
+    SessionStatus.running => OlTagTone.fill,
+    SessionStatus.done => OlTagTone.ok,
+    SessionStatus.unpaid => OlTagTone.warn,
+    SessionStatus.paid => OlTagTone.ok,
+    SessionStatus.noShow => OlTagTone.crit,
+    SessionStatus.cancelled => OlTagTone.strike,
+  };
 }
 
-/// Siklus status pembayaran (§6.4.1).
-enum PaymentStatus {
-  draft('Draft', OlTagTone.muted),
-  unpaid('Belum bayar', OlTagTone.warn),
-  pending('Menunggu pembayaran', OlTagTone.warn),
-  pendingVerify('Menunggu verifikasi', OlTagTone.brand),
-  partial('Belum lunas', OlTagTone.warn),
-  paid('Lunas', OlTagTone.ok),
-  failed('Gagal', OlTagTone.crit),
-  expired('Kedaluwarsa', OlTagTone.muted),
-  cancelled('Dibatalkan', OlTagTone.strike),
-  refundPartial('Refund sebagian', OlTagTone.muted),
-  refundFull('Refund penuh', OlTagTone.muted);
-
-  const PaymentStatus(this.label, this.tone);
-  final String label;
-  final OlTagTone tone;
+/// Warna PaymentStatusBadge (§6.4.1).
+extension PaymentStatusTone on PaymentStatus {
+  OlTagTone get tone => switch (this) {
+    PaymentStatus.draft || PaymentStatus.expired => OlTagTone.muted,
+    PaymentStatus.refundPartial || PaymentStatus.refundFull => OlTagTone.muted,
+    PaymentStatus.unpaid ||
+    PaymentStatus.pending ||
+    PaymentStatus.partial => OlTagTone.warn,
+    PaymentStatus.pendingVerify => OlTagTone.brand,
+    PaymentStatus.paid => OlTagTone.ok,
+    PaymentStatus.failed => OlTagTone.crit,
+    PaymentStatus.cancelled => OlTagTone.strike,
+  };
 }

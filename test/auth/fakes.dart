@@ -4,6 +4,10 @@ import 'package:onelotus_staff/data/auth/auth_controller.dart';
 import 'package:onelotus_staff/data/auth/device_security.dart';
 import 'package:onelotus_staff/data/auth/mock_auth_repository.dart';
 import 'package:onelotus_staff/data/auth/session_store.dart';
+import 'package:onelotus_staff/data/local/kv_store.dart';
+import 'package:onelotus_staff/data/providers.dart';
+import 'package:onelotus_staff/data/remote/mock_backend.dart';
+import 'package:onelotus_staff/data/sync/outbox.dart';
 
 class FakeDeviceSecurity implements DeviceSecurity {
   bool available = true;
@@ -39,12 +43,22 @@ class AuthHarness {
   final FakeDeviceSecurity device;
   final FakeClock clock;
   final MockAuthRepository repo;
+  final outbox = MemoryOutboxStore();
+  final drafts = MemoryKvStore();
+  final cache = MemoryKvStore();
+  final backend = MockBackend(latency: Duration.zero);
 
   List<Override> get overrides => [
     authRepositoryProvider.overrideWithValue(repo),
     sessionStoreProvider.overrideWithValue(store),
     deviceSecurityProvider.overrideWithValue(device),
     clockProvider.overrideWithValue(() => clock.now),
+    // Penyimpanan lokal di memori (tanpa sqflite) & backend contoh tanpa jeda.
+    outboxStoreProvider.overrideWithValue(outbox),
+    draftStoreProvider.overrideWithValue(drafts),
+    cacheStoreProvider.overrideWithValue(cache),
+    mockBackendProvider.overrideWithValue(backend),
+    connectivityProvider.overrideWithValue(const Stream<bool>.empty()),
   ];
 
   ProviderContainer container() => ProviderContainer(overrides: overrides);

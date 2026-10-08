@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:onelotus_staff/app.dart';
+import 'package:onelotus_staff/ui/ol_toggle.dart';
 import 'package:onelotus_staff/data/auth/auth_controller.dart';
 
 import '../test/auth/fakes.dart';
@@ -73,6 +74,9 @@ void main() {
     await t.tap(find.text('Akun'));
     await pumpFor(t, const Duration(milliseconds: 600));
     await shot(t, '07_kasir_akun');
+    await t.tap(find.byType(OlToggle));
+    await pumpFor(t, const Duration(milliseconds: 600));
+    await shot(t, '07b_akun_offline');
   });
 
   testWidgets('alur terapis multi peran', (t) async {

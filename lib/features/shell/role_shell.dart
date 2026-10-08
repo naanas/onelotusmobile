@@ -158,6 +158,7 @@ class _TabItem extends StatelessWidget {
     final color = selected ? c.brand : c.faint;
     final duration = OlMotion.of(context, OlMotion.normal);
     return Semantics(
+      container: true,
       selected: selected,
       button: true,
       label: spec.label,
@@ -236,6 +237,7 @@ class _FabState extends State<_Fab> {
   Widget build(BuildContext context) {
     final c = context.ol;
     return Semantics(
+      container: true,
       button: true,
       label: widget.spec.semanticLabel,
       excludeSemantics: true,

@@ -72,6 +72,7 @@ class SyncIndicator extends StatelessWidget {
     final shown = label ?? text;
 
     return Semantics(
+      container: true,
       button: onTap != null,
       label: 'Status sinkron: $shown',
       excludeSemantics: true,

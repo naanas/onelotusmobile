@@ -27,6 +27,7 @@ class OlIconButton extends StatelessWidget {
     final c = context.ol;
     final radius = BorderRadius.circular(14);
     return Semantics(
+      container: true,
       button: true,
       label: badge != null && badge! > 0
           ? '$semanticLabel, $badge baru'

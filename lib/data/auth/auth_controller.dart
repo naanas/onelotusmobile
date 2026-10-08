@@ -5,7 +5,10 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/config.dart';
 import '../../ui/feedback/app_error.dart';
+import '../providers.dart' show apiClientProvider;
+import 'api_auth_repository.dart';
 import '../models/staff_user.dart';
 import 'auth_repository.dart';
 import 'device_security.dart';
@@ -136,7 +139,9 @@ abstract final class AuthRules {
 }
 
 final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => MockAuthRepository(),
+  (ref) => AppConfig.useMock
+      ? MockAuthRepository()
+      : ApiAuthRepository(ref.watch(apiClientProvider)),
 );
 final sessionStoreProvider = Provider<SessionStore>(
   (ref) => SecureSessionStore(),

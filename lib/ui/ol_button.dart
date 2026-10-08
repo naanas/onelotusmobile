@@ -144,6 +144,7 @@ class OlButton extends StatelessWidget {
     );
 
     return Semantics(
+      container: true,
       button: true,
       enabled: _enabled,
       label: loading ? '$label, sedang diproses' : null,

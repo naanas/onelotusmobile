@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/auth/auth_controller.dart';
+import 'data/providers.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 import 'ui/feedback/app_feedback.dart';
@@ -35,6 +38,8 @@ class _OneLotusAppState extends ConsumerState<OneLotusApp> {
       onResume: () {
         setState(() => _obscured = false);
         ref.read(authProvider.notifier).onForeground();
+        // Kembali ke aplikasi: kirim outbox sekarang tanpa menunggu jadwal coba ulang.
+        unawaited(ref.read(syncEngineProvider).retryNow());
       },
       onHide: () => ref.read(authProvider.notifier).onBackground(),
     );

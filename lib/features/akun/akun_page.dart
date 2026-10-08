@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/config.dart';
 import '../../core/format.dart';
 import '../../data/auth/auth_controller.dart';
 import '../../data/models/staff_user.dart';
+import '../../data/providers.dart';
 import '../../data/sync/sync_providers.dart';
 import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
@@ -100,6 +102,17 @@ class AkunPage extends ConsumerWidget {
                 style: t.body.copyWith(color: c.muted),
               ),
             ),
+            if (kDebugMode && AppConfig.useMock)
+              OlListItem(
+                title: 'Simulasi offline',
+                subtitle: 'Mode mock · khusus build debug',
+                trailing: OlToggle(
+                  semanticLabel: 'Simulasi offline',
+                  value: ref.watch(mockOfflineProvider),
+                  onChanged: (v) =>
+                      ref.read(mockOfflineProvider.notifier).set(v),
+                ),
+              ),
             if (kDebugMode)
               OlListItem(
                 title: 'Galeri komponen',

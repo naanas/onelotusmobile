@@ -31,6 +31,7 @@ class OlChip extends StatelessWidget {
     final fg = selected ? Colors.white : c.fg;
     final radius = BorderRadius.circular(OlRadius.pill);
     return Semantics(
+      container: true,
       button: true,
       selected: selected,
       label: label,

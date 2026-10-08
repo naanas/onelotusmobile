@@ -145,6 +145,7 @@ class _Key extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
       child: Semantics(
+        container: true,
         button: true,
         label: semanticLabel,
         excludeSemantics: true,

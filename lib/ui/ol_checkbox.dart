@@ -20,6 +20,7 @@ class OlCheckbox extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.ol;
     return Semantics(
+      container: true,
       checked: value,
       label: label,
       excludeSemantics: true,

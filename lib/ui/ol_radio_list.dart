@@ -45,6 +45,7 @@ class OlRadioList<T> extends StatelessWidget {
         children: [
           for (final (i, o) in options.indexed)
             Semantics(
+              container: true,
               inMutuallyExclusiveGroup: true,
               checked: o.value == value,
               button: true,

@@ -19,6 +19,9 @@ class OlDetailScaffold extends StatelessWidget {
     this.actions = const [],
     this.foot = const [],
     this.close = false,
+    this.showBack = true,
+    this.background,
+    this.top,
     this.gap = OlSpace.gap,
   });
 
@@ -38,14 +41,30 @@ class OlDetailScaffold extends StatelessWidget {
 
   /// true = ikon tutup (×) untuk layar form, false = kembali (‹).
   final bool close;
+
+  /// false = tanpa tombol kembali/tutup (mis. akar tab, langkah masuk pasien).
+  final bool showBack;
+
+  /// Latar layar; null = `bg` tema. Layar masuk pasien memakai putih.
+  final Color? background;
+
+  /// Widget di atas konteks/judul (mis. progres langkah booking PS-08).
+  final Widget? top;
   final double gap;
 
   @override
   Widget build(BuildContext context) {
     final t = context.olText;
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: OlStatusBar.dark,
       child: Scaffold(
+        backgroundColor: background,
+        // Foot di bottomNavigationBar agar toast mengambang di atas tombol (§12.2).
+        // Saat keyboard terbuka, foot pindah ke body supaya tetap di atas keyboard.
+        bottomNavigationBar: foot.isEmpty || keyboard
+            ? null
+            : OlFootBar(children: foot),
         body: SafeArea(
           bottom: foot.isEmpty,
           child: Column(
@@ -59,21 +78,31 @@ class OlDetailScaffold extends StatelessWidget {
                     28,
                   ),
                   children: [
-                    Row(
-                      children: [
-                        close
-                            ? OlIconButton(
-                                icon: OlIcons.close,
-                                semanticLabel: 'Tutup',
-                                onPressed: () =>
-                                    Navigator.of(context).maybePop(),
-                              )
-                            : const OlBackButton(),
-                        const Spacer(),
-                        ...actions,
-                      ],
-                    ),
-                    const SizedBox(height: 6),
+                    if (showBack || actions.isNotEmpty)
+                      Row(
+                        children: [
+                          if (!showBack)
+                            const SizedBox(height: OlSize.minTouch)
+                          else
+                            close
+                                ? OlIconButton(
+                                    icon: OlIcons.close,
+                                    semanticLabel: 'Tutup',
+                                    onPressed: () =>
+                                        Navigator.of(context).maybePop(),
+                                  )
+                                : const OlBackButton(),
+                          const Spacer(),
+                          ...actions,
+                        ],
+                      ),
+                    if (top != null) ...[
+                      if (showBack || actions.isNotEmpty)
+                        const SizedBox(height: 12),
+                      top!,
+                      const SizedBox(height: 14),
+                    ] else
+                      const SizedBox(height: 6),
                     if (context_ != null) ...[
                       Text(
                         context_!,
@@ -107,7 +136,7 @@ class OlDetailScaffold extends StatelessWidget {
                   ],
                 ),
               ),
-              if (foot.isNotEmpty) OlFootBar(children: foot),
+              if (foot.isNotEmpty && keyboard) OlFootBar(children: foot),
             ],
           ),
         ),

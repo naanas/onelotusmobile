@@ -55,29 +55,43 @@ class _RoleShellState extends ConsumerState<RoleShell> {
   }
 
   @override
+  Widget build(BuildContext context) =>
+      OlTabShell(shell: widget.shell, tabs: widget.tabs, fab: widget.fab);
+}
+
+/// Kerangka tab bawah (tanpa logika login) — dipakai aplikasi staf & pasien.
+class OlTabShell extends StatelessWidget {
+  const OlTabShell({
+    super.key,
+    required this.shell,
+    required this.tabs,
+    this.fab,
+  });
+
+  final StatefulNavigationShell shell;
+  final List<TabSpec> tabs;
+  final FabSpec? fab;
+
+  @override
   Widget build(BuildContext context) {
-    final tabs = widget.tabs;
-    final fab = widget.fab;
+    final fab = this.fab;
     // Dengan FAB: 2 tab kiri · FAB · 2 tab kanan.
     final half = fab == null ? tabs.length : 2;
 
     Widget tab(int i) => Expanded(
       child: _TabItem(
         spec: tabs[i],
-        selected: widget.shell.currentIndex == i,
+        selected: shell.currentIndex == i,
         onTap: () {
-          if (widget.shell.currentIndex != i) HapticFeedback.selectionClick();
+          if (shell.currentIndex != i) HapticFeedback.selectionClick();
           // Ketuk tab aktif = kembali ke akar tab.
-          widget.shell.goBranch(
-            i,
-            initialLocation: i == widget.shell.currentIndex,
-          );
+          shell.goBranch(i, initialLocation: i == shell.currentIndex);
         },
       ),
     );
 
     return Scaffold(
-      body: widget.shell,
+      body: shell,
       bottomNavigationBar: _TabBar(
         fab: fab,
         children: [

@@ -161,63 +161,15 @@ class _BuatJadwalPageState extends State<BuatJadwalPage> {
               ),
             ],
             3 => [
-              Row(
-                children: [
-                  for (final (i, (d, n)) in _days.indexed) ...[
-                    if (i > 0) const SizedBox(width: 6),
-                    Expanded(
-                      child: Semantics(
-                        container: true,
-                        button: d != 'Min',
-                        selected: i == _dayIndex,
-                        label: d == 'Min' ? '$d $n, tutup' : '$d $n',
-                        excludeSemantics: true,
-                        child: GestureDetector(
-                          onTap: d == 'Min'
-                              ? null
-                              : () => setState(() {
-                                  _dayIndex = i;
-                                  _slot = null;
-                                }),
-                          child: AnimatedContainer(
-                            duration: OlMotion.of(context, OlMotion.fast),
-                            height: 64,
-                            decoration: BoxDecoration(
-                              color: i == _dayIndex
-                                  ? c.brandDeep
-                                  : (d == 'Min' ? c.surfaceAlt : c.surface),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: d == 'Min' ? null : OlShadow.sh1,
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  d,
-                                  style: t.caption.copyWith(
-                                    color: i == _dayIndex
-                                        ? const Color(0xFFA9D8F2)
-                                        : (d == 'Min' ? c.faint : c.muted),
-                                  ),
-                                ),
-                                Text(
-                                  '$n',
-                                  style: t.heading.copyWith(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w800,
-                                    color: i == _dayIndex
-                                        ? Colors.white
-                                        : (d == 'Min' ? c.faint : c.fg),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+              OlDayStrip(
+                days: [
+                  for (final (d, n) in _days) OlDay(d, n, closed: d == 'Min'),
                 ],
+                selected: _days[_dayIndex].$2,
+                onSelect: (n) => setState(() {
+                  _dayIndex = _days.indexWhere((e) => e.$2 == n);
+                  _slot = null;
+                }),
               ),
               const OlOverline('Pagi'),
               OlSlotPicker(

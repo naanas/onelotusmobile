@@ -41,3 +41,5 @@ export 'ol_bar_chart.dart';
 export 'ol_select_field.dart';
 export 'ol_play_glyph.dart';
 export 'feedback/state_sheets.dart';
+export 'ol_day_strip.dart';
+export 'ol_pin_map.dart';

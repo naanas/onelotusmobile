@@ -151,7 +151,7 @@ class _ProgramLatihanPageState extends State<ProgramLatihanPage> {
                           child: Semantics(
                             label: 'Putar video ${e.name}',
                             button: true,
-                            child: const CustomPaint(painter: _PlayPainter()),
+                            child: const OlPlayGlyph(),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -204,30 +204,4 @@ class _ProgramLatihanPageState extends State<ProgramLatihanPage> {
       ],
     );
   }
-}
-
-/// Segitiga "putar" — pustaka ikon One Lotus tidak punya ikon play (D.1), jadi digambar.
-class _PlayPainter extends CustomPainter {
-  const _PlayPainter();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final c = size.center(Offset.zero);
-    final path = Path()
-      ..moveTo(c.dx - 7, c.dy - 10)
-      ..lineTo(c.dx + 11, c.dy)
-      ..lineTo(c.dx - 7, c.dy + 10)
-      ..close();
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = Colors.white
-        ..strokeJoin = StrokeJoin.round
-        ..strokeWidth = 3
-        ..style = PaintingStyle.fill,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_PlayPainter old) => false;
 }

@@ -12,6 +12,7 @@ class OlAppHeader extends StatelessWidget {
     this.context_,
     this.actions = const [],
     this.below,
+    this.bottom,
     this.hero = false,
     this.leading,
   });
@@ -24,6 +25,9 @@ class OlAppHeader extends StatelessWidget {
 
   /// Widget di bawah aksi kanan (mis. SyncIndicator di header beranda).
   final Widget? below;
+
+  /// Widget selebar penuh di bawah judul (mis. pilihan periode OW-01).
+  final Widget? bottom;
   final bool hero;
   final Widget? leading;
 
@@ -40,42 +44,51 @@ class OlAppHeader extends StatelessWidget {
         OlSpace.screen,
         top + (hero ? 20 : 18),
         OlSpace.screen,
-        hero ? 76 : 14,
+        hero ? (bottom != null ? 68 : 76) : 14,
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (leading != null) ...[leading!, const SizedBox(width: OlSpace.sm)],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (context_ != null) ...[
-                  Text(
-                    context_!,
-                    style: t.caption.copyWith(
-                      color: ctxColor,
-                      fontWeight: FontWeight.w600,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (leading != null) ...[
+                leading!,
+                const SizedBox(width: OlSpace.sm),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (context_ != null) ...[
+                      Text(
+                        context_!,
+                        style: t.caption.copyWith(
+                          color: ctxColor,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                    ],
+                    Semantics(
+                      header: true,
+                      child: Text(title, style: t.title.copyWith(color: fg)),
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                ],
-                Semantics(
-                  header: true,
-                  child: Text(title, style: t.title.copyWith(color: fg)),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              if (actions.isNotEmpty || below != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (actions.isNotEmpty)
+                      Row(mainAxisSize: MainAxisSize.min, children: actions),
+                    if (below != null) ...[const SizedBox(height: 4), below!],
+                  ],
+                ),
+            ],
           ),
-          if (actions.isNotEmpty || below != null)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (actions.isNotEmpty)
-                  Row(mainAxisSize: MainAxisSize.min, children: actions),
-                if (below != null) ...[const SizedBox(height: 4), below!],
-              ],
-            ),
+          if (bottom != null) ...[const SizedBox(height: OlSpace.lg), bottom!],
         ],
       ),
     );

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 abstract final class Fmt {
   static final _dayShort = DateFormat('EEE, d MMM', 'id_ID');
   static final _dateFull = DateFormat('EEE, d MMM y', 'id_ID');
+  static final _dateNoDay = DateFormat('d MMM y', 'id_ID');
   static final _time = DateFormat('HH.mm', 'id_ID');
   static final _money = NumberFormat.currency(
     locale: 'id_ID',
@@ -13,6 +14,7 @@ abstract final class Fmt {
 
   static String dayShort(DateTime d) => _dayShort.format(d);
   static String date(DateTime d) => _dateFull.format(d);
+  static String dateNoDay(DateTime d) => _dateNoDay.format(d);
   static String time(DateTime d) => _time.format(d);
   static String money(num v) => _money.format(v).replaceAll(' ', '');
   static String patientNo(int n) => '#${n.toString().padLeft(4, '0')}';

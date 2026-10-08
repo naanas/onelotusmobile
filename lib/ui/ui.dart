@@ -37,3 +37,6 @@ export 'ol_slot_picker.dart';
 export 'ol_step_progress.dart';
 export 'pseudo_qr.dart';
 export 'ol_money_field.dart';
+export 'ol_bar_chart.dart';
+export 'ol_select_field.dart';
+export 'ol_play_glyph.dart';

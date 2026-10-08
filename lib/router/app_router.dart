@@ -34,11 +34,30 @@ import '../features/kasir/jual_paket_page.dart';
 import '../features/kasir/riwayat_transaksi_page.dart';
 import '../features/kasir/refund_page.dart';
 import '../features/kasir/verifikasi_transfer_page.dart';
+import '../features/owner/ekspor_page.dart';
+import '../features/owner/layanan_page.dart';
+import '../features/owner/paket_page.dart';
+import '../features/owner/aturan_komisi_page.dart';
+import '../features/owner/voucher_page.dart';
+import '../features/owner/poin_page.dart';
+import '../features/owner/template_page.dart';
+import '../features/owner/pustaka_page.dart';
+import '../features/owner/pengumuman_page.dart';
+import '../features/owner/cabang_page.dart';
+import '../features/owner/audit_page.dart';
+import '../features/owner/rekonsiliasi_page.dart';
+import '../features/owner/pengingat_page.dart';
+import '../features/owner/jadwal_owner_page.dart';
+import '../features/owner/laporan_page.dart';
+import '../features/owner/pasien_owner_page.dart';
+import '../features/owner/persetujuan_page.dart';
+import '../features/owner/rekap_komisi_page.dart';
+import '../features/owner/ringkasan_page.dart';
+import '../features/owner/staf_page.dart';
 import '../features/kasir/terima_kas_page.dart';
 import '../features/kasir/tutup_kas_page.dart';
 import '../features/kasir/piutang_page.dart';
 import '../features/kasir/tagihan_page.dart';
-import '../features/shell/placeholder_tab_page.dart';
 import '../features/shell/role_shell.dart';
 import '../features/terapis/akun/kas_dibawa_page.dart';
 import '../features/terapis/rekam/rekam_sesi_page.dart';
@@ -374,44 +393,92 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ),
         branches: [
-          _branch(
-            Routes.ownerRingkasan,
-            const PlaceholderTabPage(
-              title: 'Ringkasan bisnis',
-              screenId: 'OW-01',
-              stage: 'Fase 2',
-              hero: true,
-              illustration: OlIllustration.progress,
-            ),
-          ),
-          _branch(
-            Routes.ownerJadwal,
-            const PlaceholderTabPage(
-              title: 'Jadwal',
-              screenId: 'OW-02',
-              stage: 'Fase 2',
-            ),
-          ),
-          _branch(
-            Routes.ownerPasien,
-            const PlaceholderTabPage(
-              title: 'Pasien',
-              screenId: 'OW-03',
-              stage: 'Fase 2',
-              illustration: OlIllustration.emptySearch,
-            ),
-          ),
-          _branch(
-            Routes.ownerLaporan,
-            const PlaceholderTabPage(
-              title: 'Laporan',
-              screenId: 'OW-04',
-              stage: 'Fase 2',
-              illustration: OlIllustration.progress,
-            ),
-          ),
+          _branch(Routes.ownerRingkasan, const RingkasanPage()),
+          _branch(Routes.ownerJadwal, const JadwalOwnerPage()),
+          _branch(Routes.ownerPasien, const PasienOwnerPage()),
+          _branch(Routes.ownerLaporan, const LaporanPage()),
           _branch(Routes.ownerAkun, const AkunPage()),
         ],
+      ),
+      GoRoute(
+        path: Routes.ownerEkspor,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const EksporPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerPersetujuan,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PersetujuanPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerKomisi,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const RekapKomisiPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerStaf,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const StafPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerLayanan,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const LayananPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerPaket,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PaketPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerAturanKomisi,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const AturanKomisiPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerVoucher,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const VoucherPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerPoin,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PoinPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerTemplate,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const TemplatePage(),
+      ),
+      GoRoute(
+        path: Routes.ownerPustaka,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PustakaPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerPengumuman,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PengumumanPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerCabang,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const CabangPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerAudit,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const AuditPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerRekonsiliasi,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const RekonsiliasiPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerPengingat,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PengingatPage(),
       ),
     ],
   );

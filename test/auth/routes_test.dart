@@ -87,6 +87,11 @@ void main() {
       Routes.kasirAntrian,
     );
     expect(authRedirect(ready(Role.terapis), Routes.terapisRiwayat), isNull);
+    expect(authRedirect(ready(Role.owner), Routes.kasirPiutang), isNull);
+    expect(
+      authRedirect(ready(Role.owner), Routes.kasirAntrian),
+      Routes.ownerRingkasan,
+    );
     expect(authRedirect(ready(Role.owner), Routes.chooseContext), isNull);
   });
 }

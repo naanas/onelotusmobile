@@ -47,6 +47,7 @@ abstract final class Routes {
   static const kasirPasien = '/kasir/pasien';
   static const kasirKasir = '/kasir/kasir';
   static const kasirAkun = '/kasir/akun';
+  static const _kasirTabs = {kasirAntrian, kasirPasien, kasirKasir, kasirAkun};
   static const kasirIntake = '/kasir/intake';
   static const kasirPasienForm = '/kasir/pasien-form';
   static String kasirPasienDetail(String id) => '/kasir/pasien/$id';
@@ -69,6 +70,22 @@ abstract final class Routes {
   static const ownerPasien = '/owner/pasien';
   static const ownerLaporan = '/owner/laporan';
   static const ownerAkun = '/owner/akun';
+  static const ownerEkspor = '/owner/ekspor'; // OW-05
+  static const ownerPersetujuan = '/owner/persetujuan'; // OW-06
+  static const ownerKomisi = '/owner/komisi'; // OW-07
+  static const ownerStaf = '/owner/staf'; // OW-08
+  static const ownerLayanan = '/owner/layanan'; // OW-09
+  static const ownerPaket = '/owner/paket'; // OW-10
+  static const ownerAturanKomisi = '/owner/aturan-komisi'; // OW-11
+  static const ownerVoucher = '/owner/voucher'; // OW-12
+  static const ownerPoin = '/owner/poin'; // OW-13
+  static const ownerTemplate = '/owner/template'; // OW-14
+  static const ownerPustaka = '/owner/pustaka'; // OW-15
+  static const ownerPengumuman = '/owner/pengumuman'; // OW-16
+  static const ownerCabang = '/owner/cabang'; // OW-17
+  static const ownerAudit = '/owner/audit'; // OW-18
+  static const ownerRekonsiliasi = '/owner/rekonsiliasi'; // OW-19
+  static const ownerPengingat = '/owner/pengingat'; // OW-20
 
   static String home(Role role) => switch (role) {
     Role.terapis => terapisJadwal,
@@ -117,6 +134,13 @@ String? authRedirect(AuthState auth, String location) {
       final role = auth.activeRole!;
       if (location == '/' || Routes._authPages.contains(location)) {
         return Routes.home(role);
+      }
+      // Owner boleh membuka layar operasional kasir (piutang, buat jadwal,
+      // pindah sesi), tapi tidak masuk ke tab kasir.
+      if (role == Role.owner &&
+          location.startsWith('/kasir/') &&
+          !Routes._kasirTabs.contains(location)) {
+        return null;
       }
       for (final other in Role.values) {
         if (other != role && location.startsWith('/${other.id}/')) {

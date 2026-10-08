@@ -9,6 +9,7 @@ class OlListItem extends StatelessWidget {
     super.key,
     required this.title,
     this.subtitle,
+    this.subtitleWidget,
     this.leading,
     this.trailing,
     this.onTap,
@@ -18,6 +19,9 @@ class OlListItem extends StatelessWidget {
 
   final String title;
   final String? subtitle;
+
+  /// Subjudul kaya (mis. tag peran + teks); dipakai bila [subtitle] null.
+  final Widget? subtitleWidget;
   final Widget? leading;
   final Widget? trailing;
   final VoidCallback? onTap;
@@ -29,6 +33,7 @@ class OlListItem extends StatelessWidget {
     key: key,
     title: title,
     subtitle: subtitle,
+    subtitleWidget: subtitleWidget,
     leading: leading,
     trailing: trailing,
     onTap: onTap,
@@ -62,6 +67,9 @@ class OlListItem extends StatelessWidget {
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(subtitle!, style: t.caption),
+                  ] else if (subtitleWidget != null) ...[
+                    const SizedBox(height: 4),
+                    subtitleWidget!,
                   ],
                 ],
               ),

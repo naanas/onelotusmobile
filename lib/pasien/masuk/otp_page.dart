@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import '../pasien_session.dart';
@@ -120,6 +122,15 @@ class _OtpPageState extends ConsumerState<OtpPage> {
                 ? 'Nomor HP belum lengkap — minimal 10 digit.'
                 : null,
             onChanged: (_) => setState(() {}),
+          ),
+          Center(
+            child: OlButton.text(
+              label: 'Staf klinik? Masuk dengan username',
+              onPressed: () {
+                ref.read(pasienSessionProvider.notifier).chooseStaff();
+                context.go(Routes.login);
+              },
+            ),
           ),
         ],
       );

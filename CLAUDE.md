@@ -15,7 +15,9 @@ Backend: sistem Laravel yang sudah ada, dinaikkan versinya dan dibuka sebagai RE
 - `docs/OneLotus-Mobile-Proposal-dan-UI.pdf` — proposal ke mitra + katalog UI.
 
 ## Keputusan yang sudah diambil
-- Satu aplikasi staf dengan menu sesuai peran; aplikasi pasien terpisah (Fase 3).
+- **Satu aplikasi untuk staf & pasien** (diputuskan user, 8 Okt 2026; menggantikan rencana aplikasi pasien terpisah).
+  Belum login → perkenalan pasien (PS-01) dengan tautan "Staf klinik? Masuk di sini"; staf menu sesuai peran,
+  rute pasien berawalan `/pasien/` (`lib/pasien/`). Redirect gabungan: `appRedirect` di `lib/router/routes.dart`.
 - Android dulu; iOS menyusul dari kode yang sama.
 - Mode offline wajib untuk rekam sesi (Fase 1).
 

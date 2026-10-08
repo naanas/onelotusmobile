@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Tahap masuk aplikasi pasien (§5.13): perkenalan → OTP → hubungkan data lama
+/// Tahap masuk bagian pasien (§5.13): perkenalan → OTP → hubungkan data lama
 /// → persetujuan data → siap. Slicing UI: disimpan di memori saja.
 enum PasienPhase { onboarding, otp, link, consent, ready }
 
@@ -9,20 +9,27 @@ class PasienSession {
     this.phase = PasienPhase.onboarding,
     this.phone = '',
     this.promoConsent = false,
+    this.staffMode = false,
   });
 
   final PasienPhase phase;
   final String phone;
   final bool promoConsent;
 
+  /// Pengguna memilih "Staf klinik? Masuk di sini" (atau baru logout sebagai
+  /// staf) — saat belum login, arahkan ke login staf, bukan perkenalan pasien.
+  final bool staffMode;
+
   PasienSession copyWith({
     PasienPhase? phase,
     String? phone,
     bool? promoConsent,
+    bool? staffMode,
   }) => PasienSession(
     phase: phase ?? this.phase,
     phone: phone ?? this.phone,
     promoConsent: promoConsent ?? this.promoConsent,
+    staffMode: staffMode ?? this.staffMode,
   );
 }
 
@@ -47,6 +54,15 @@ class PasienSessionNotifier extends Notifier<PasienSession> {
       state = state.copyWith(phase: PasienPhase.ready, promoConsent: promo);
 
   void logout() => state = const PasienSession(phase: PasienPhase.otp);
+
+  /// Dari layar pasien → login staf.
+  void chooseStaff() => state = state.copyWith(staffMode: true);
+
+  /// Dari login staf → masuk sebagai pasien (lewati perkenalan).
+  void choosePatient() => state = state.copyWith(
+    staffMode: false,
+    phase: state.phase == PasienPhase.onboarding ? PasienPhase.otp : null,
+  );
 
   /// Lewati masuk (pengujian & pratinjau).
   void skipToReady() =>

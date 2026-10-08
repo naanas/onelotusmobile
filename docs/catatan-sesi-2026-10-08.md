@@ -25,7 +25,7 @@ percakapan awal ditulis sebagai ringkasan, bukan transkrip kata per kata.
 - Riverpod 3, go_router 17 (`StatefulShellRoute` per peran), sqflite untuk outbox/draf/cache.
 - Ikon hanya Phosphor (aturan CLAUDE.md); ikon "play" digambar sendiri (`OlPlayGlyph`).
 - Font Plus Jakarta Sans & JetBrains Mono (instance statis agar glyph → × ± tersedia).
-- **Aplikasi pasien = entrypoint terpisah di proyek yang sama**: `lib/main_pasien.dart` + `lib/pasien/`. Jalankan dengan `flutter run -t lib/main_pasien.dart`. Application ID masih sama dengan aplikasi staf (flavor Android belum dibuat).
+- **Satu aplikasi untuk staf & pasien** (keputusan akhir sesi; awalnya pasien dibuat sebagai entrypoint terpisah). Belum login → perkenalan pasien dengan tautan "Staf klinik? Masuk di sini"; login staf punya tautan "Pasien? Masuk dengan nomor HP". Rute pasien berawalan `/pasien/`.
 - Aturan bisnis yang menunggu workshop mitra (spec §16) **tidak dikarang**: komisi, paket, poin, DP, batas ubah jadwal hanya berupa isian/angka contoh mockup dan ditandai.
 
 ## 3. Riwayat commit
@@ -90,14 +90,17 @@ export PATH="$HOME/development/flutter/bin:$PATH"
 flutter analyze
 flutter test                      # unit & widget test
 flutter test test_screens --dart-define=SHOT_DIR=/tmp/shots   # render semua layar ke PNG
-flutter run                       # aplikasi staf
-flutter run -t lib/main_pasien.dart   # aplikasi pasien
+flutter run                       # satu aplikasi (staf & pasien)
 ```
 
 Akun contoh (mode mock): `dimas.terapis` / `terapis123`, `sinta.kasir` / `kasir123`, `rudi.owner` / `owner123`.
 
 ## 8. Berikutnya
 
-- Web WB-01..03 (form intake QR, status pembayaran, booking website) — saat user siap.
-- Flavor Android agar aplikasi pasien & staf bisa terpasang berdampingan.
 - Sambungkan layar slicing ke API setelah Fase 0 backend siap; jawab 18 pertanyaan workshop (§16).
+
+## 9. Keputusan sesudah catatan awal
+
+- iOS ditunda sampai user membeli Mac baru (MacBook Pro 2017 / macOS 13 tidak bisa Xcode 16+). Build cloud (Codemagic) dibahas, tidak dipakai.
+- Web WB-01..03 tidak dikerjakan.
+- Staf & pasien digabung jadi **satu aplikasi** (`lib/main.dart` saja; `main_pasien.dart` dihapus).

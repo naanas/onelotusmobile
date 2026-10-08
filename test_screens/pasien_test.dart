@@ -3,17 +3,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:onelotus_staff/pasien/pasien_app.dart';
+import 'package:onelotus_staff/app.dart';
+import 'package:onelotus_staff/router/app_router.dart';
+
+import '../test/auth/fakes.dart';
 
 import 'app_helpers.dart';
 
 Future<void> _go(WidgetTester t, String path) async {
-  pasienNavigatorKey.currentContext!.push(path);
+  rootNavigatorKey.currentContext!.push(path);
   await pumpFor(t);
 }
 
 Future<void> _back(WidgetTester t) async {
-  pasienNavigatorKey.currentState!.pop();
+  rootNavigatorKey.currentState!.pop();
   await pumpFor(t);
 }
 
@@ -25,8 +28,14 @@ void main() {
 
   testWidgets('aplikasi pasien', (t) async {
     phoneView(t);
-    await t.pumpWidget(shootable(const ProviderScope(child: PasienApp())));
-    await pumpFor(t, const Duration(seconds: 1));
+    final h = AuthHarness()..device.available = false;
+    await t.pumpWidget(
+      shootable(
+        ProviderScope(overrides: h.overrides, child: const OneLotusApp()),
+      ),
+    );
+    // Splash → belum login → perkenalan pasien.
+    await pumpFor(t, const Duration(seconds: 3));
     await shot(t, 'PS-01');
 
     // PS-02: nomor HP → kode.
@@ -74,18 +83,18 @@ void main() {
     await shot(t, 'PS-08');
 
     for (final (path, name) in const [
-      ('/latihan/calf-raise', 'PS-07'),
-      ('/bayar', 'PS-09'),
-      ('/jadwal', 'PS-10'),
-      ('/jadwal/ubah', 'PS-11'),
-      ('/riwayat', 'PS-12'),
-      ('/paket', 'PS-13'),
-      ('/paket/beli', 'PS-14'),
-      ('/struk', 'PS-15'),
-      ('/poin', 'PS-16'),
-      ('/notifikasi', 'PS-17'),
-      ('/alamat', 'PS-19'),
-      ('/hapus-akun', 'PS-20'),
+      ('/pasien/latihan/calf-raise', 'PS-07'),
+      ('/pasien/bayar', 'PS-09'),
+      ('/pasien/jadwal', 'PS-10'),
+      ('/pasien/jadwal/ubah', 'PS-11'),
+      ('/pasien/riwayat', 'PS-12'),
+      ('/pasien/paket', 'PS-13'),
+      ('/pasien/paket/beli', 'PS-14'),
+      ('/pasien/struk', 'PS-15'),
+      ('/pasien/poin', 'PS-16'),
+      ('/pasien/notifikasi', 'PS-17'),
+      ('/pasien/alamat', 'PS-19'),
+      ('/pasien/hapus-akun', 'PS-20'),
     ]) {
       await _go(t, path);
       await shot(t, name);

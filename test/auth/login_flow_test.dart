@@ -35,6 +35,10 @@ void main() {
       ProviderScope(overrides: h.overrides, child: const OneLotusApp()),
     );
     await settle(t);
+    // Satu aplikasi: belum login → perkenalan pasien; staf masuk lewat tautan.
+    expect(find.text('Pantau pemulihan Anda'), findsOneWidget);
+    await t.tap(find.text('Staf klinik? Masuk di sini'));
+    await settle(t);
     expect(find.text('Masuk ke One Lotus'), findsOneWidget);
 
     // Validasi kosong.

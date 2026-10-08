@@ -1,5 +1,8 @@
 import '../data/auth/auth_controller.dart';
 import '../data/models/staff_user.dart';
+import '../pasien/pasien_router.dart';
+import '../pasien/pasien_routes.dart';
+import '../pasien/pasien_session.dart';
 
 abstract final class Routes {
   static const splash = '/splash';
@@ -107,6 +110,22 @@ abstract final class Routes {
     lock,
     sessionExpired,
   };
+}
+
+/// Redirect aplikasi (satu aplikasi untuk staf & pasien).
+/// Sesi staf aktif (atau sedang dipulihkan/terkunci) selalu didahulukan.
+/// Belum login sebagai staf: bagian pasien, kecuali pengguna memilih login staf.
+String? appRedirect(AuthState auth, PasienSession pasien, String location) {
+  if (auth.phase != AuthPhase.signedOut) return authRedirect(auth, location);
+
+  final staffEntry =
+      location == Routes.login || location == Routes.forgotPassword;
+  if (staffEntry) return null;
+  if (PRoutes.isPasien(location)) {
+    return pasienRedirect(pasien.phase, location);
+  }
+  if (pasien.phase == PasienPhase.ready) return PRoutes.beranda;
+  return pasien.staffMode ? Routes.login : pasienEntry(pasien.phase);
 }
 
 /// Redirect go_router berdasarkan status login & peran (§3, §7).

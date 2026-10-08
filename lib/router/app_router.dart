@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../data/auth/auth_controller.dart';
 import '../features/akun/akun_page.dart';
+import '../pasien/pasien_router.dart';
+import '../pasien/pasien_session.dart';
 import '../features/auth/choose_context_page.dart';
 import '../features/auth/first_login_page.dart';
 import '../features/auth/forgot_password_page.dart';
@@ -96,15 +98,29 @@ StatefulShellBranch _branch(String path, Widget page) =>
 final routerProvider = Provider<GoRouter>((ref) {
   // Router dibuat sekali; perubahan status login memicu redirect lewat refreshListenable.
   final refresh = ValueNotifier<int>(0);
-  ref.listen(authProvider, (_, _) => refresh.value++);
+  ref.listen(authProvider, (prev, next) {
+    // Staf yang baru logout kembali ke login staf, bukan perkenalan pasien.
+    final wasIn =
+        prev != null &&
+        prev.phase != AuthPhase.booting &&
+        prev.phase != AuthPhase.signedOut;
+    if (wasIn && next.phase == AuthPhase.signedOut) {
+      ref.read(pasienSessionProvider.notifier).chooseStaff();
+    }
+    refresh.value++;
+  });
+  ref.listen(pasienSessionProvider, (_, _) => refresh.value++);
   ref.onDispose(refresh.dispose);
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: Routes.splash,
     refreshListenable: refresh,
-    redirect: (context, state) =>
-        authRedirect(ref.read(authProvider), state.matchedLocation),
+    redirect: (context, state) => appRedirect(
+      ref.read(authProvider),
+      ref.read(pasienSessionProvider),
+      state.matchedLocation,
+    ),
     routes: [
       GoRoute(
         path: Routes.splash,
@@ -480,6 +496,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: rootNavigatorKey,
         builder: (_, _) => const PengingatPage(),
       ),
+      // ── Pasien: Beranda · Latihan · Booking · Profil (satu aplikasi) ──
+      ...pasienRoutes(rootNavigatorKey),
     ],
   );
 });

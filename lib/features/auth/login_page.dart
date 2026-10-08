@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
 import '../../data/auth/auth_controller.dart';
+import '../../pasien/pasien_routes.dart';
+import '../../pasien/pasien_session.dart';
 import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
@@ -204,7 +206,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   onPressed: () => context.push(Routes.forgotPassword),
                 ),
               ),
-              const SizedBox(height: 48),
+              Center(
+                child: OlButton.text(
+                  label: 'Pasien? Masuk dengan nomor HP',
+                  onPressed: () {
+                    ref.read(pasienSessionProvider.notifier).choosePatient();
+                    context.go(PRoutes.masuk);
+                  },
+                ),
+              ),
+              const SizedBox(height: 36),
               Text(
                 'Gagal ${AuthRules.maxLoginAttempts} kali akan mengunci login selama ${AuthRules.loginLockout.inMinutes} menit.',
                 textAlign: TextAlign.center,

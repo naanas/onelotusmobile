@@ -16,8 +16,9 @@ Backend: sistem Laravel yang sudah ada, dinaikkan versinya dan dibuka sebagai RE
 
 ## Keputusan yang sudah diambil
 - **Satu aplikasi untuk staf & pasien** (diputuskan user, 8 Okt 2026; menggantikan rencana aplikasi pasien terpisah).
-  Belum login → perkenalan pasien (PS-01) dengan tautan "Staf klinik? Masuk di sini"; staf menu sesuai peran,
-  rute pasien berawalan `/pasien/` (`lib/pasien/`). Redirect gabungan: `appRedirect` di `lib/router/routes.dart`.
+  Satu layar masuk (UM-04) mengenali isian otomatis: nomor HP → pasien (OTP WhatsApp), username → staf
+  (+ password, menu sesuai peran). Perkenalan pasien (PS-01) hanya saat pertama dibuka. Rute pasien berawalan
+  `/pasien/` (`lib/pasien/`). Redirect gabungan: `appRedirect` di `lib/router/routes.dart`.
 - Android dulu; iOS menyusul dari kode yang sama.
 - Mode offline wajib untuk rekam sesi (Fase 1).
 

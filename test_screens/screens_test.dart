@@ -24,13 +24,14 @@ Future<void> pin(WidgetTester t, String p) async {
 }
 
 Future<void> login(WidgetTester t, String u, String p) async {
-  // Satu aplikasi: dari perkenalan pasien, staf masuk lewat tautan.
-  final staff = find.text('Staf klinik? Masuk di sini');
-  if (staff.evaluate().isNotEmpty) {
-    await t.tap(staff);
+  // Satu aplikasi: lewati perkenalan pasien → layar masuk bersama.
+  final skip = find.text('Lewati');
+  if (skip.evaluate().isNotEmpty) {
+    await t.tap(skip);
     await pumpFor(t, const Duration(seconds: 1));
   }
   await t.enterText(find.byType(TextFormField).at(0), u);
+  await pumpFor(t, const Duration(milliseconds: 400));
   await t.enterText(find.byType(TextFormField).at(1), p);
   await t.tap(find.text('Masuk'));
   await pumpFor(t, const Duration(seconds: 1));
@@ -61,7 +62,7 @@ void main() {
     await shot(t, '01_splash_to_login');
     await pumpFor(t, const Duration(seconds: 2));
     await shot(t, '02_onboarding_pasien');
-    await t.tap(find.text('Staf klinik? Masuk di sini'));
+    await t.tap(find.text('Lewati'));
     await pumpFor(t, const Duration(seconds: 1));
     await shot(t, '02_login');
     await login(t, 'sinta.kasir', 'kasir123');

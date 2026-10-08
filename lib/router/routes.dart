@@ -112,20 +112,27 @@ abstract final class Routes {
   };
 }
 
-/// Redirect aplikasi (satu aplikasi untuk staf & pasien).
+/// Redirect aplikasi (satu aplikasi untuk staf & pasien, satu layar masuk).
 /// Sesi staf aktif (atau sedang dipulihkan/terkunci) selalu didahulukan.
-/// Belum login sebagai staf: bagian pasien, kecuali pengguna memilih login staf.
+/// Belum login: perkenalan pasien sekali, lalu layar masuk bersama yang
+/// mengenali nomor HP (pasien) atau username (staf).
 String? appRedirect(AuthState auth, PasienSession pasien, String location) {
   if (auth.phase != AuthPhase.signedOut) return authRedirect(auth, location);
 
-  final staffEntry =
-      location == Routes.login || location == Routes.forgotPassword;
-  if (staffEntry) return null;
-  if (PRoutes.isPasien(location)) {
-    return pasienRedirect(pasien.phase, location);
+  // Tujuan menurut tahap pasien; null = pasien sudah masuk.
+  final target = switch (pasien.phase) {
+    PasienPhase.otp when !pasien.awaitingCode => Routes.login,
+    final p => pasienEntry(p),
+  };
+  final atLogin = location == Routes.login || location == Routes.forgotPassword;
+
+  if (target == null) {
+    // Pasien sudah masuk: layar masuk & layar staf → beranda pasien.
+    if (PRoutes.isPasien(location) && !PRoutes.isEntry(location)) return null;
+    return PRoutes.beranda;
   }
-  if (pasien.phase == PasienPhase.ready) return PRoutes.beranda;
-  return pasien.staffMode ? Routes.login : pasienEntry(pasien.phase);
+  if (atLogin && target != PRoutes.onboarding) return null;
+  return location == target ? null : target;
 }
 
 /// Redirect go_router berdasarkan status login & peran (§3, §7).

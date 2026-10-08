@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import '../pasien_session.dart';
@@ -144,11 +142,6 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                     label: _i == _slides.length - 1 ? 'Mulai' : 'Lanjut',
                     onPressed: _next,
                   ),
-                  OlButton.text(
-                    label: 'Staf klinik? Masuk di sini',
-                    expand: true,
-                    onPressed: () => _toStaff(context, ref),
-                  ),
                 ],
               ),
             ],
@@ -157,10 +150,4 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       ),
     );
   }
-}
-
-/// Satu aplikasi untuk staf & pasien: staf beralih ke login username.
-void _toStaff(BuildContext context, WidgetRef ref) {
-  ref.read(pasienSessionProvider.notifier).chooseStaff();
-  context.go(Routes.login);
 }

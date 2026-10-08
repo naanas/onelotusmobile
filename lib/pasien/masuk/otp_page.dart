@@ -10,7 +10,8 @@ import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import '../pasien_session.dart';
 
-/// PS-02 Masuk: nomor HP → kode OTP 6 digit lewat WhatsApp.
+/// PS-02 Masukkan kode: nomor HP dikenali di layar masuk bersama (UM-04),
+/// lalu kode OTP 6 digit dikirim lewat WhatsApp.
 /// Slicing UI: kode apa pun diterima kecuali `000000` (contoh kode salah).
 class OtpPage extends ConsumerStatefulWidget {
   const OtpPage({super.key});
@@ -20,47 +21,47 @@ class OtpPage extends ConsumerStatefulWidget {
 }
 
 class _OtpPageState extends ConsumerState<OtpPage> {
-  final _phone = TextEditingController();
   final _code = TextEditingController();
   final _codeFocus = FocusNode();
-  bool _sent = false;
   bool _busy = false;
   String? _error;
   int _resendIn = 0;
   Timer? _timer;
 
   @override
+  void initState() {
+    super.initState();
+    // Kode sudah dikirim saat nomor dikenali di layar masuk.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _startTimer();
+      _codeFocus.requestFocus();
+    });
+  }
+
+  @override
   void dispose() {
     _timer?.cancel();
-    _phone.dispose();
     _code.dispose();
     _codeFocus.dispose();
     super.dispose();
   }
 
-  String get _digits => _phone.text.replaceAll(RegExp(r'\D'), '');
+  String get _phone => ref.read(pasienSessionProvider).phone;
 
-  String get _pretty {
-    final d = _digits;
-    final parts = <String>[];
-    for (var i = 0; i < d.length; i += 4) {
-      parts.add(d.substring(i, (i + 4).clamp(0, d.length)));
-    }
-    return parts.join(' ');
-  }
-
-  Future<void> _send() async {
-    setState(() => _busy = true);
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
+  Future<void> _resend() async {
     setState(() {
-      _busy = false;
-      _sent = true;
       _error = null;
       _code.clear();
     });
+    context.feedback.info('Kode baru dikirim lewat WhatsApp.');
     _startTimer();
-    _codeFocus.requestFocus();
+  }
+
+  /// Kembali ke layar masuk untuk mengganti nomor.
+  void _changeNumber() {
+    ref.read(pasienSessionProvider.notifier).backToLogin();
+    context.go(Routes.login);
   }
 
   void _startTimer() {
@@ -84,62 +85,17 @@ class _OtpPageState extends ConsumerState<OtpPage> {
       });
       return;
     }
-    ref.read(pasienSessionProvider.notifier).verified(_pretty);
+    ref.read(pasienSessionProvider.notifier).verified();
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.ol;
     final t = context.olText;
-    if (!_sent) {
-      return OlDetailScaffold(
-        title: 'Masuk',
-        showBack: false,
-        background: c.surface,
-        foot: [
-          OlButton(
-            label: 'Kirim kode lewat WhatsApp',
-            loading: _busy,
-            onPressed: _digits.length >= 10 ? _send : null,
-          ),
-        ],
-        children: [
-          Text(
-            'Masukkan nomor HP yang terdaftar di klinik. Kami kirim kode masuk lewat WhatsApp.',
-            style: t.body.copyWith(fontSize: 15, color: c.muted),
-          ),
-          OlTextField(
-            label: 'Nomor HP',
-            isRequired: true,
-            controller: _phone,
-            hint: '0812 3456 7890',
-            keyboardType: TextInputType.phone,
-            autofillHints: const [AutofillHints.telephoneNumber],
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[\d ]')),
-            ],
-            error: _digits.isNotEmpty && _digits.length < 10
-                ? 'Nomor HP belum lengkap — minimal 10 digit.'
-                : null,
-            onChanged: (_) => setState(() {}),
-          ),
-          Center(
-            child: OlButton.text(
-              label: 'Staf klinik? Masuk dengan username',
-              onPressed: () {
-                ref.read(pasienSessionProvider.notifier).chooseStaff();
-                context.go(Routes.login);
-              },
-            ),
-          ),
-        ],
-      );
-    }
-
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) setState(() => _sent = false);
+        if (!didPop) _changeNumber();
       },
       child: OlDetailScaffold(
         title: 'Masukkan kode',
@@ -157,7 +113,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
               text: 'Kode 6 digit telah dikirim lewat WhatsApp ke ',
               children: [
                 TextSpan(
-                  text: _pretty,
+                  text: _phone,
                   style: t.mono.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
@@ -169,7 +125,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
                   alignment: PlaceholderAlignment.baseline,
                   baseline: TextBaseline.alphabetic,
                   child: GestureDetector(
-                    onTap: () => setState(() => _sent = false),
+                    onTap: _changeNumber,
                     child: Text(
                       'Ubah nomor',
                       style: t.body.copyWith(
@@ -210,7 +166,7 @@ class _OtpPageState extends ConsumerState<OtpPage> {
                     ),
                     style: t.body.copyWith(fontSize: 14, color: c.muted),
                   )
-                : OlButton.text(label: 'Kirim ulang kode', onPressed: _send),
+                : OlButton.text(label: 'Kirim ulang kode', onPressed: _resend),
           ),
           const OlBanner(
             message:

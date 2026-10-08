@@ -35,18 +35,27 @@ void main() {
       ProviderScope(overrides: h.overrides, child: const OneLotusApp()),
     );
     await settle(t);
-    // Satu aplikasi: belum login → perkenalan pasien; staf masuk lewat tautan.
+    // Satu aplikasi: pertama kali → perkenalan pasien → layar masuk bersama.
     expect(find.text('Pantau pemulihan Anda'), findsOneWidget);
-    await t.tap(find.text('Staf klinik? Masuk di sini'));
+    await t.tap(find.text('Lewati'));
     await settle(t);
     expect(find.text('Masuk ke One Lotus'), findsOneWidget);
 
     // Validasi kosong.
     await t.tap(find.text('Masuk'));
     await t.pump();
-    expect(find.text('Username wajib diisi.'), findsOneWidget);
+    expect(find.text('Isi nomor HP atau username.'), findsOneWidget);
 
+    // Nomor HP dikenali sebagai pasien: tanpa kolom password.
+    await t.enterText(find.byType(TextFormField).at(0), '0812 3456 7890');
+    await t.pump();
+    expect(find.text('Kirim kode lewat WhatsApp'), findsOneWidget);
+    expect(find.text('Password'), findsNothing);
+
+    // Username dikenali sebagai staf: kolom password muncul.
     await t.enterText(find.byType(TextFormField).at(0), 'sinta.kasir');
+    await settle(t);
+    expect(find.text('Password'), findsWidgets);
     await t.enterText(find.byType(TextFormField).at(1), 'salah');
     await t.tap(find.text('Masuk'));
     await settle(t);

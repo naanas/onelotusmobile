@@ -13,7 +13,9 @@ import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 
-/// UM-04 Login (+ UM-04b terkunci setelah gagal 5×).
+/// UM-04 Masuk — satu pintu untuk staf & pasien (+ UM-04b terkunci setelah gagal 5×).
+/// Isian dikenali otomatis: nomor HP → pasien (kode OTP WhatsApp, PS-02);
+/// selain itu → username staf + password.
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
@@ -72,15 +74,40 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     });
   }
 
+  /// Hanya angka (boleh +, spasi, tanda hubung) → dianggap nomor HP.
+  static final _phoneLike = RegExp(r'^\+?[\d\s-]+$');
+
+  bool get _isPhone {
+    final v = _username.text.trim();
+    return v.isNotEmpty && _phoneLike.hasMatch(v);
+  }
+
+  bool get _isStaff => _username.text.trim().isNotEmpty && !_isPhone;
+
+  /// 08xx / 628xx / +628xx → "0812 3456 7890".
+  static String _normalizePhone(String raw) {
+    var d = raw.replaceAll(RegExp(r'\D'), '');
+    if (d.startsWith('62')) d = '0${d.substring(2)}';
+    return [
+      for (var i = 0; i < d.length; i += 4)
+        d.substring(i, (i + 4).clamp(0, d.length)),
+    ].join(' ');
+  }
+
   Future<void> _submit() async {
-    final username = _username.text.trim();
+    final id = _username.text.trim();
+    if (id.isEmpty) {
+      setState(() => _usernameError = 'Isi nomor HP atau username.');
+      return;
+    }
+    if (_isPhone) return _submitPhone(id);
+
+    final username = id;
     final password = _password.text;
     setState(() {
-      _usernameError = username.isEmpty
-          ? 'Username wajib diisi.'
-          : (username.contains(' ')
-                ? 'Username tidak boleh berisi spasi.'
-                : null);
+      _usernameError = username.contains(' ')
+          ? 'Username tidak boleh berisi spasi.'
+          : null;
       _passwordError = password.isEmpty ? 'Password wajib diisi.' : null;
       _formError = null;
     });
@@ -114,6 +141,27 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
+  /// Pasien: kirim kode OTP lewat WhatsApp → layar kode (PS-02).
+  Future<void> _submitPhone(String raw) async {
+    final digits = raw.replaceAll(RegExp(r'\D'), '');
+    if (digits.length < 10) {
+      setState(
+        () => _usernameError = 'Nomor HP belum lengkap — minimal 10 digit.',
+      );
+      return;
+    }
+    setState(() {
+      _usernameError = null;
+      _busy = true;
+    });
+    // Slicing UI: anggap kode terkirim; nanti POST /pasien/otp.
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+    setState(() => _busy = false);
+    ref.read(pasienSessionProvider.notifier).requestOtp(_normalizePhone(raw));
+    context.go(PRoutes.masuk);
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.ol;
@@ -140,7 +188,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Gunakan akun staf dari admin klinik.',
+                'Pasien: pakai nomor HP. Staf klinik: pakai username dari admin.',
                 style: t.body.copyWith(fontSize: 15, color: c.muted),
               ),
               const SizedBox(height: 28),
@@ -154,73 +202,88 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 const SizedBox(height: 20),
               ],
               OlTextField(
-                label: 'Username',
+                label: 'Nomor HP atau username',
                 isRequired: true,
                 controller: _username,
                 error: _usernameError,
-                hint: 'mis. dimas.terapis',
+                hint: 'mis. 0812 3456 7890 atau dimas.terapis',
                 textInputAction: TextInputAction.next,
-                autofillHints: const [AutofillHints.username],
-                inputFormatters: [
-                  FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                autofillHints: const [
+                  AutofillHints.username,
+                  AutofillHints.telephoneNumber,
                 ],
-                onChanged: (_) {
-                  if (_usernameError != null) {
-                    setState(() => _usernameError = null);
-                  }
+                onChanged: (_) => setState(() => _usernameError = null),
+                onSubmitted: (_) {
+                  if (_isPhone && !_busy) _submit();
                 },
               ),
-              const SizedBox(height: 20),
-              OlTextField(
-                label: 'Password',
-                isRequired: true,
-                controller: _password,
-                obscure: true,
-                hint: 'Password',
-                error: _passwordError ?? _formError,
-                textInputAction: TextInputAction.done,
-                autofillHints: const [AutofillHints.password],
-                onSubmitted: (_) => locked || _busy ? null : _submit(),
-                onChanged: (_) {
-                  if (_passwordError != null) {
-                    setState(() => _passwordError = null);
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              OlCheckbox(
-                label: 'Ingat perangkat ini',
-                value: _remember,
-                onChanged: (v) => setState(() => _remember = v),
+              // Kolom staf muncul hanya bila yang diketik username.
+              AnimatedSize(
+                duration: OlMotion.of(context),
+                curve: OlMotion.curve,
+                alignment: Alignment.topCenter,
+                child: _isStaff
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(height: 20),
+                          OlTextField(
+                            label: 'Password',
+                            isRequired: true,
+                            controller: _password,
+                            obscure: true,
+                            hint: 'Password',
+                            error: _passwordError ?? _formError,
+                            textInputAction: TextInputAction.done,
+                            autofillHints: const [AutofillHints.password],
+                            onSubmitted: (_) =>
+                                locked || _busy ? null : _submit(),
+                            onChanged: (_) {
+                              if (_passwordError != null) {
+                                setState(() => _passwordError = null);
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          OlCheckbox(
+                            label: 'Ingat perangkat ini',
+                            value: _remember,
+                            onChanged: (v) => setState(() => _remember = v),
+                          ),
+                        ],
+                      )
+                    : const SizedBox(width: double.infinity),
               ),
               const SizedBox(height: 20),
               OlButton(
-                label: 'Masuk',
+                label: _isPhone ? 'Kirim kode lewat WhatsApp' : 'Masuk',
                 loading: _busy,
-                onPressed: locked ? null : _submit,
+                onPressed: locked && !_isPhone ? null : _submit,
               ),
-              const SizedBox(height: 12),
-              Center(
-                child: OlButton.text(
-                  label: 'Lupa password?',
-                  onPressed: () => context.push(Routes.forgotPassword),
+              if (_isPhone) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'Kode masuk dikirim lewat WhatsApp ke nomor ini.',
+                  textAlign: TextAlign.center,
+                  style: t.caption.copyWith(fontSize: 13),
                 ),
-              ),
-              Center(
-                child: OlButton.text(
-                  label: 'Pasien? Masuk dengan nomor HP',
-                  onPressed: () {
-                    ref.read(pasienSessionProvider.notifier).choosePatient();
-                    context.go(PRoutes.masuk);
-                  },
+              ],
+              if (!_isPhone) ...[
+                const SizedBox(height: 12),
+                Center(
+                  child: OlButton.text(
+                    label: 'Lupa password?',
+                    onPressed: () => context.push(Routes.forgotPassword),
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 36),
-              Text(
-                'Gagal ${AuthRules.maxLoginAttempts} kali akan mengunci login selama ${AuthRules.loginLockout.inMinutes} menit.',
-                textAlign: TextAlign.center,
-                style: t.caption.copyWith(fontSize: 13),
-              ),
+              if (_isStaff)
+                Text(
+                  'Gagal ${AuthRules.maxLoginAttempts} kali akan mengunci login selama ${AuthRules.loginLockout.inMinutes} menit.',
+                  textAlign: TextAlign.center,
+                  style: t.caption.copyWith(fontSize: 13),
+                ),
             ],
           ),
         ),

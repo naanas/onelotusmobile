@@ -99,13 +99,15 @@ final routerProvider = Provider<GoRouter>((ref) {
   // Router dibuat sekali; perubahan status login memicu redirect lewat refreshListenable.
   final refresh = ValueNotifier<int>(0);
   ref.listen(authProvider, (prev, next) {
-    // Staf yang baru logout kembali ke login staf, bukan perkenalan pasien.
+    // Staf yang baru logout langsung ke layar masuk, tanpa perkenalan pasien.
     final wasIn =
         prev != null &&
         prev.phase != AuthPhase.booting &&
         prev.phase != AuthPhase.signedOut;
-    if (wasIn && next.phase == AuthPhase.signedOut) {
-      ref.read(pasienSessionProvider.notifier).chooseStaff();
+    if (wasIn &&
+        next.phase == AuthPhase.signedOut &&
+        ref.read(pasienSessionProvider).phase == PasienPhase.onboarding) {
+      ref.read(pasienSessionProvider.notifier).finishOnboarding();
     }
     refresh.value++;
   });

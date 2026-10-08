@@ -104,3 +104,4 @@ Akun contoh (mode mock): `dimas.terapis` / `terapis123`, `sinta.kasir` / `kasir1
 - iOS ditunda sampai user membeli Mac baru (MacBook Pro 2017 / macOS 13 tidak bisa Xcode 16+). Build cloud (Codemagic) dibahas, tidak dipakai.
 - Web WB-01..03 tidak dikerjakan.
 - Staf & pasien digabung jadi **satu aplikasi** (`lib/main.dart` saja; `main_pasien.dart` dihapus).
+- **Login otomatis mengenali pengguna**: satu isian "Nomor HP atau username". Nomor HP (hanya angka/+/spasi) → pasien, kode OTP WhatsApp; selain itu → staf, kolom password muncul. Tautan "Staf klinik? / Pasien?" dihapus.

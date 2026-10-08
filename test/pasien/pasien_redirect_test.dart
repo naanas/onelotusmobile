@@ -22,26 +22,35 @@ void main() {
     expect(pasienRedirect(PasienPhase.ready, PRoutes.poin), isNull);
   });
 
-  group('satu aplikasi staf & pasien', () {
+  group('satu aplikasi, satu layar masuk', () {
     const out = AuthState(phase: AuthPhase.signedOut);
 
-    test('belum login: perkenalan pasien, login staf tetap bisa dibuka', () {
+    test('pertama kali: perkenalan pasien dulu', () {
       const p = PasienSession();
       expect(appRedirect(out, p, Routes.splash), PRoutes.onboarding);
-      expect(appRedirect(out, p, Routes.login), isNull);
-      expect(appRedirect(out, p, Routes.forgotPassword), isNull);
-      expect(appRedirect(out, p, Routes.terapisJadwal), PRoutes.onboarding);
+      expect(appRedirect(out, p, Routes.login), PRoutes.onboarding);
+      expect(appRedirect(out, p, PRoutes.onboarding), isNull);
     });
 
-    test('memilih staf (atau baru logout staf): ke login staf', () {
-      const p = PasienSession(staffMode: true);
+    test('sesudah perkenalan: layar masuk bersama', () {
+      const p = PasienSession(phase: PasienPhase.otp);
       expect(appRedirect(out, p, Routes.splash), Routes.login);
+      expect(appRedirect(out, p, Routes.login), isNull);
+      expect(appRedirect(out, p, Routes.forgotPassword), isNull);
+      expect(appRedirect(out, p, PRoutes.masuk), Routes.login);
       expect(appRedirect(out, p, Routes.kasirAntrian), Routes.login);
     });
 
-    test('pasien siap: layar staf diarahkan ke beranda pasien', () {
+    test('nomor HP dikenali: ke layar kode', () {
+      const p = PasienSession(phase: PasienPhase.otp, phone: '0812 3456 7890');
+      expect(appRedirect(out, p, PRoutes.masuk), isNull);
+      expect(appRedirect(out, p, PRoutes.beranda), PRoutes.masuk);
+    });
+
+    test('pasien siap: layar masuk & staf diarahkan ke beranda pasien', () {
       const p = PasienSession(phase: PasienPhase.ready);
       expect(appRedirect(out, p, Routes.splash), PRoutes.beranda);
+      expect(appRedirect(out, p, Routes.login), PRoutes.beranda);
       expect(appRedirect(out, p, PRoutes.paket), isNull);
       expect(appRedirect(out, p, Routes.ownerRingkasan), PRoutes.beranda);
     });

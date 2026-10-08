@@ -38,14 +38,14 @@ void main() {
     await pumpFor(t, const Duration(seconds: 3));
     await shot(t, 'PS-01');
 
-    // PS-02: nomor HP → kode.
+    // Layar masuk bersama: nomor HP dikenali → kode (PS-02).
     await t.tap(find.text('Lewati'));
     await pumpFor(t);
     await t.enterText(find.byType(TextField).first, '081234567890');
-    await pumpFor(t, const Duration(milliseconds: 300));
+    await pumpFor(t, const Duration(milliseconds: 400));
     await shot(t, 'PS-02-nomor');
     await t.tap(find.text('Kirim kode lewat WhatsApp'));
-    await pumpFor(t);
+    await pumpFor(t, const Duration(seconds: 1));
     await t.enterText(find.byType(TextField).first, '482');
     await pumpFor(t, const Duration(milliseconds: 300));
     await shot(t, 'PS-02');

@@ -108,7 +108,13 @@ class _JadwalSayaPageState extends State<JadwalSayaPage> {
               children: [
                 Row(
                   children: [
-                    const OlTag('Menunggu konfirmasi', tone: OlTagTone.muted),
+                    const Flexible(
+                      child: OlTag(
+                        'Menunggu konfirmasi',
+                        tone: OlTagTone.muted,
+                      ),
+                    ),
+                    const SizedBox(width: OlSpace.sm),
                     const Spacer(),
                     Text(
                       'dikirim 06.40',

@@ -58,18 +58,11 @@ class _BodyMapState extends State<BodyMap> with TickerProviderStateMixin {
       ? SynchronousFuture(widget.data!)
       : BodyMapData.load();
 
-  late final _color = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 150),
-  );
-  late final _pulse = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 320),
-  );
-  late final _flash = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 500),
-  );
+  // Dibuat di initState (bukan `late` malas): dispose() tidak boleh membuat
+  // controller baru saat elemen sudah dilepas dari pohon.
+  late final AnimationController _color;
+  late final AnimationController _pulse;
+  late final AnimationController _flash;
 
   String? _colorKey;
   Color _colorFrom = BodyColors.base;
@@ -79,6 +72,23 @@ class _BodyMapState extends State<BodyMap> with TickerProviderStateMixin {
   Timer? _tipTimer;
 
   bool get _reduced => OlMotion.reduced(context);
+
+  @override
+  void initState() {
+    super.initState();
+    _color = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+    );
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
+    _flash = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+  }
 
   @override
   void dispose() {
@@ -612,24 +622,26 @@ class _AreaChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Semantics(
-            container: true,
-            button: true,
-            label: '${chip.text}, ketuk untuk menyorot di peta',
-            excludeSemantics: true,
-            child: InkWell(
-              onTap: onTap,
-              borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(OlRadius.pill),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 9, 4, 9),
-                child: Text(
-                  chip.text,
-                  style: t.body.copyWith(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w600,
-                    color: fg,
+          Flexible(
+            child: Semantics(
+              container: true,
+              button: true,
+              label: '${chip.text}, ketuk untuk menyorot di peta',
+              excludeSemantics: true,
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: const BorderRadius.horizontal(
+                  left: Radius.circular(OlRadius.pill),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 9, 4, 9),
+                  child: Text(
+                    chip.text,
+                    style: t.body.copyWith(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: fg,
+                    ),
                   ),
                 ),
               ),

@@ -81,12 +81,14 @@ class _QrisPanelState extends State<QrisPanel> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  expired ? 'Kode QR kedaluwarsa' : 'Menunggu pembayaran · ',
-                  style: t.body.copyWith(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: expired ? c.crit : c.warn,
+                Flexible(
+                  child: Text(
+                    expired ? 'Kode QR kedaluwarsa' : 'Menunggu pembayaran · ',
+                    style: t.body.copyWith(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: expired ? c.crit : c.warn,
+                    ),
                   ),
                 ),
                 if (!expired)

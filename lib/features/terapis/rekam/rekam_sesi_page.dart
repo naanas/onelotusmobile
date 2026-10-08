@@ -504,9 +504,11 @@ class _RekamSesiPageState extends State<RekamSesiPage> {
                   children: [
                     OlIcon(OlIcons.lock, size: 16, color: c.muted),
                     const SizedBox(width: 6),
-                    Text(
-                      'Rontgen berlabel akses terbatas',
-                      style: t.caption.copyWith(fontSize: 13),
+                    Expanded(
+                      child: Text(
+                        'Rontgen berlabel akses terbatas',
+                        style: t.caption.copyWith(fontSize: 13),
+                      ),
                     ),
                   ],
                 ),

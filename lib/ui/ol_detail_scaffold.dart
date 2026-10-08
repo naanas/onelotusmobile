@@ -92,8 +92,20 @@ class OlDetailScaffold extends StatelessWidget {
                                         Navigator.of(context).maybePop(),
                                   )
                                 : const OlBackButton(),
-                          const Spacer(),
-                          ...actions,
+                          const SizedBox(width: OlSpace.sm),
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerRight,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: actions,
+                                ),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     if (top != null) ...[

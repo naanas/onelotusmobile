@@ -69,7 +69,9 @@ class OlChip extends StatelessWidget {
                         onTap!();
                       },
                 child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: small ? 12 : 15),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: expand ? 8 : (small ? 12 : 15),
+                  ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -85,12 +87,19 @@ class OlChip extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                       ],
-                      Text(
-                        label,
-                        style: context.olText.body.copyWith(
-                          fontSize: small ? 12.5 : 13,
-                          fontWeight: FontWeight.w600,
-                          color: fg,
+                      // Label mengecil (bukan meluber) bila ruang sempit / huruf besar.
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            style: context.olText.body.copyWith(
+                              fontSize: small ? 12.5 : 13,
+                              fontWeight: FontWeight.w600,
+                              color: fg,
+                            ),
+                          ),
                         ),
                       ),
                       if (onRemove != null) ...[

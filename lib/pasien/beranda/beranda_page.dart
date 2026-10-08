@@ -190,10 +190,12 @@ class _BerandaPageState extends State<BerandaPage> {
                 style: t.body.copyWith(fontSize: 14, color: c.muted),
               ),
               const SizedBox(height: 8),
-              Row(
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
                 children: [
                   const OlTag('Sisa paket 1 sesi', tone: OlTagTone.warn),
-                  const Spacer(),
                   OlButton.text(
                     label: 'Ubah jadwal',
                     onPressed: () => context.push(PRoutes.ubahJadwal),

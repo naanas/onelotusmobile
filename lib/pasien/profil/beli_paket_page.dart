@@ -152,7 +152,12 @@ class _PackageCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(p.detail, style: t.body.copyWith(color: c.muted)),
                   const SizedBox(height: 8),
-                  Row(
+                  // Harga & label hemat turun ke baris baru bila tak muat.
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 6,
                     children: [
                       Text(
                         Fmt.money(p.price),
@@ -161,7 +166,6 @@ class _PackageCard extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const Spacer(),
                       if (p.saving != null)
                         OlTag(
                           'Hemat ${Fmt.money(p.saving!)}',

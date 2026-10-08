@@ -52,7 +52,8 @@ class OlBarChart extends StatelessWidget {
       label: semanticLabel,
       excludeSemantics: true,
       child: SizedBox(
-        height: height + 52,
+        // Angka di atas + label di bawah ikut membesar bersama ukuran huruf sistem.
+        height: height + MediaQuery.textScalerOf(context).scale(36) + 16,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -60,36 +61,58 @@ class OlBarChart extends StatelessWidget {
               if (i > 0) SizedBox(width: gap),
               Expanded(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        b.display ?? fmt(b.value),
-                        style: t.body.copyWith(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TweenAnimationBuilder<double>(
-                      tween: Tween(begin: 0, end: max == 0 ? 0 : b.value / max),
-                      duration: OlMotion.of(context, OlMotion.slow),
-                      curve: OlMotion.curve,
-                      builder: (_, f, _) => Container(
-                        height: (height * f).clamp(8, height),
-                        decoration: BoxDecoration(
-                          color: b.highlight
-                              ? c.brandDeep
-                              : b.dim
-                              ? const Color(0xFFA9BBC9)
-                              : const Color(0xFF9BCBE8),
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(10),
-                            bottom: Radius.circular(3),
-                          ),
-                        ),
+                    // Angka + batang mengisi sisa tinggi; batang mengalah pada
+                    // ukuran huruf agar tidak pernah meluber.
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, box) {
+                          final reserve =
+                              MediaQuery.textScalerOf(context).scale(13) * 1.6 +
+                              6;
+                          final barMax = (box.maxHeight - reserve).clamp(
+                            8.0,
+                            double.infinity,
+                          );
+                          return Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  b.display ?? fmt(b.value),
+                                  style: t.body.copyWith(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              TweenAnimationBuilder<double>(
+                                tween: Tween(
+                                  begin: 0,
+                                  end: max == 0 ? 0 : b.value / max,
+                                ),
+                                duration: OlMotion.of(context, OlMotion.slow),
+                                curve: OlMotion.curve,
+                                builder: (_, f, _) => Container(
+                                  height: (barMax * f).clamp(8, barMax),
+                                  decoration: BoxDecoration(
+                                    color: b.highlight
+                                        ? c.brandDeep
+                                        : b.dim
+                                        ? const Color(0xFFA9BBC9)
+                                        : const Color(0xFF9BCBE8),
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(10),
+                                      bottom: Radius.circular(3),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(height: 8),

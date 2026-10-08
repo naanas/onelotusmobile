@@ -95,6 +95,29 @@ class AkunPage extends ConsumerWidget {
                 showChevron: true,
                 onTap: () => context.push(Routes.chooseContext),
               ),
+            if (role == Role.kasir) ...[
+              OlListItem(
+                title: 'Terima kas terapis',
+                subtitle: 'Dimas · Rp445.000 menunggu',
+                trailing: const OlTag('1', tone: OlTagTone.warn),
+                onTap: () => context.push(Routes.kasirTerimaKas),
+              ),
+              OlListItem(
+                title: 'Verifikasi transfer',
+                trailing: const OlTag('2', tone: OlTagTone.warn),
+                onTap: () => context.push(Routes.kasirVerifikasiTransfer),
+              ),
+              OlListItem(
+                title: 'Tagihan belum lunas',
+                showChevron: true,
+                onTap: () => context.push(Routes.kasirPiutang),
+              ),
+              OlListItem(
+                title: 'Pindah sesi massal',
+                showChevron: true,
+                onTap: () => context.push(Routes.kasirPindahMassal),
+              ),
+            ],
             if (role == Role.terapis) ...[
               OlListItem(
                 title: 'Kas dibawa',

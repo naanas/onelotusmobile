@@ -48,7 +48,7 @@ class OlSegmented<T> extends StatelessWidget {
                     constraints: const BoxConstraints(minHeight: 40),
                     alignment: Alignment.center,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
+                      horizontal: 6,
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
@@ -70,13 +70,18 @@ class OlSegmented<T> extends StatelessWidget {
                             ]
                           : null,
                     ),
-                    child: Text(
-                      e.value,
-                      textAlign: TextAlign.center,
-                      style: t.body.copyWith(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: e.key == value ? c.fg : c.muted,
+                    // Satu baris; label panjang mengecil, bukan patah kata.
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        e.value,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        style: t.body.copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: e.key == value ? c.fg : c.muted,
+                        ),
                       ),
                     ),
                   ),

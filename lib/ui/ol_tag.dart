@@ -27,6 +27,10 @@ class OlTag extends StatelessWidget {
     tone: s.tone,
   );
 
+  /// Salinan dengan label/warna lain (mis. label pendek di ruang sempit).
+  OlTag withLabel(String label, [OlTagTone? tone]) =>
+      OlTag(label, key: key, tone: tone ?? this.tone, icon: icon);
+
   @override
   Widget build(BuildContext context) {
     final c = context.ol;

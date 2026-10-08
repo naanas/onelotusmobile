@@ -14,6 +14,7 @@ class OlChip extends StatelessWidget {
     this.onRemove,
     this.icon,
     this.small = false,
+    this.expand = false,
   });
 
   final String label;
@@ -24,6 +25,9 @@ class OlChip extends StatelessWidget {
   final VoidCallback? onRemove;
   final OlIconData? icon;
   final bool small;
+
+  /// Isi lebar penuh induk (mis. chip nominal dalam [Expanded]).
+  final bool expand;
 
   @override
   Widget build(BuildContext context) {
@@ -41,11 +45,14 @@ class OlChip extends StatelessWidget {
         // Area sentuh minimal 48dp walau chip tampak lebih pendek.
         constraints: const BoxConstraints(minHeight: OlSize.minTouch),
         child: Center(
-          widthFactor: 1,
+          widthFactor: expand ? null : 1,
           child: AnimatedContainer(
             duration: OlMotion.of(context, OlMotion.fast),
             curve: OlMotion.curve,
-            constraints: BoxConstraints(minHeight: small ? 32 : 38),
+            constraints: BoxConstraints(
+              minHeight: small ? 32 : 38,
+              minWidth: expand ? double.infinity : 0,
+            ),
             decoration: BoxDecoration(
               color: selected ? c.brandDeep : c.surface,
               borderRadius: radius,
@@ -65,6 +72,7 @@ class OlChip extends StatelessWidget {
                   padding: EdgeInsets.symmetric(horizontal: small ? 12 : 15),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (icon != null) ...[
                         OlIcon(

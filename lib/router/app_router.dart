@@ -29,6 +29,14 @@ import '../features/kasir/intake_page.dart';
 import '../features/kasir/pasien_form_page.dart';
 import '../features/kasir/pasien_page.dart';
 import '../features/kasir/pindah_massal_page.dart';
+import '../features/kasir/struk_page.dart';
+import '../features/kasir/jual_paket_page.dart';
+import '../features/kasir/riwayat_transaksi_page.dart';
+import '../features/kasir/refund_page.dart';
+import '../features/kasir/verifikasi_transfer_page.dart';
+import '../features/kasir/terima_kas_page.dart';
+import '../features/kasir/tutup_kas_page.dart';
+import '../features/kasir/piutang_page.dart';
 import '../features/kasir/tagihan_page.dart';
 import '../features/shell/placeholder_tab_page.dart';
 import '../features/shell/role_shell.dart';
@@ -311,74 +319,42 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.kasirStruk,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PlaceholderScreen(
-          title: 'Konfirmasi & struk',
-          screenId: 'KS-11',
-          stage: 'slicing berikutnya',
-        ),
+        builder: (_, _) => const StrukPage(),
       ),
       GoRoute(
         path: Routes.kasirJualPaket,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PlaceholderScreen(
-          title: 'Jual paket',
-          screenId: 'KS-12',
-          stage: 'slicing berikutnya',
-        ),
+        builder: (_, _) => const JualPaketPage(),
       ),
       GoRoute(
         path: Routes.kasirRiwayat,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PlaceholderScreen(
-          title: 'Riwayat transaksi',
-          screenId: 'KS-13',
-          stage: 'slicing berikutnya',
-        ),
+        builder: (_, _) => const RiwayatTransaksiPage(),
       ),
       GoRoute(
         path: Routes.kasirRefund,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PlaceholderScreen(
-          title: 'Refund / batal',
-          screenId: 'KS-14',
-          stage: 'slicing berikutnya',
-        ),
+        builder: (_, _) => const RefundPage(),
       ),
       GoRoute(
         path: Routes.kasirVerifikasiTransfer,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PlaceholderScreen(
-          title: 'Verifikasi transfer',
-          screenId: 'KS-15',
-          stage: 'slicing berikutnya',
-        ),
+        builder: (_, _) => const VerifikasiTransferPage(),
       ),
       GoRoute(
         path: Routes.kasirTerimaKas,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PlaceholderScreen(
-          title: 'Terima kas terapis',
-          screenId: 'KS-16',
-          stage: 'slicing berikutnya',
-        ),
+        builder: (_, _) => const TerimaKasPage(),
       ),
       GoRoute(
         path: Routes.kasirTutupKas,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PlaceholderScreen(
-          title: 'Tutup kas harian',
-          screenId: 'KS-17',
-          stage: 'slicing berikutnya',
-        ),
+        builder: (_, _) => const TutupKasPage(),
       ),
       GoRoute(
         path: Routes.kasirPiutang,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PlaceholderScreen(
-          title: 'Piutang',
-          screenId: 'KS-18',
-          stage: 'slicing berikutnya',
-        ),
+        builder: (_, _) => const PiutangPage(),
       ),
 
       // ── Owner: Ringkasan · Jadwal · Pasien · Laporan · Akun (tanpa FAB) ──

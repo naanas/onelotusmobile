@@ -80,6 +80,8 @@ void main() {
     await t.tap(find.text('Akun'));
     await settle(t);
     expect(find.text('Sinta Maharani'), findsOneWidget);
+    await t.ensureVisible(find.text('Keluar'));
+    await settle(t);
     await t.tap(find.text('Keluar'));
     await settle(t);
     await t.tap(find.text('Keluar').last);

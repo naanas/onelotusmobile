@@ -128,6 +128,7 @@ class _BayarPageState extends State<BayarPage> {
                         Expanded(
                           child: OlChip(
                             label: label,
+                            expand: true,
                             selected:
                                 _received == v &&
                                 (label == 'Pas' || v != _total),

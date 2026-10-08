@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 
 import '../core/format.dart';
 import '../theme/app_theme.dart';
+import 'pseudo_qr.dart';
 
 /// QrisPanel (§4): kode QR besar + status "Menunggu pembayaran" dengan hitung mundur.
 /// Saat slicing UI, pola QR dibuat dari [seed] — bukan QRIS sungguhan.
@@ -51,49 +51,14 @@ class _QrisPanelState extends State<QrisPanel> {
   Widget build(BuildContext context) {
     final c = context.ol;
     final t = context.olText;
-    final rnd = Random(widget.seed);
-    const n = 9;
-    bool finder(int r, int col) =>
-        (r < 3 && col < 3) ||
-        (r < 3 && col >= n - 3) ||
-        (r >= n - 3 && col < 3);
     final expired = _left <= Duration.zero;
 
     return Column(
       children: [
-        Semantics(
-          label: 'Kode QRIS untuk dipindai pasien',
-          image: true,
-          child: Container(
-            width: 220,
-            height: 220,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: c.line, width: 1.5),
-            ),
-            child: Opacity(
-              opacity: expired ? 0.15 : 1,
-              child: GridView.count(
-                crossAxisCount: n,
-                mainAxisSpacing: 3,
-                crossAxisSpacing: 3,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  for (var i = 0; i < n * n; i++)
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: finder(i ~/ n, i % n) || rnd.nextBool()
-                            ? c.fg
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
+        PseudoQr(
+          seed: widget.seed,
+          faded: expired,
+          semanticLabel: 'Kode QRIS untuk dipindai pasien',
         ),
         const SizedBox(height: 14),
         Semantics(

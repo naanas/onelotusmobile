@@ -20,6 +20,16 @@ import '../features/umum/notifications_page.dart';
 import '../features/umum/search_page.dart';
 import '../features/umum/sync_status_page.dart';
 import '../features/umum/update_page.dart';
+import '../features/kasir/antrian_page.dart';
+import '../features/kasir/bayar_page.dart';
+import '../features/kasir/booking_page.dart';
+import '../features/kasir/buat_jadwal_page.dart';
+import '../features/kasir/detail_pasien_kasir_page.dart';
+import '../features/kasir/intake_page.dart';
+import '../features/kasir/pasien_form_page.dart';
+import '../features/kasir/pasien_page.dart';
+import '../features/kasir/pindah_massal_page.dart';
+import '../features/kasir/tagihan_page.dart';
 import '../features/shell/placeholder_tab_page.dart';
 import '../features/shell/role_shell.dart';
 import '../features/terapis/akun/kas_dibawa_page.dart';
@@ -256,43 +266,118 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
         ),
         branches: [
-          _branch(
-            Routes.kasirAntrian,
-            const PlaceholderTabPage(
-              title: 'Antrian',
-              screenId: 'KS-01',
-              stage: 'Tahap 7',
-              hero: true,
-            ),
-          ),
-          _branch(
-            Routes.kasirPasien,
-            const PlaceholderTabPage(
-              title: 'Pasien',
-              screenId: 'KS-03',
-              stage: 'Fase 1',
-              illustration: OlIllustration.emptySearch,
-            ),
-          ),
-          _branch(
-            Routes.kasirKasir,
-            const PlaceholderTabPage(
-              title: 'Kasir',
-              screenId: 'KS-09',
-              stage: 'Fase 2',
-              illustration: OlIllustration.emptyPayment,
-            ),
-          ),
+          _branch(Routes.kasirAntrian, const AntrianPage()),
+          _branch(Routes.kasirPasien, const KasirPasienPage()),
+          _branch(Routes.kasirKasir, const TagihanPage()),
           _branch(Routes.kasirAkun, const AkunPage()),
         ],
       ),
       GoRoute(
         path: Routes.kasirIntake,
         parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const IntakePage(),
+      ),
+      GoRoute(
+        path: Routes.kasirPasienForm,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PasienFormPage(),
+      ),
+      GoRoute(
+        path: Routes.kasirBuatJadwal,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const BuatJadwalPage(),
+      ),
+      GoRoute(
+        path: Routes.kasirBooking,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const BookingPage(),
+      ),
+      GoRoute(
+        path: Routes.kasirPindahMassal,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PindahMassalPage(),
+      ),
+      GoRoute(
+        path: Routes.kasirBayar,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const BayarPage(),
+      ),
+      GoRoute(
+        path: '/kasir/pasien/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, s) =>
+            DetailPasienKasirPage(patientId: s.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: Routes.kasirStruk,
+        parentNavigatorKey: rootNavigatorKey,
         builder: (_, _) => const PlaceholderScreen(
-          title: 'Intake QR',
-          screenId: 'KS-02',
-          stage: 'Tahap 7',
+          title: 'Konfirmasi & struk',
+          screenId: 'KS-11',
+          stage: 'slicing berikutnya',
+        ),
+      ),
+      GoRoute(
+        path: Routes.kasirJualPaket,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PlaceholderScreen(
+          title: 'Jual paket',
+          screenId: 'KS-12',
+          stage: 'slicing berikutnya',
+        ),
+      ),
+      GoRoute(
+        path: Routes.kasirRiwayat,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PlaceholderScreen(
+          title: 'Riwayat transaksi',
+          screenId: 'KS-13',
+          stage: 'slicing berikutnya',
+        ),
+      ),
+      GoRoute(
+        path: Routes.kasirRefund,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PlaceholderScreen(
+          title: 'Refund / batal',
+          screenId: 'KS-14',
+          stage: 'slicing berikutnya',
+        ),
+      ),
+      GoRoute(
+        path: Routes.kasirVerifikasiTransfer,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PlaceholderScreen(
+          title: 'Verifikasi transfer',
+          screenId: 'KS-15',
+          stage: 'slicing berikutnya',
+        ),
+      ),
+      GoRoute(
+        path: Routes.kasirTerimaKas,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PlaceholderScreen(
+          title: 'Terima kas terapis',
+          screenId: 'KS-16',
+          stage: 'slicing berikutnya',
+        ),
+      ),
+      GoRoute(
+        path: Routes.kasirTutupKas,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PlaceholderScreen(
+          title: 'Tutup kas harian',
+          screenId: 'KS-17',
+          stage: 'slicing berikutnya',
+        ),
+      ),
+      GoRoute(
+        path: Routes.kasirPiutang,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const PlaceholderScreen(
+          title: 'Piutang',
+          screenId: 'KS-18',
+          stage: 'slicing berikutnya',
         ),
       ),
 

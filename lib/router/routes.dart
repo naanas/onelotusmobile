@@ -48,6 +48,20 @@ abstract final class Routes {
   static const kasirKasir = '/kasir/kasir';
   static const kasirAkun = '/kasir/akun';
   static const kasirIntake = '/kasir/intake';
+  static const kasirPasienForm = '/kasir/pasien-form';
+  static String kasirPasienDetail(String id) => '/kasir/pasien/$id';
+  static const kasirBuatJadwal = '/kasir/buat-jadwal';
+  static const kasirBooking = '/kasir/booking';
+  static const kasirPindahMassal = '/kasir/pindah-massal';
+  static const kasirBayar = '/kasir/bayar';
+  static const kasirStruk = '/kasir/struk';
+  static const kasirJualPaket = '/kasir/jual-paket';
+  static const kasirRiwayat = '/kasir/riwayat';
+  static const kasirRefund = '/kasir/refund';
+  static const kasirVerifikasiTransfer = '/kasir/verifikasi-transfer';
+  static const kasirTerimaKas = '/kasir/terima-kas';
+  static const kasirTutupKas = '/kasir/tutup-kas';
+  static const kasirPiutang = '/kasir/piutang';
 
   // Owner: Ringkasan · Jadwal · Pasien · Laporan · Akun
   static const ownerRingkasan = '/owner/ringkasan';

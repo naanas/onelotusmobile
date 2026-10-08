@@ -220,7 +220,7 @@ class _FirstLoginPageState extends ConsumerState<FirstLoginPage> {
                     24,
                   ),
                   children: [
-                    _Stepper(count: _steps.length, current: _index),
+                    OlStepProgress(count: _steps.length, current: _index),
                     const SizedBox(height: 14),
                     Text(
                       'Langkah ${_index + 1} dari ${_steps.length} · Login pertama',
@@ -486,33 +486,4 @@ class _Requirement extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Stepper extends StatelessWidget {
-  const _Stepper({required this.count, required this.current});
-  final int count;
-  final int current;
-
-  @override
-  Widget build(BuildContext context) => ExcludeSemantics(
-    child: Row(
-      children: [
-        for (var i = 0; i < count; i++) ...[
-          if (i > 0) const SizedBox(width: 6),
-          Expanded(
-            child: AnimatedContainer(
-              duration: OlMotion.of(context),
-              height: 5,
-              decoration: BoxDecoration(
-                color: i <= current
-                    ? context.ol.brand
-                    : const Color(0xFFDDE6ED),
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-          ),
-        ],
-      ],
-    ),
-  );
 }

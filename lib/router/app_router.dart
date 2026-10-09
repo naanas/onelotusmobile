@@ -325,7 +325,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.kasirPasienForm,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PasienFormPage(),
+        builder: (_, state) =>
+            PasienFormPage(intakeId: state.uri.queryParameters['intake']),
       ),
       GoRoute(
         path: Routes.kasirBuatJadwal,

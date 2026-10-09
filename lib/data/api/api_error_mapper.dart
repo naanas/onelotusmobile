@@ -35,6 +35,18 @@ AppError mapDioError(DioException e) {
       refId: ref,
     );
   }
+  // 409 pasien ganda membawa kandidat untuk sheet ST-08.
+  if (status == 409 &&
+      body['code'] == 'duplicate_patient' &&
+      body['candidates'] is List) {
+    return DuplicatePatientError(
+      candidates: [
+        for (final c in body['candidates'] as List)
+          (c as Map).cast<String, dynamic>(),
+      ],
+      refId: ref,
+    );
+  }
   // Kode eksplisit dari API menang (mis. 409 duplicate_patient / edit_conflict).
   final explicit = body['code'] as String?;
   if (explicit != null && ErrorCode.values.any((c) => c.code == explicit)) {
@@ -81,4 +93,12 @@ class ConflictError extends AppError {
 
   final Map<String, dynamic> server;
   final int serverVersion;
+}
+
+/// `duplicate_patient` dengan daftar pasien mirip (`{ id, number, name, birth_date, match }`).
+class DuplicatePatientError extends AppError {
+  const DuplicatePatientError({required this.candidates, super.refId})
+    : super(ErrorCode.duplicatePatient);
+
+  final List<Map<String, dynamic>> candidates;
 }

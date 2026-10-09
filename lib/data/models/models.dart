@@ -1,3 +1,4 @@
+export 'intake.dart';
 export 'invoice.dart';
 export 'patient.dart';
 export 'service.dart';

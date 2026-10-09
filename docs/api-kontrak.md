@@ -225,8 +225,30 @@ Nomor HP disimpan sebagai `62…`.
 **Pengiriman WhatsApp belum ada**: penyedia WA belum dipilih. Tanpa sender, `/v1/pasien/otp` menjawab 503;
 `MOBILE_OTP_DEV_LOG=true` menulis kode ke log server untuk pengembangan.
 
+### Intake pasien baru via QR (WB-01 di aplikasi → KS-02 → KS-04)
+
+Formulir ada **di aplikasi** (satu aplikasi staf & pasien), tanpa login. QR di KS-02 berisi
+`onelotus://app/intake/{kode}`: dipindai kamera HP → aplikasi terbuka di formulir; atau dipindai dari
+layar masuk ("Pasien baru di klinik? Isi formulir"). Rute aplikasi: `/intake` (pemindai), `/intake/{kode}` (form).
+
+| Method | Path | Siapa | Keterangan |
+|---|---|---|---|
+| GET | `/v1/public/intake/{kode}` | publik | `{ branch: { name, address }, policy_version }`; 404 = QR sudah tidak berlaku |
+| POST | `/v1/public/intake/{kode}` | publik | Isian (lihat bawah) → 201 `{ queue_label: "A-07", first_name }`. Maks 10 kiriman/IP/jam; `client_id` sama = kiriman ulang aman |
+| GET | `/v1/branches/{id}/intake-link` · POST `…/intake-link/rotate` | desk | `{ code, url }` — "Ganti QR" membuat kode lama langsung tidak berlaku |
+| GET | `/v1/intake?branch_id=&status=new` | desk | "Baru masuk": `[{ id, queue_label, name, complaint, body_complete, attachment_count, status, stale (>24 jam), created_at }]` |
+| GET | `/v1/intake/{id}` | desk | Isian lengkap + `attachments: [{ id, content_type, size_bytes }]` |
+| GET | `/v1/intake/{id}/attachments/{att}` | desk | Gambar rontgen (tidak ada URL publik) |
+| POST | `/v1/intake/{id}/process` | desk | Isian KS-04 hasil koreksi kasir → pasien baru (nomor dari server). 409 `duplicate_patient` + `candidates` → kirim ulang dengan `confirm_not_duplicate: true` atau `existing_patient_id` (gabung ke pasien lama) |
+| POST | `/v1/intake/{id}/discard` | desk | `{ reason }` |
+
+Isian form: `{ client_id (UUID dari HP), name*, birth_date*, gender*, phone*, birth_place, address, institution, hobby,
+height_cm, weight_kg, complaint*, cause (olahraga|jatuh|kerja|kecelakaan|tidak_tahu), injury_duration,
+injury_duration_unit (day|week|month), health_consent*, photos: [{ content_type, data (base64) }] maks 3 }`.
+Data: `mobile.intake_submissions`, `mobile.intake_attachments` (`supabase/migrations/005_intake.sql`).
+
 ### Belum dibuat (menunggu workshop §16 / Fase 2–3)
 
 Pembayaran & kas (KS-09..18: terbitkan tagihan, metode bayar, gateway, refund, tutup kas, piutang), paket &
 voucher & poin, komisi, laporan & ekspor owner, booking oleh pasien (aturan auto-terima, DP, batas booking),
-latihan rumah, notifikasi/WA ke pasien, gabung pasien ganda, unggah lampiran.
+latihan rumah, notifikasi/WA ke pasien (termasuk kirim nomor pasien setelah intake diverifikasi), gabung pasien ganda, unggah lampiran rekam sesi.

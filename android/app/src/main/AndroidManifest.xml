@@ -2,6 +2,8 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Pindai QR intake & foto rontgen di formulir pasien baru -->
+    <uses-permission android:name="android.permission.CAMERA"/>
     <application
         android:label="One Lotus"
         android:name="${applicationName}"
@@ -26,6 +28,13 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- QR intake KS-02 (onelotus://app/intake/{kode}) dipindai kamera HP → formulir pasien baru -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="onelotus" android:host="app" android:pathPrefix="/intake/"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

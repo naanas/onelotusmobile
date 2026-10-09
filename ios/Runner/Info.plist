@@ -45,5 +45,18 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Kamera dipakai untuk memindai QR formulir pasien dan memotret rontgen.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>id.onelotus.intake</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>onelotus</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

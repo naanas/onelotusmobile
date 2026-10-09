@@ -277,7 +277,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                 ),
               ],
-              const SizedBox(height: 36),
+              const SizedBox(height: 24),
+              // Pasien baru yang sedang di klinik: isi formulir intake (WB-01) lewat QR front desk.
+              Center(
+                child: OlButton.text(
+                  label: 'Pasien baru di klinik? Isi formulir',
+                  onPressed: () => context.push(Routes.intakeScan),
+                ),
+              ),
+              const SizedBox(height: 12),
               if (_isStaff)
                 Text(
                   'Gagal ${AuthRules.maxLoginAttempts} kali akan mengunci login selama ${AuthRules.loginLockout.inMinutes} menit.',

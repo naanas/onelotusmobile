@@ -14,6 +14,12 @@ abstract final class Routes {
   static const sessionExpired = '/sesi-berakhir';
   static const devComponents = '/dev/komponen';
 
+  /// Formulir pasien baru (WB-01): pindai QR KS-02, atau tautan `onelotus://app/intake/{kode}`.
+  static const intakeScan = '/intake';
+  static String intakeForm(String code) => '/intake/$code';
+  static bool isIntake(String location) =>
+      location == intakeScan || location.startsWith('$intakeScan/');
+
   // Terapis: Jadwal · Pasien · + · Riwayat · Akun
   static const terapisJadwal = '/terapis/jadwal';
   static const terapisPasien = '/terapis/pasien';
@@ -117,6 +123,9 @@ abstract final class Routes {
 /// Belum login: perkenalan pasien sekali, lalu layar masuk bersama yang
 /// mengenali nomor HP (pasien) atau username (staf).
 String? appRedirect(AuthState auth, PasienSession pasien, String location) {
+  // Formulir intake terbuka untuk siapa pun (pasien baru belum punya akun),
+  // termasuk saat dibuka langsung dari QR ketika aplikasi baru dijalankan.
+  if (Routes.isIntake(location)) return null;
   if (auth.phase != AuthPhase.signedOut) return authRedirect(auth, location);
 
   // Tujuan menurut tahap pasien; null = pasien sudah masuk.

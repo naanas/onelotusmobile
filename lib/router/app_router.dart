@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../data/auth/auth_controller.dart';
 import '../features/akun/akun_page.dart';
+import '../pasien/intake/intake_form_page.dart';
+import '../pasien/intake/intake_scan_page.dart';
 import '../pasien/pasien_router.dart';
 import '../pasien/pasien_session.dart';
 import '../features/auth/choose_context_page.dart';
@@ -156,6 +158,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.devComponents,
         builder: (_, _) => const ComponentGalleryPage(),
+      ),
+
+      // ── Formulir pasien baru via QR KS-02 (WB-01), tanpa login ───────────
+      GoRoute(
+        path: Routes.intakeScan,
+        builder: (_, _) => const IntakeScanPage(),
+        routes: [
+          GoRoute(
+            path: ':code',
+            builder: (_, state) =>
+                IntakeFormPage(code: state.pathParameters['code']!),
+          ),
+        ],
       ),
 
       // ── Terapis: Jadwal · Pasien · + · Riwayat · Akun ─────────────────────

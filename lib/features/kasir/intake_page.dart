@@ -124,7 +124,10 @@ class _IntakePageState extends ConsumerState<IntakePage> {
         : 'Masuk ${Fmt.dayShort(i.createdAt)} ${Fmt.time(i.createdAt)}';
     return [
       '${i.queueLabel} · $when',
-      if (i.complaint.isNotEmpty) i.complaint,
+      if (i.complaint.isNotEmpty)
+        i.complaint.length > 32
+            ? '${i.complaint.substring(0, 32).trimRight()}…'
+            : i.complaint,
       i.bodyComplete ? 'TB/BB lengkap' : 'TB/BB belum diisi',
       if (i.attachmentCount > 0) '${i.attachmentCount} foto',
     ].join(' · ');

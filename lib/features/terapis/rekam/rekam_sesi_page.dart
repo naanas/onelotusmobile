@@ -2,82 +2,168 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../data/models/session_record.dart';
+import '../../../core/format.dart';
+import '../../../data/api/one_lotus_api.dart';
+import '../../../data/auth/auth_controller.dart';
+import '../../../data/models/models.dart';
+import '../../../data/providers.dart';
+import '../../../data/sync/outbox.dart' show newId;
 import '../../../router/routes.dart';
 import '../../../theme/app_theme.dart';
 import '../../../ui/body_map/body_map.dart';
 import '../../../ui/ui.dart';
 
-/// TR-04 Rekam sesi (layar prioritas §5.2). Slicing UI: isian awal = prefill dari sesi lalu (contoh mockup).
-class RekamSesiPage extends StatefulWidget {
+/// TR-04 Rekam sesi (layar prioritas §5.2). Data sesi & peringatan medis dari server; isian
+/// dilanjutkan dari draf di HP, rekam yang sudah ada, atau diisi awal dari rekam terakhir pasien.
+/// Simpan masuk outbox (aman offline, §8); "Selesaikan sesi" juga mengubah status ke Selesai.
+class RekamSesiPage extends ConsumerStatefulWidget {
   const RekamSesiPage({super.key, required this.sessionId});
 
   final String sessionId;
 
   @override
-  State<RekamSesiPage> createState() => _RekamSesiPageState();
+  ConsumerState<RekamSesiPage> createState() => _RekamSesiPageState();
 }
 
-class _RekamSesiPageState extends State<RekamSesiPage> {
-  // Prefill dari sesi lalu (§5.2).
-  final _complaint = TextEditingController(
-    text: 'Nyeri pinggang bawah menjalar ke paha kanan',
-  );
-  final _analysis = TextEditingController(
-    text: 'Ketegangan paravertebral kanan, ROM fleksi terbatas.',
-  );
-  final _conclusion = TextEditingController(
-    text: 'Kurangi duduk lama, peregangan tiap 1 jam.',
-  );
-  final _injury = TextEditingController(text: '3');
+class _RekamSesiPageState extends ConsumerState<RekamSesiPage> {
+  final _complaint = TextEditingController();
+  final _analysis = TextEditingController();
+  final _conclusion = TextEditingController();
+  final _injury = TextEditingController();
   BodyMode _mode = BodyMode.treated;
-  var _areas = const BodyMapSelection({
-    'lower-back:left': BodyMode.treated,
-    'lower-back:right': BodyMode.treated,
-    'deltoids:right': BodyMode.treated,
-    'upper-back:left': BodyMode.calming,
-    'upper-back:right': BodyMode.calming,
-    'quadriceps:right': BodyMode.calming,
-  });
-  int? _before = 7;
+  var _areas = const BodyMapSelection();
+  int? _before;
   int? _after;
-  InjuryCause _cause = InjuryCause.work;
-  DurationUnit _unit = DurationUnit.month;
-  final _analysisTags = {'Spasme otot', 'Saraf terjepit ringan'};
-  final _treatments = {'Adjustment', 'Infrared'};
-  final _conclusionTags = {'Kontrol 1 minggu', 'Latihan rumah'};
-  int _extraPoints = 1;
-  bool _extraInjury = false;
+  InjuryCause? _cause;
+  DurationUnit _unit = DurationUnit.week;
+  final _analysisTags = <String>{};
+  final _treatments = <String>{};
+  final _conclusionTags = <String>{};
   bool _dirty = false;
   bool _saving = false;
   String? _areaError;
   String? _treatmentError;
   String? _complaintError;
 
-  late final Timer _clock;
-  Duration _elapsed = const Duration(minutes: 12, seconds: 40);
+  Session? _session;
+  Patient? _patient;
+  SessionRecord? _existing;
+  bool _prefilled = false;
+  AppError? _loadError;
+  Timer? _clock;
+  Timer? _draftTimer;
+  Duration _elapsed = Duration.zero;
 
   @override
   void initState() {
     super.initState();
-    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _elapsed += const Duration(seconds: 1));
-    });
+    _load();
   }
 
   @override
   void dispose() {
-    _clock.cancel();
+    _clock?.cancel();
+    _draftTimer?.cancel();
     for (final c in [_complaint, _analysis, _conclusion, _injury]) {
       c.dispose();
     }
     super.dispose();
   }
 
+  Future<void> _load() async {
+    setState(() => _loadError = null);
+    final repo = ref.read(sessionRecordRepositoryProvider);
+    final api = ref.read(oneLotusApiProvider);
+    try {
+      final session = await api.session(widget.sessionId);
+      Patient? patient;
+      try {
+        patient = await api.patient(session.patientId);
+      } on AppError {
+        patient = null; // peringatan medis opsional; rekam tetap bisa diisi
+      }
+      final draft = await repo.loadDraft(widget.sessionId);
+      final existing = draft ?? await repo.forSession(widget.sessionId);
+      final source = existing ?? await repo.latestForPatient(session.patientId);
+      if (!mounted) return;
+      setState(() {
+        _session = session;
+        _patient = patient;
+        _existing = existing;
+        _prefilled = existing == null && source != null;
+        if (source != null) _fill(source, full: existing != null);
+      });
+      final started = session.startedAt;
+      if (session.status == SessionStatus.running && started != null) {
+        _elapsed = DateTime.now().difference(started);
+        _clock = Timer.periodic(const Duration(seconds: 1), (_) {
+          if (mounted) setState(() => _elapsed += const Duration(seconds: 1));
+        });
+      }
+    } on AppError catch (e) {
+      if (mounted) setState(() => _loadError = e);
+    }
+  }
+
+  /// [full] = isi semua field (draf / rekam sesi ini); selain itu hanya prefill dari sesi lalu (§5.2).
+  void _fill(SessionRecord r, {required bool full}) {
+    _complaint.text = r.complaint;
+    _cause = r.cause;
+    _injury.text = r.injuryDuration?.toString() ?? '';
+    _unit = r.injuryDurationUnit ?? DurationUnit.week;
+    if (!full) return;
+    _areas = BodyMapSelection({
+      for (final a in r.treatedAreas) a: BodyMode.treated,
+      for (final a in r.calmingAreas) a: BodyMode.calming,
+    });
+    _before = r.painBefore;
+    _after = r.painAfter;
+    _analysis.text = r.analysis;
+    _analysisTags.addAll(r.analysisTags);
+    _treatments.addAll(r.treatments);
+    _conclusion.text = r.conclusion;
+    _conclusionTags.addAll(r.conclusionTags);
+  }
+
+  SessionRecord _record() {
+    final s = _session!;
+    return SessionRecord(
+      id: _existing?.id ?? newId(),
+      sessionId: s.id,
+      patientId: s.patientId,
+      therapistId: ref.read(authProvider).user?.id ?? s.therapistId,
+      complaint: _complaint.text.trim(),
+      cause: _cause,
+      injuryDuration: int.tryParse(_injury.text.trim()),
+      injuryDurationUnit: _injury.text.trim().isEmpty ? null : _unit,
+      treatedAreas: _areas.keysOf(BodyMode.treated),
+      calmingAreas: _areas.keysOf(BodyMode.calming),
+      painBefore: _before,
+      painAfter: _after,
+      analysis: _analysis.text.trim(),
+      analysisTags: _analysisTags.toList(),
+      treatments: _treatments.toList(),
+      conclusion: _conclusion.text.trim(),
+      conclusionTags: _conclusionTags.toList(),
+      attachments: _existing?.attachments ?? const [],
+      version: _existing?.version ?? 0,
+    );
+  }
+
+  /// Draf otomatis di HP (§5.2) — tidak dikirim ke server sampai disimpan.
   void _touch() {
     if (!_dirty) setState(() => _dirty = true);
+    _draftTimer?.cancel();
+    _draftTimer = Timer(const Duration(milliseconds: 800), () {
+      if (_session != null) {
+        unawaited(
+          ref.read(sessionRecordRepositoryProvider).saveDraft(_record()),
+        );
+      }
+    });
   }
 
   /// Validasi lunak §5.2: keluhan, area & minimal 1 treatment.
@@ -98,37 +184,47 @@ class _RekamSesiPageState extends State<RekamSesiPage> {
         _treatmentError == null;
   }
 
-  Future<void> _save({required bool sendSummary, bool finish = false}) async {
+  Future<void> _save({bool finish = false}) async {
     if (!_validate()) {
       context.feedback.info('Lengkapi isian yang ditandai dulu.');
       return;
     }
     setState(() => _saving = true);
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-    HapticFeedback.lightImpact();
-    setState(() {
-      _saving = false;
-      _dirty = false;
-    });
-    context.feedback.success(
-      sendSummary
-          ? 'Sesi tersimpan. Ringkasan dikirim ke Andi.'
-          : 'Sesi tersimpan.',
-    );
-    if (finish) {
-      context.go(Routes.terapisJadwal);
-    } else if (sendSummary) {
-      context.pushReplacement(Routes.terapisSesi(widget.sessionId));
+    _draftTimer?.cancel();
+    try {
+      final record = _record();
+      await ref.read(sessionRecordRepositoryProvider).submit(record);
+      _existing = record;
+      if (finish && _session!.status == SessionStatus.running) {
+        await ref
+            .read(scheduleRepositoryProvider)
+            .updateStatus(_session!, SessionStatus.done);
+      }
+      if (!mounted) return;
+      HapticFeedback.lightImpact();
+      setState(() {
+        _saving = false;
+        _dirty = false;
+      });
+      context.feedback.success(
+        finish
+            ? 'Sesi selesai & tersimpan. Terkirim otomatis saat ada sinyal.'
+            : 'Sesi tersimpan. Terkirim otomatis saat ada sinyal.',
+      );
+      if (finish) context.go(Routes.terapisJadwal);
+    } on AppError catch (e) {
+      if (!mounted) return;
+      setState(() => _saving = false);
+      context.feedback.error(e, retry: () => _save(finish: finish));
     }
   }
 
-  /// §12.5: keluar dari rekam sesi yang belum disimpan.
+  /// §12.5: keluar dari rekam sesi yang belum disimpan (draf tetap tersimpan di HP).
   Future<void> _onLeave() async {
     final r = await context.feedback.choose(
       const ConfirmSpec(
         title: 'Simpan dulu catatan ini?',
-        message: 'Ada perubahan di rekam sesi yang belum disimpan.',
+        message: 'Ada perubahan yang belum disimpan. Draf tetap ada di HP.',
         confirmLabel: 'Simpan',
         danger: false,
         alternativeLabel: 'Buang perubahan',
@@ -137,10 +233,13 @@ class _RekamSesiPageState extends State<RekamSesiPage> {
     if (!mounted) return;
     switch (r.choice) {
       case ConfirmChoice.confirm:
-        await _save(sendSummary: false);
+        await _save();
         if (mounted && !_dirty) Navigator.of(context).pop();
       case ConfirmChoice.alternative:
-        Navigator.of(context).pop();
+        await ref
+            .read(sessionRecordRepositoryProvider)
+            .deleteDraft(widget.sessionId);
+        if (mounted) Navigator.of(context).pop();
       case ConfirmChoice.cancel:
         break;
     }
@@ -150,6 +249,22 @@ class _RekamSesiPageState extends State<RekamSesiPage> {
   Widget build(BuildContext context) {
     final c = context.ol;
     final t = context.olText;
+    final session = _session;
+    if (session == null) {
+      return OlDetailScaffold(
+        title: 'Rekam sesi',
+        children: [
+          if (_loadError != null)
+            OlErrorCard(
+              message: _loadError!.message,
+              refId: _loadError!.refId,
+              onRetry: _load,
+            )
+          else
+            const OlLoadingCard(),
+        ],
+      );
+    }
     final m = _elapsed.inMinutes.toString().padLeft(2, '0');
     final s = (_elapsed.inSeconds % 60).toString().padLeft(2, '0');
 
@@ -212,8 +327,12 @@ class _RekamSesiPageState extends State<RekamSesiPage> {
         if (!didPop) _onLeave();
       },
       child: OlDetailScaffold(
-        title: 'Andi Pratama',
-        context_: 'Sesi #0412 · Adjustment Therapy · ruang 2',
+        title: session.patientName,
+        context_: [
+          Fmt.patientNo(session.patientNumber),
+          session.serviceName,
+          if (session.isHomeVisit) 'home visit' else ?session.room,
+        ].join(' · '),
         actions: [
           SyncIndicator(
             status: _dirty ? const SyncSaving() : const SyncSynced(),
@@ -222,55 +341,55 @@ class _RekamSesiPageState extends State<RekamSesiPage> {
                 : 'Tersimpan di HP · sinkron otomatis',
           ),
         ],
-        titleTrailing: Semantics(
-          label: 'Durasi sesi $m menit $s detik',
-          excludeSemantics: true,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: c.brand,
-              borderRadius: BorderRadius.circular(OlRadius.pill),
-            ),
-            child: Text(
-              '$m:$s',
-              style: t.mono.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
+        titleTrailing: _clock == null
+            ? null
+            : Semantics(
+                label: 'Durasi sesi $m menit $s detik',
+                excludeSemantics: true,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: c.brand,
+                    borderRadius: BorderRadius.circular(OlRadius.pill),
+                  ),
+                  child: Text(
+                    '$m:$s',
+                    style: t.mono.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
-        ),
         foot: [
           OlButton(
-            label: 'Simpan & kirim ringkasan ke pasien',
+            label: session.status == SessionStatus.running
+                ? 'Simpan & selesaikan sesi'
+                : 'Simpan',
             loading: _saving,
-            onPressed: () => _save(sendSummary: true),
+            onPressed: _saving
+                ? null
+                : () => _save(finish: session.status == SessionStatus.running),
           ),
-          OlFootRow(
-            children: [
-              OlButton.secondary(
-                label: 'Simpan saja',
-                onPressed: _saving ? null : () => _save(sendSummary: false),
-              ),
-              OlButton.secondary(
-                label: 'Selesaikan sesi',
-                onPressed: _saving
-                    ? null
-                    : () => _save(sendSummary: true, finish: true),
-              ),
-            ],
-          ),
+          if (session.status == SessionStatus.running)
+            OlButton.secondary(
+              label: 'Simpan saja',
+              onPressed: _saving ? null : () => _save(),
+            ),
         ],
         children: [
-          const OlBanner(
-            tone: OlBannerTone.crit,
-            message: 'Riwayat LBP kronis — hindari tekanan kuat di L4–L5.',
-          ),
+          if (_patient?.medicalAlert != null)
+            OlBanner(tone: OlBannerTone.crit, message: _patient!.medicalAlert!),
           OlTextField(
             label: 'Keluhan',
             isRequired: true,
             controller: _complaint,
-            helper: 'Diisi dari sesi lalu · ketuk untuk ubah',
+            helper: _prefilled
+                ? 'Diisi dari sesi lalu · ketuk untuk ubah'
+                : null,
             error: _complaintError,
             onChanged: (_) => _touch(),
           ),
@@ -335,9 +454,12 @@ class _RekamSesiPageState extends State<RekamSesiPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     label('Penyebab'),
-                    _SelectField<InjuryCause>(
+                    _SelectField<InjuryCause?>(
                       value: _cause,
-                      options: {for (final c in InjuryCause.values) c: c.label},
+                      options: {
+                        null: 'Pilih',
+                        for (final c in InjuryCause.values) c: c.label,
+                      },
                       onChanged: (v) => setState(() {
                         _cause = v;
                         _dirty = true;
@@ -434,134 +556,6 @@ class _RekamSesiPageState extends State<RekamSesiPage> {
               ),
             ],
           ),
-          OlCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('Lampiran', style: t.heading.copyWith(fontSize: 17)),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _Thumb(
-                      dark: true,
-                      semanticLabel: 'Foto rontgen lumbal, akses terbatas',
-                      child: Text(
-                        'Rontgen\nlumbal',
-                        textAlign: TextAlign.center,
-                        style: t.caption.copyWith(
-                          color: const Color(0xFFBAE6FD),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    _Thumb(
-                      semanticLabel: 'Catatan suara 42 detik',
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          OlIcon(OlIcons.mic, color: c.muted, size: 20),
-                          Text(
-                            '0:42',
-                            style: t.mono.copyWith(
-                              fontSize: 12,
-                              color: c.muted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    _Thumb(
-                      dashed: true,
-                      semanticLabel: 'Tambah lampiran',
-                      onTap: () => context.feedback.sheet<void>(
-                        title: 'Tambah lampiran',
-                        actions: const [
-                          SheetAction(
-                            'Foto (kamera)',
-                            null,
-                            variant: OlButtonVariant.secondary,
-                          ),
-                          SheetAction(
-                            'Rontgen (galeri)',
-                            null,
-                            variant: OlButtonVariant.secondary,
-                          ),
-                          SheetAction(
-                            'Catatan suara',
-                            null,
-                            variant: OlButtonVariant.secondary,
-                          ),
-                        ],
-                      ),
-                      child: OlIcon(OlIcons.plus, color: c.muted),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    OlIcon(OlIcons.lock, size: 16, color: c.muted),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Rontgen berlabel akses terbatas',
-                        style: t.caption.copyWith(fontSize: 13),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          OlCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Item tambahan tagihan',
-                  style: t.heading.copyWith(fontSize: 17),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Titik tambahan',
-                        style: t.body.copyWith(fontSize: 15),
-                      ),
-                    ),
-                    _Stepper(
-                      value: _extraPoints,
-                      onChanged: (v) => setState(() {
-                        _extraPoints = v;
-                        _dirty = true;
-                      }),
-                    ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Tambahan cedera',
-                        style: t.body.copyWith(fontSize: 15),
-                      ),
-                    ),
-                    OlToggle(
-                      semanticLabel: 'Tambahan cedera',
-                      value: _extraInjury,
-                      onChanged: (v) => setState(() {
-                        _extraInjury = v;
-                        _dirty = true;
-                      }),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -628,104 +622,6 @@ class _SelectField<T> extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _Thumb extends StatelessWidget {
-  const _Thumb({
-    required this.child,
-    required this.semanticLabel,
-    this.dark = false,
-    this.dashed = false,
-    this.onTap,
-  });
-
-  final Widget child;
-  final String semanticLabel;
-  final bool dark;
-  final bool dashed;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    container: true,
-    button: onTap != null,
-    label: semanticLabel,
-    excludeSemantics: true,
-    child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 64,
-        height: 64,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: dark
-              ? const Color(0xFF12344A)
-              : (dashed ? Colors.transparent : context.ol.surfaceAlt),
-          borderRadius: BorderRadius.circular(14),
-          border: dashed
-              ? Border.all(color: const Color(0xFFA9BBC9), width: 1.5)
-              : null,
-        ),
-        child: child,
-      ),
-    ),
-  );
-}
-
-class _Stepper extends StatelessWidget {
-  const _Stepper({required this.value, required this.onChanged});
-  final int value;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.olText;
-    Widget btn(String label, String semantic, VoidCallback? onTap) => Semantics(
-      container: true,
-      button: true,
-      label: semantic,
-      excludeSemantics: true,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          width: 40,
-          height: 40,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: context.ol.line),
-            color: context.ol.surface,
-          ),
-          child: Text(
-            label,
-            style: t.heading.copyWith(
-              color: onTap == null ? context.ol.faint : null,
-            ),
-          ),
-        ),
-      ),
-    );
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        btn(
-          '−',
-          'Kurangi titik tambahan',
-          value > 0 ? () => onChanged(value - 1) : null,
-        ),
-        SizedBox(
-          width: 36,
-          child: Text(
-            '$value',
-            textAlign: TextAlign.center,
-            style: t.mono.copyWith(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-        ),
-        btn('+', 'Tambah titik tambahan', () => onChanged(value + 1)),
-      ],
     );
   }
 }

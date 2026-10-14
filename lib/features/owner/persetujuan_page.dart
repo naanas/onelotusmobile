@@ -1,261 +1,259 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../core/format.dart';
+import '../../data/api/one_lotus_api.dart';
+import '../../data/models/models.dart';
+import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 
-enum _Kind { cuti, refund, diskon, reset }
+typedef _Data = ({
+  List<LeaveRequest> leaves,
+  List<PasswordResetRequest> resets,
+});
 
-class _Request {
-  const _Request({
-    required this.id,
-    required this.kind,
-    required this.by,
-    required this.title,
-    required this.detail,
-    this.facts = const [],
-  });
-
-  final String id;
-  final _Kind kind;
-  final String by;
-  final String? title;
-  final String detail;
-  final List<(String, String, bool)> facts; // label, nilai, mono
-}
-
-const _kindLabels = {
-  _Kind.cuti: 'Cuti',
-  _Kind.refund: 'Refund',
-  _Kind.diskon: 'Diskon',
-  _Kind.reset: 'Reset password',
-};
-
-/// OW-06 Persetujuan: refund, cuti, diskon manual di atas batas, reset password.
-/// Menolak wajib alasan; dampak (komisi, poin, sesi terdampak) tampil sebelum setuju.
-class PersetujuanPage extends StatefulWidget {
+/// OW-06 Persetujuan: cuti terapis (TR-03) dan reset password (UM-06) dari server.
+/// Tolak wajib alasan. Setuju cuti → sesi terdampak bisa langsung dipindah (KS-08);
+/// setuju reset → password sementara ditampilkan sekali. Refund & diskon menunggu modul pembayaran.
+class PersetujuanPage extends ConsumerStatefulWidget {
   const PersetujuanPage({super.key});
 
   @override
-  State<PersetujuanPage> createState() => _PersetujuanPageState();
+  ConsumerState<PersetujuanPage> createState() => _PersetujuanPageState();
 }
 
-class _PersetujuanPageState extends State<PersetujuanPage> {
-  _Kind? _filter;
-  final _items = <_Request>[
-    const _Request(
-      id: 'r1',
-      kind: _Kind.refund,
-      by: 'diajukan Sinta · 11.40',
-      title: 'Refund penuh Rp450.000',
-      detail:
-          'Ilham Ramadhan · Adjustment Therapy 3 Okt · alasan: pasien tidak datang, sudah bayar di muka',
-      facts: [
-        ('Metode', 'Transfer manual', false),
-        ('Komisi Laras', '-Rp62.500', true),
-        ('Poin pasien', '-45', true),
-      ],
-    ),
-    const _Request(
-      id: 'c1',
-      kind: _Kind.cuti,
-      by: 'Dimas · kemarin',
-      title: '14–15 Okt · keluarga',
-      detail: '3 sesi terdampak → pindahkan setelah setuju',
-    ),
-    const _Request(
-      id: 'd1',
-      kind: _Kind.diskon,
-      by: 'Sinta · 10.15',
-      title: 'Diskon 25% · Rp112.500',
-      detail: 'Hendra Gunawan · "pasien rujukan dokter mitra"',
-    ),
-    const _Request(
-      id: 'p1',
-      kind: _Kind.reset,
-      by: 'laras.terapis · 08.02',
-      title: null,
-      detail: '"HP baru, lupa password lama."',
-    ),
-  ];
+class _PersetujuanPageState extends ConsumerState<PersetujuanPage> {
+  int _gen = 0;
 
-  Future<void> _approve(_Request r) async {
-    setState(() => _items.remove(r));
-    context.feedback.success(switch (r.kind) {
-      _Kind.refund => 'Refund disetujui. Sinta diberi tahu untuk memproses.',
-      _Kind.cuti => 'Cuti disetujui. Pindahkan 3 sesi terdampak.',
-      _Kind.diskon => 'Diskon disetujui.',
-      _Kind.reset => 'Password sementara dikirim ke Laras.',
-    });
+  OneLotusApi get _api => ref.read(oneLotusApiProvider);
+
+  Future<_Data> _load() async {
+    final r = await (
+      _api.leaves(status: 'pending'),
+      _api.passwordResets(),
+    ).wait;
+    return (leaves: r.$1, resets: r.$2);
   }
 
-  Future<void> _reject(_Request r) async {
-    final res = await context.feedback.choose(
-      ConfirmSpec(
-        title: 'Tolak ${_kindLabels[r.kind]!.toLowerCase()}?',
-        message: 'Pengaju menerima alasan penolakan.',
-        confirmLabel: 'Tolak',
-        reasonLabel: 'Alasan penolakan',
-      ),
-    );
-    if (res.choice != ConfirmChoice.confirm || !mounted) return;
-    setState(() => _items.remove(r));
-    context.feedback.info('Ditolak. Pengaju diberi tahu.');
+  void _reload() => setState(() => _gen++);
+
+  void _fail(AppError e) {
+    final msg = e.fieldErrors.values.expand((v) => v).firstOrNull;
+    msg != null ? context.feedback.info(msg) : context.feedback.error(e);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final count = {
-      for (final k in _Kind.values) k: _items.where((r) => r.kind == k).length,
-    };
-    final rows = _items
-        .where((r) => _filter == null || r.kind == _filter)
-        .toList();
-    return OlDetailScaffold(
-      title: 'Persetujuan',
-      children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          children: [
-            OlChip(
-              label: 'Semua ${_items.length}',
-              selected: _filter == null,
-              onTap: () => setState(() => _filter = null),
-            ),
-            for (final k in _Kind.values)
-              if (count[k]! > 0)
-                OlChip(
-                  label: '${_kindLabels[k]} ${count[k]}',
-                  selected: _filter == k,
-                  onTap: () => setState(() => _filter = k),
-                ),
-          ],
+  Future<void> _decideLeave(LeaveRequest l, bool approve) async {
+    String? reason;
+    if (!approve) {
+      final r = await context.feedback.choose(
+        ConfirmSpec(
+          title: 'Tolak cuti ${l.therapistName}?',
+          message: 'Terapis diberi tahu beserta alasannya.',
+          confirmLabel: 'Tolak',
+          reasonLabel: 'Alasan',
         ),
-        if (rows.isEmpty)
-          const OlCard(
-            child: EmptyState(
-              illustration: OlIllustration.emptyInbox,
-              title: 'Semua sudah diputuskan',
-              message: 'Permintaan baru akan muncul di sini dan di notifikasi.',
+      );
+      if (!r.confirmed) return;
+      reason = r.reason;
+    }
+    try {
+      final affected = await _api.decideLeave(
+        l.id,
+        approve: approve,
+        reason: reason,
+      );
+      if (!mounted) return;
+      HapticFeedback.lightImpact();
+      _reload();
+      if (!approve) {
+        context.feedback.success('Cuti ditolak.');
+      } else if (affected.isEmpty) {
+        context.feedback.success('Cuti disetujui. Tidak ada sesi terdampak.');
+      } else {
+        context.feedback.success(
+          'Cuti disetujui. ${affected.length} sesi perlu dipindah.',
+          action: FeedbackAction(
+            'Pindahkan',
+            () => context.push(
+              Uri(
+                path: Routes.kasirPindahMassal,
+                queryParameters: {
+                  'terapis': l.therapistId,
+                  'dari': formatDayParam(l.startsAt),
+                  'sampai': formatDayParam(
+                    l.endsAt.add(const Duration(days: 1)),
+                  ),
+                },
+              ).toString(),
             ),
           ),
-        for (final r in rows)
-          _RequestCard(
-            key: ValueKey(r.id),
-            request: r,
-            onApprove: () => _approve(r),
-            onReject: () => _reject(r),
-          ),
-      ],
-    );
+        );
+      }
+    } on AppError catch (e) {
+      if (mounted) _fail(e);
+    }
   }
-}
 
-class _RequestCard extends StatelessWidget {
-  const _RequestCard({
-    super.key,
-    required this.request,
-    required this.onApprove,
-    required this.onReject,
-  });
-
-  final _Request request;
-  final VoidCallback onApprove;
-  final VoidCallback onReject;
+  Future<void> _decideReset(PasswordResetRequest r, bool approve) async {
+    if (!approve) {
+      final ok = await context.feedback.confirm(
+        ConfirmSpec(
+          title: 'Tolak permintaan ${r.username}?',
+          message: 'Password tidak berubah.',
+          confirmLabel: 'Tolak',
+        ),
+      );
+      if (!ok) return;
+    }
+    try {
+      final pw = await _api.decidePasswordReset(r.id, approve: approve);
+      if (!mounted) return;
+      _reload();
+      if (pw == null) {
+        context.feedback.success('Permintaan ditolak.');
+        return;
+      }
+      await showTemporaryPassword(
+        context,
+        name: r.name ?? r.username,
+        password: pw,
+      );
+    } on AppError catch (e) {
+      if (mounted) _fail(e);
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.ol;
-    final t = context.olText;
-    final r = request;
-    final (label, tone) = switch (r.kind) {
-      _Kind.refund => ('Refund', OlTagTone.crit),
-      _Kind.cuti => ('Cuti', OlTagTone.warn),
-      _Kind.diskon => ('Diskon manual', OlTagTone.brand),
-      _Kind.reset => ('Reset password', OlTagTone.muted),
-    };
-    return OlCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              OlTag(label, tone: tone),
-              const SizedBox(width: OlSpace.sm),
-              Expanded(
-                child: Text(
-                  r.by,
-                  textAlign: TextAlign.right,
-                  style: t.body.copyWith(fontSize: 14, color: c.muted),
+  Widget build(BuildContext context) => OlDetailScaffold(
+    title: 'Persetujuan',
+    children: [
+      OlAsync<_Data>(
+        key: ValueKey(_gen),
+        load: _load,
+        builder: (context, d, _) {
+          final c = context.ol;
+          final t = context.olText;
+          if (d.leaves.isEmpty && d.resets.isEmpty) {
+            return const [
+              OlCard(
+                child: EmptyState(
+                  illustration: OlIllustration.emptyInbox,
+                  title: 'Tidak ada yang menunggu',
+                  message: 'Pengajuan cuti dan reset password muncul di sini.',
                 ),
               ),
-            ],
-          ),
-          if (r.title != null) ...[
-            const SizedBox(height: 10),
-            Text(r.title!, style: t.heading.copyWith(fontSize: 17)),
-          ],
-          const SizedBox(height: 6),
-          Text(
-            r.detail,
-            style: t.body.copyWith(
-              fontSize: 14.5,
-              color: r.kind == _Kind.refund ? c.fg : c.muted,
-            ),
-          ),
-          if (r.facts.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: c.brandSoft,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: [
-                  for (final (l, v, mono) in r.facts)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 3),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              l,
-                              style: t.body.copyWith(
-                                fontSize: 14.5,
-                                color: c.muted,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            v,
-                            style: mono
-                                ? t.mono.copyWith(fontSize: 14)
-                                : t.body.copyWith(fontSize: 14.5),
-                          ),
-                        ],
-                      ),
-                    ),
+            ];
+          }
+          Widget card({
+            required String kind,
+            required String by,
+            required String title,
+            String? detail,
+            required VoidCallback onReject,
+            required VoidCallback onApprove,
+          }) => OlCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    OlTag(kind, tone: OlTagTone.muted),
+                    const Spacer(),
+                    Text(by, style: t.body.copyWith(color: c.muted)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(title, style: t.heading.copyWith(fontSize: 17)),
+                if (detail != null) ...[
+                  const SizedBox(height: 4),
+                  Text(detail, style: t.body.copyWith(color: c.muted)),
                 ],
-              ),
+                const SizedBox(height: 12),
+                OlFootRow(
+                  children: [
+                    OlButton.secondary(
+                      label: 'Tolak',
+                      small: true,
+                      onPressed: onReject,
+                    ),
+                    OlButton(
+                      label: 'Setujui',
+                      small: true,
+                      onPressed: onApprove,
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-          const SizedBox(height: OlSpace.md),
-          OlFootRow(
-            children: [
-              OlButton(
-                label: r.kind == _Kind.reset ? 'Reset' : 'Setujui',
-                onPressed: onApprove,
+          );
+          return [
+            for (final l in d.leaves)
+              card(
+                kind: 'Cuti',
+                by: '${l.therapistName} · ${Fmt.dateNoDay(l.createdAt)}',
+                title: l.allDay
+                    ? '${Fmt.dateNoDay(l.startsAt)}${l.endsAt.difference(l.startsAt).inDays > 1 ? ' – ${Fmt.dateNoDay(l.endsAt.subtract(const Duration(days: 1)))}' : ''} · ${l.reason}'
+                    : '${Fmt.dateNoDay(l.startsAt)} ${Fmt.time(l.startsAt)}–${Fmt.time(l.endsAt)} · ${l.reason}',
+                detail: [
+                  if (l.note != null) '"${l.note}"',
+                  '${l.affectedSessions} sesi terdampak',
+                ].join(' · '),
+                onReject: () => _decideLeave(l, false),
+                onApprove: () => _decideLeave(l, true),
               ),
-              OlButton(
-                label: 'Tolak',
-                variant: OlButtonVariant.dangerSecondary,
-                onPressed: onReject,
+            for (final r in d.resets)
+              card(
+                kind: 'Reset password',
+                by: '${r.username} · ${Fmt.dateNoDay(r.createdAt)}',
+                title: r.name ?? 'Username tidak terdaftar',
+                detail: r.note == null ? null : '"${r.note}"',
+                onReject: () => _decideReset(r, false),
+                onApprove: () => _decideReset(r, true),
               ),
-            ],
-          ),
-        ],
+          ];
+        },
       ),
-    );
-  }
+    ],
+  );
 }
+
+String formatDayParam(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+/// Password sementara (OW-06, OW-08): ditampilkan sekali, bisa disalin.
+Future<void> showTemporaryPassword(
+  BuildContext context, {
+  required String name,
+  required String password,
+}) => context.feedback.sheet<void>(
+  title: 'Password sementara untuk $name',
+  message:
+      'Berikan langsung ke yang bersangkutan. Password ini hanya ditampilkan sekali dan wajib diganti saat masuk.',
+  child: Builder(
+    builder: (context) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SelectableText(
+          password,
+          textAlign: TextAlign.center,
+          style: context.olText.mono.copyWith(
+            fontSize: 26,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: OlSpace.md),
+        OlButton.secondary(
+          label: 'Salin',
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: password));
+            context.feedback.info('Password disalin.');
+          },
+        ),
+      ],
+    ),
+  ),
+  actions: const [SheetAction('Selesai', null)],
+);

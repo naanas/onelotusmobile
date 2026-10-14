@@ -1,35 +1,67 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/config.dart';
+import '../data/api/api_client.dart';
+import '../data/auth/auth_controller.dart';
+import '../data/models/models.dart';
+import '../data/pasien/pasien_api.dart';
+
 /// Tahap masuk bagian pasien (§5.13): perkenalan → layar masuk bersama (nomor HP)
-/// → kode OTP → hubungkan data lama → persetujuan data → siap.
-/// Slicing UI: disimpan di memori saja.
-enum PasienPhase { onboarding, otp, link, consent, ready }
+/// → kode OTP → hubungkan data lama / daftar → persetujuan data → siap.
+/// `restoring` = sesi tersimpan sedang dipulihkan saat aplikasi dibuka.
+enum PasienPhase { restoring, onboarding, otp, link, consent, ready }
 
 class PasienSession {
   const PasienSession({
     this.phase = PasienPhase.onboarding,
     this.phone = '',
-    this.promoConsent = false,
+    this.account,
   });
 
   final PasienPhase phase;
+
+  /// Nomor yang sedang diverifikasi (format tampilan pengguna).
   final String phone;
-  final bool promoConsent;
+  final PasienAccount? account;
 
   /// Tahap OTP dengan nomor terisi = kode sedang dikirim; kosong = belum
   /// mengisi nomor (pengguna berada di layar masuk bersama).
   bool get awaitingCode => phase == PasienPhase.otp && phone.isNotEmpty;
 
+  bool get promoConsent => account?.consent.promo ?? false;
+
   PasienSession copyWith({
     PasienPhase? phase,
     String? phone,
-    bool? promoConsent,
+    PasienAccount? account,
   }) => PasienSession(
     phase: phase ?? this.phase,
     phone: phone ?? this.phone,
-    promoConsent: promoConsent ?? this.promoConsent,
+    account: account ?? this.account,
   );
 }
+
+/// Kunci penyimpanan aman bagian pasien.
+abstract final class PasienKeys {
+  static const token = 'pasien.token';
+  static const account = 'pasien.account';
+  static const onboarded = 'pasien.onboarded';
+}
+
+/// Klien API pasien: token pasien; 401 → sesi pasien berakhir (masuk lagi dengan OTP).
+final pasienApiProvider = Provider<PasienApi>(
+  (ref) => PasienApi(
+    ApiClient(
+      baseUrl: AppConfig.apiUrl,
+      token: () => ref.read(pasienTokenProvider),
+      onUnauthorized: () => ref.read(pasienSessionProvider.notifier).expire(),
+    ),
+  ),
+);
 
 final pasienSessionProvider =
     NotifierProvider<PasienSessionNotifier, PasienSession>(
@@ -37,29 +69,122 @@ final pasienSessionProvider =
     );
 
 class PasienSessionNotifier extends Notifier<PasienSession> {
+  PasienApi get _api => ref.read(pasienApiProvider);
+
   @override
-  PasienSession build() => const PasienSession();
+  PasienSession build() {
+    Future.microtask(_restore);
+    return const PasienSession(phase: PasienPhase.restoring);
+  }
 
-  void finishOnboarding() => state = state.copyWith(phase: PasienPhase.otp);
+  static PasienPhase _phaseOf(PasienAccount a) => switch (a.nextStep) {
+    PasienNextStep.link => PasienPhase.link,
+    PasienNextStep.consent => PasienPhase.consent,
+    PasienNextStep.ready => PasienPhase.ready,
+  };
 
-  /// Layar masuk mengenali nomor HP → kirim kode OTP ke nomor ini.
-  void requestOtp(String phone) =>
-      state = state.copyWith(phase: PasienPhase.otp, phone: phone);
+  Future<void> _restore() async {
+    final store = ref.read(sessionStoreProvider);
+    try {
+      final onboarded = await store.read(PasienKeys.onboarded) == '1';
+      final token = await store.read(PasienKeys.token);
+      final cached = await store.read(PasienKeys.account);
+      if (token == null || cached == null) {
+        state = PasienSession(
+          phase: onboarded ? PasienPhase.otp : PasienPhase.onboarding,
+        );
+        return;
+      }
+      ref.read(pasienTokenProvider.notifier).set(token);
+      final account = PasienAccount.fromJson(
+        (jsonDecode(cached) as Map).cast<String, dynamic>(),
+      );
+      state = PasienSession(phase: _phaseOf(account), account: account);
+      // Perbarui dari server di belakang layar (offline → pakai data tersimpan).
+      unawaited(refresh());
+    } catch (_) {
+      state = const PasienSession(phase: PasienPhase.onboarding);
+    }
+  }
+
+  Future<void> _save(String? token, PasienAccount? account) async {
+    final store = ref.read(sessionStoreProvider);
+    if (token != null) await store.write(PasienKeys.token, token);
+    if (account != null) {
+      await store.write(PasienKeys.account, jsonEncode(account.toJson()));
+    }
+  }
+
+  void _apply(PasienAccount account) {
+    state = PasienSession(phase: _phaseOf(account), account: account);
+    unawaited(_save(null, account));
+  }
+
+  Future<void> finishOnboarding() async {
+    state = const PasienSession(phase: PasienPhase.otp);
+    await ref.read(sessionStoreProvider).write(PasienKeys.onboarded, '1');
+  }
+
+  /// Layar masuk mengenali nomor HP → kirim kode OTP WhatsApp. Melempar `AppError`.
+  Future<int> requestOtp(String phone) async {
+    final resendIn = await _api.requestOtp(phone);
+    state = state.copyWith(phase: PasienPhase.otp, phone: phone);
+    return resendIn;
+  }
+
+  Future<int> resendOtp() => _api.requestOtp(state.phone);
+
+  /// Verifikasi kode → akun pasien; tahap berikut sesuai `next_step` server.
+  Future<void> verify(String code) async {
+    final (token, account) = await _api.verifyOtp(state.phone, code);
+    ref.read(pasienTokenProvider.notifier).set(token);
+    await _save(token, account);
+    _apply(account);
+  }
 
   /// "Ubah nomor" / kembali dari layar kode → layar masuk.
   void backToLogin() => state = const PasienSession(phase: PasienPhase.otp);
 
-  void verified() => state = state.copyWith(phase: PasienPhase.link);
+  Future<LinkCandidates> linkCandidates() => _api.linkCandidates();
 
-  /// Data lama terhubung atau daftar baru — keduanya lanjut ke persetujuan.
-  void linked() => state = state.copyWith(phase: PasienPhase.consent);
+  Future<void> link({String? patientId, required DateTime birthDate}) async =>
+      _apply(await _api.link(patientId: patientId, birthDate: birthDate));
 
-  void consented({required bool promo}) =>
-      state = state.copyWith(phase: PasienPhase.ready, promoConsent: promo);
+  Future<void> register(PatientDraft draft) async =>
+      _apply(await _api.register(draft));
 
-  void logout() => state = const PasienSession(phase: PasienPhase.otp);
+  Future<void> consent({required bool promo}) async =>
+      _apply(await _api.consent(promo: promo));
 
-  /// Lewati masuk (pengujian & pratinjau).
-  void skipToReady() =>
-      state = state.copyWith(phase: PasienPhase.ready, phone: '0812 3456 7890');
+  Future<void> refresh() async {
+    try {
+      _apply(await _api.me());
+    } catch (_) {
+      // Offline / server bermasalah: tetap pakai akun tersimpan.
+    }
+  }
+
+  /// Keluar: cabut token di server (bila bisa), hapus sesi di HP.
+  Future<void> logout() async {
+    try {
+      await _api.logout();
+    } catch (_) {}
+    await _clear();
+  }
+
+  /// Pratinjau & render layar di tes: anggap pasien sudah masuk dengan [account].
+  @visibleForTesting
+  void debugSetReady(PasienAccount account) =>
+      state = PasienSession(phase: PasienPhase.ready, account: account);
+
+  /// Token ditolak server (401) atau akun dihapus.
+  Future<void> expire() => _clear();
+
+  Future<void> _clear() async {
+    final store = ref.read(sessionStoreProvider);
+    ref.read(pasienTokenProvider.notifier).set(null);
+    await store.delete(PasienKeys.token);
+    await store.delete(PasienKeys.account);
+    state = const PasienSession(phase: PasienPhase.otp);
+  }
 }

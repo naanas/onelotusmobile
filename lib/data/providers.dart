@@ -9,7 +9,6 @@ import 'auth/auth_controller.dart';
 import 'local/kv_store.dart';
 import 'local/local_db.dart';
 import 'remote/http_remote.dart';
-import 'remote/mock_backend.dart';
 import 'remote/remote.dart';
 import 'repositories/repositories.dart';
 import 'repositories/repository_impl.dart';
@@ -33,8 +32,6 @@ final cacheStoreProvider = Provider<KvStore>(
 
 // ── Sumber data: mock (API_URL kosong) atau One Lotus API ──────────────────
 
-final mockBackendProvider = Provider<MockBackend>((ref) => MockBackend());
-
 final apiClientProvider = Provider<ApiClient>(
   (ref) => ApiClient(
     baseUrl: AppConfig.apiUrl,
@@ -44,18 +41,11 @@ final apiClientProvider = Provider<ApiClient>(
 );
 
 final remoteProvider = Provider<OneLotusRemote>(
-  (ref) => AppConfig.useMock
-      ? MockRemote(
-          ref.watch(mockBackendProvider),
-          currentUserId: () => ref.read(authProvider).user?.id,
-        )
-      : HttpRemote(ref.watch(apiClientProvider)),
+  (ref) => HttpRemote(ref.watch(apiClientProvider)),
 );
 
 final outboxSenderProvider = Provider<OutboxSender>(
-  (ref) => AppConfig.useMock
-      ? MockOutboxSender(ref.watch(mockBackendProvider))
-      : ApiOutboxSender(ref.watch(apiClientProvider)),
+  (ref) => ApiOutboxSender(ref.watch(apiClientProvider)),
 );
 
 /// Status koneksi perangkat. Override di tes.
@@ -145,34 +135,3 @@ final serviceRepositoryProvider = Provider<ServiceRepository>(
 final invoiceRepositoryProvider = Provider<InvoiceRepository>(
   (ref) => InvoiceRepositoryImpl(remote: ref.watch(remoteProvider)),
 );
-
-/// Simulasi tanpa sinyal di mode mock (build debug) — untuk mencoba §8 di HP tanpa mematikan jaringan.
-final mockOfflineProvider = NotifierProvider<MockOfflineNotifier, bool>(
-  MockOfflineNotifier.new,
-);
-
-class MockOfflineNotifier extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void set(bool offline) {
-    ref.read(mockBackendProvider).offline = offline;
-    ref.read(syncEngineProvider).setOffline(offline);
-    state = offline;
-  }
-}
-
-/// Simulasi gangguan server di mode mock (build debug) — untuk melihat ST-03.
-final mockServerDownProvider = NotifierProvider<MockServerDownNotifier, bool>(
-  MockServerDownNotifier.new,
-);
-
-class MockServerDownNotifier extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void set(bool down) {
-    ref.read(mockBackendProvider).serverDown = down;
-    state = down;
-  }
-}

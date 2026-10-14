@@ -16,9 +16,11 @@ import 'package:onelotus_staff/ui/ui.dart';
 import '../test/auth/fakes.dart';
 import 'app_helpers.dart';
 
+late AuthHarness _h;
+
 Future<ProviderContainer> _open(WidgetTester t) async {
   phoneView(t);
-  final h = AuthHarness()..device.available = false;
+  final h = _h = AuthHarness()..device.available = false;
   h.clock.now = DateTime(2026, 10, 6, 10, 42);
   final c = h.container();
   await t.runAsync(() async {
@@ -69,16 +71,17 @@ void main() {
     await pumpFor(t);
 
     // ST-03: gangguan server.
-    c.read(mockServerDownProvider.notifier).set(true);
+    _h.backend.serverDown = true;
     await t.tap(find.text('8').first);
     await pumpFor(t);
     await shot(t, 'ST-03');
-    c.read(mockServerDownProvider.notifier).set(false);
+    _h.backend.serverDown = false;
 
     // ST-04: offline, data dari cache.
     await t.tap(find.text('6').first);
     await pumpFor(t);
-    c.read(mockOfflineProvider.notifier).set(true);
+    _h.backend.offline = true;
+    c.read(syncEngineProvider).setOffline(true);
     await t.tap(find.text('7').first);
     await pumpFor(t);
     await t.tap(find.text('6').first);
@@ -86,7 +89,8 @@ void main() {
     _ctx.feedback.success('Tersimpan di HP. Akan terkirim saat ada sinyal.');
     await pumpFor(t, const Duration(milliseconds: 400));
     await shot(t, 'ST-04');
-    c.read(mockOfflineProvider.notifier).set(false);
+    _h.backend.offline = false;
+    c.read(syncEngineProvider).setOffline(false);
     await pumpFor(t, const Duration(seconds: 4));
 
     // ST-07..09: sheet.

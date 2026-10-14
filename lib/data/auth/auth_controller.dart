@@ -5,14 +5,12 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/config.dart';
 import '../../ui/feedback/app_error.dart';
 import '../providers.dart' show apiClientProvider;
 import 'api_auth_repository.dart';
 import '../models/staff_user.dart';
 import 'auth_repository.dart';
 import 'device_security.dart';
-import 'mock_auth_repository.dart';
 import 'session_store.dart';
 
 enum AuthPhase {
@@ -138,10 +136,33 @@ abstract final class AuthRules {
   static const minPasswordLength = 8;
 }
 
+/// Status aplikasi dari server saat splash (versi minimum & pemeliharaan, UM-02/UM-03).
+final appStatusProvider = NotifierProvider<AppStatusNotifier, AppStatus?>(
+  AppStatusNotifier.new,
+);
+
+class AppStatusNotifier extends Notifier<AppStatus?> {
+  @override
+  AppStatus? build() => null;
+
+  void set(AppStatus? s) => state = s;
+}
+
+/// `true` bila versi [current] lebih lama dari [minimum] (format `1.2.3`).
+bool isOlderVersion(String current, String minimum) {
+  List<int> parts(String v) => [
+    for (final p in v.split('.')) int.tryParse(p.split('+').first) ?? 0,
+  ];
+  final a = parts(current), b = parts(minimum);
+  for (var i = 0; i < 3; i++) {
+    final x = i < a.length ? a[i] : 0, y = i < b.length ? b[i] : 0;
+    if (x != y) return x < y;
+  }
+  return false;
+}
+
 final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => AppConfig.useMock
-      ? MockAuthRepository()
-      : ApiAuthRepository(ref.watch(apiClientProvider)),
+  (ref) => ApiAuthRepository(ref.watch(apiClientProvider)),
 );
 final sessionStoreProvider = Provider<SessionStore>(
   (ref) => SecureSessionStore(),
@@ -188,8 +209,11 @@ class AuthController extends Notifier<AuthState> {
 
     var offline = false;
     try {
-      await _repo.appStatus().timeout(const Duration(seconds: 5));
-      // TODO(UM-02/UM-03): bandingkan versi minimum & mode pemeliharaan.
+      final status = await _repo.appStatus().timeout(
+        const Duration(seconds: 5),
+      );
+      // UM-02 / UM-03: redirect ke Perbarui / Pemeliharaan diputuskan `appRedirect`.
+      ref.read(appStatusProvider.notifier).set(status);
     } catch (_) {
       offline = true;
     }
@@ -317,6 +341,12 @@ class AuthController extends Notifier<AuthState> {
       state = state.copyWith(biometricEnabled: true);
     }
     return ok;
+  }
+
+  /// Matikan buka kunci dengan biometrik (UM-12).
+  Future<void> disableBiometric() async {
+    await _store.delete(SessionKeys.biometric(state.user!.id));
+    state = state.copyWith(biometricEnabled: false);
   }
 
   Future<bool> requestNotificationPermission() =>

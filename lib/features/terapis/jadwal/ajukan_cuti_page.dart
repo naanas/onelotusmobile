@@ -1,25 +1,31 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/format.dart';
+import '../../../data/api/one_lotus_api.dart';
 import '../../../theme/app_theme.dart';
 import '../../../ui/ui.dart';
 
 /// TR-03 Ajukan cuti → menunggu persetujuan owner (OW-06).
-class AjukanCutiPage extends StatefulWidget {
+class AjukanCutiPage extends ConsumerStatefulWidget {
   const AjukanCutiPage({super.key});
 
   @override
-  State<AjukanCutiPage> createState() => _AjukanCutiPageState();
+  ConsumerState<AjukanCutiPage> createState() => _AjukanCutiPageState();
 }
 
-class _AjukanCutiPageState extends State<AjukanCutiPage> {
-  DateTime _start = DateTime(2026, 10, 14);
-  DateTime _end = DateTime(2026, 10, 15);
+class _AjukanCutiPageState extends ConsumerState<AjukanCutiPage> {
+  late DateTime _start = DateUtils.dateOnly(DateTime.now());
+  late DateTime _end = _start;
   String _duration = 'full';
-  String? _reason = 'Keluarga';
-  final _note = TextEditingController(text: 'Acara keluarga di Surabaya.');
+  TimeOfDay _from = const TimeOfDay(hour: 8, minute: 0);
+  TimeOfDay _to = const TimeOfDay(hour: 12, minute: 0);
+  String? _reason;
+  final _note = TextEditingController();
   bool _busy = false;
   String? _reasonError;
+  String? _dateError;
 
   @override
   void dispose() {
@@ -31,8 +37,8 @@ class _AjukanCutiPageState extends State<AjukanCutiPage> {
     final picked = await showDatePicker(
       context: context,
       initialDate: start ? _start : _end,
-      firstDate: DateTime(2026, 10, 1),
-      lastDate: DateTime(2027, 12, 31),
+      firstDate: DateUtils.dateOnly(DateTime.now()),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
       locale: const Locale('id'),
     );
     if (picked == null) return;
@@ -46,18 +52,61 @@ class _AjukanCutiPageState extends State<AjukanCutiPage> {
     });
   }
 
+  Future<void> _pickTime(bool from) async {
+    final t = await showTimePicker(
+      context: context,
+      initialTime: from ? _from : _to,
+    );
+    if (t != null) setState(() => from ? _from = t : _to = t);
+  }
+
   Future<void> _submit() async {
     if (_reason == null) {
       setState(() => _reasonError = 'Pilih alasan cuti.');
       return;
     }
-    setState(() => _busy = true);
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-    context.feedback.success(
-      'Pengajuan cuti terkirim. Menunggu persetujuan owner.',
-    );
-    Navigator.of(context).maybePop();
+    final allDay = _duration == 'full';
+    DateTime at(DateTime d, TimeOfDay t) =>
+        DateTime(d.year, d.month, d.day, t.hour, t.minute);
+    final startsAt = allDay ? _start : at(_start, _from);
+    final endsAt = allDay ? _end : at(_start, _to);
+    if (!allDay && !endsAt.isAfter(startsAt)) {
+      setState(() => _dateError = 'Jam selesai harus setelah jam mulai.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _dateError = null;
+    });
+    try {
+      final leave = await ref
+          .read(oneLotusApiProvider)
+          .createLeave(
+            startsAt: startsAt,
+            endsAt: endsAt,
+            allDay: allDay,
+            reason: _reason!,
+            note: _note.text.trim().isEmpty ? null : _note.text.trim(),
+          );
+      if (!mounted) return;
+      context.feedback.success(
+        leave.affectedSessions > 0
+            ? 'Pengajuan cuti terkirim. ${leave.affectedSessions} sesi terjadwal akan dipindahkan setelah disetujui.'
+            : 'Pengajuan cuti terkirim. Menunggu persetujuan owner.',
+      );
+      Navigator.of(context).maybePop();
+    } on AppError catch (e) {
+      if (!mounted) return;
+      final msg =
+          e.fieldError('starts_at') ??
+          e.fieldError('ends_at') ??
+          e.fieldError('reason');
+      setState(() {
+        _busy = false;
+        _dateError = msg;
+      });
+      if (msg == null) context.feedback.error(e, retry: _submit);
+    }
   }
 
   @override
@@ -97,6 +146,32 @@ class _AjukanCutiPageState extends State<AjukanCutiPage> {
           value: _duration,
           onChanged: (v) => setState(() => _duration = v),
         ),
+        if (_duration == 'hours')
+          Row(
+            children: [
+              Expanded(
+                child: OlButton.secondary(
+                  label: 'Dari ${_from.format(context)}',
+                  onPressed: () => _pickTime(true),
+                ),
+              ),
+              const SizedBox(width: OlSpace.md),
+              Expanded(
+                child: OlButton.secondary(
+                  label: 'Sampai ${_to.format(context)}',
+                  onPressed: () => _pickTime(false),
+                ),
+              ),
+            ],
+          ),
+        if (_dateError != null)
+          Text(
+            _dateError!,
+            style: t.caption.copyWith(
+              color: c.crit,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         Text.rich(
           TextSpan(
             children: [
@@ -133,9 +208,8 @@ class _AjukanCutiPageState extends State<AjukanCutiPage> {
           ),
         OlTextField(label: 'Catatan', controller: _note, maxLines: 3),
         const OlBanner(
-          tone: OlBannerTone.warn,
           message:
-              '3 sesi terjadwal di rentang ini\nOwner akan memindahkannya ke terapis lain setelah menyetujui.',
+              'Sesi terjadwal di rentang cuti akan dipindahkan owner ke terapis lain setelah disetujui.',
         ),
       ],
     );

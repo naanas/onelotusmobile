@@ -1,16 +1,30 @@
-# onelotus_staff
+# One Lotus Mobile
 
-A new Flutter project.
+Satu aplikasi Flutter untuk staf (terapis, kasir, owner) dan pasien One Lotus. Semua data diambil dari
+One Lotus API (`../backend`); aplikasi tidak punya mode data contoh.
 
-## Getting Started
+## Menjalankan (dev)
 
-This project is a starting point for a Flutter application.
+1. Jalankan backend: `cd ../backend && go run ./cmd/server` (set `MOBILE_OTP_DEV_LOG=true` di `.env`
+   agar kode OTP pasien tampil di log server).
+2. Salin `env/dev.example.json` ke `env/dev.json`, isi `API_URL` dengan IP laptop
+   (`ipconfig getifaddr en0`), mis. `http://192.168.1.10:8080`. Emulator Android: `http://10.0.2.2:8080`.
+   HP dan laptop harus di Wi-Fi yang sama.
+3. Jalankan aplikasi:
 
-A few resources to get you started if this is your first Flutter project:
+   ```
+   flutter run --dart-define-from-file=env/dev.json
+   ```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+   Di VS Code cukup pilih konfigurasi **One Lotus (dev)** lalu Run.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Nilai `API_URL` ditanam saat build: setelah mengubahnya, hentikan lalu `flutter run` lagi (hot reload tidak cukup).
+`env/*.json` tidak masuk git, kecuali `*.example.json`.
+
+## Tes
+
+```
+flutter analyze
+flutter test
+flutter test test/contract --dart-define=LIVE_API=http://localhost:8080 --dart-define=OTP_LOG=/path/server.log
+```

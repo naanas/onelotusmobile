@@ -1,231 +1,155 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/format.dart';
+import '../../../data/api/one_lotus_api.dart';
+import '../../../data/models/models.dart';
+import '../../../data/providers.dart';
+import '../../../router/routes.dart';
 import '../../../theme/app_theme.dart';
+import '../../../ui/body_map/body_map_selection.dart';
 import '../../../ui/ui.dart';
-import '../demo_data.dart';
 
-/// TR-08 Detail sesi & addendum: baca-saja; edit oleh pembuat sampai batas waktu,
-/// setelahnya hanya addendum. Riwayat perubahan terlihat.
-class DetailSesiPage extends StatefulWidget {
+/// TR-08 Detail sesi: rekam sesi baca-saja (dari server, atau versi di HP yang belum terkirim).
+/// Edit membuka rekam sesi (TR-04). Addendum menunggu aturan batas edit (§16 no. 7).
+class DetailSesiPage extends ConsumerWidget {
   const DetailSesiPage({super.key, required this.sessionId});
 
   final String sessionId;
 
-  @override
-  State<DetailSesiPage> createState() => _DetailSesiPageState();
-}
-
-class _DetailSesiPageState extends State<DetailSesiPage> {
-  final _addenda = <String>[];
-
-  Future<void> _addAddendum() async {
-    final text = await context.feedback.formSheet<String>(
-      title: 'Tambah addendum',
-      message:
-          'Catatan asli tidak berubah. Addendum tercatat dengan nama & waktu.',
-      builder: (context, close) => _AddendumForm(onSubmit: close),
-    );
-    if (text != null && mounted) {
-      setState(() => _addenda.add(text));
-      context.feedback.success('Addendum tersimpan.');
-    }
-  }
-
-  Future<void> _delete() async {
-    final ok = await context.feedback.confirm(
-      const ConfirmSpec(
-        title: 'Hapus catatan sesi 6 Okt?',
-        message:
-            'Hanya pembuat atau admin yang bisa menghapus. Penghapusan tercatat di audit log.',
-        confirmLabel: 'Hapus catatan',
-      ),
-    );
-    if (ok && mounted) {
-      context.feedback.success('Catatan sesi dihapus.');
-      Navigator.of(context).maybePop();
-    }
+  Future<(SessionRecord?, Patient?)> _load(WidgetRef ref) async {
+    final rec = await ref
+        .read(sessionRecordRepositoryProvider)
+        .forSession(sessionId);
+    if (rec == null) return (null, null);
+    final patient = await ref.read(oneLotusApiProvider).patient(rec.patientId);
+    return (rec, patient);
   }
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.ol;
-    final t = context.olText;
-    const d = demoRinaSession;
-
-    return OlDetailScaffold(
-      title: d.patient,
-      context_: d.when,
-      actions: [
-        OlButton.secondary(
-          label: 'Edit',
-          icon: OlIcons.edit,
-          small: true,
-          expand: false,
-          onPressed: () =>
-              context.feedback.info('Edit membuka rekam sesi (TR-04).'),
-        ),
-      ],
-      below: Wrap(
-        spacing: 8,
-        runSpacing: 6,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          const OlTag('Selesai', tone: OlTagTone.ok),
-          const OlTag('Lunas', tone: OlTagTone.ok),
-          Text(
-            'Edit tersedia ${d.editHoursLeft} jam lagi',
-            style: t.body.copyWith(color: c.muted),
-          ),
-        ],
+  Widget build(BuildContext context, WidgetRef ref) => OlDetailScaffold(
+    title: 'Detail sesi',
+    actions: [
+      OlButton.secondary(
+        label: 'Edit',
+        icon: OlIcons.edit,
+        small: true,
+        expand: false,
+        onPressed: () => context.push(Routes.terapisRekam(sessionId)),
       ),
-      children: [
-        OlCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              OlInfoRow(label: 'Keluhan', value: d.complaint, divider: true),
-              const SizedBox(height: 4),
-              OlInfoRow(label: 'Area ditangani', value: d.areas),
-              OlInfoRow(
-                label: 'Nyeri',
-                value: '${d.painBefore}  →  ${d.painAfter}',
-                valueStyle: t.heading.copyWith(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
+    ],
+    children: [
+      OlAsync<(SessionRecord?, Patient?)>(
+        load: () => _load(ref),
+        builder: (context, data, _) {
+          final (rec, patient) = data;
+          final c = context.ol;
+          final t = context.olText;
+          if (rec == null) {
+            return [
+              OlCard(
+                child: EmptyState(
+                  illustration: OlIllustration.emptyInbox,
+                  title: 'Belum ada rekam sesi',
+                  message: 'Sesi ini belum dicatat.',
+                  actionLabel: 'Isi rekam sesi',
+                  onAction: () => context.push(Routes.terapisRekam(sessionId)),
                 ),
               ),
-              OlInfoRow(label: 'Treatment', value: d.treatments, divider: true),
-              const SizedBox(height: 10),
+            ];
+          }
+          String join(List<String> l) => l.isEmpty ? '–' : l.join(', ');
+          return [
+            if (patient != null)
               Text(
-                'Analisa (internal)',
-                style: t.body.copyWith(fontSize: 15, color: c.muted),
+                '${patient.name} · ${Fmt.patientNo(patient.number)}',
+                style: t.heading,
               ),
-              const SizedBox(height: 6),
-              Text(d.analysis, style: t.body.copyWith(fontSize: 15)),
-              const SizedBox(height: 12),
+            if (rec.updatedAt != null)
               Text(
-                'Kesimpulan & saran',
-                style: t.body.copyWith(fontSize: 15, color: c.muted),
+                'Disimpan ${Fmt.date(rec.updatedAt!)} ${Fmt.time(rec.updatedAt!)} · versi ${rec.version}',
+                style: t.body.copyWith(color: c.muted),
               ),
-              const SizedBox(height: 6),
-              Text(d.conclusion, style: t.body.copyWith(fontSize: 15)),
-            ],
-          ),
-        ),
-        OlCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
+            OlCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: Text(
-                      'Addendum',
-                      style: t.heading.copyWith(fontSize: 17),
-                    ),
+                  OlInfoRow(
+                    label: 'Keluhan',
+                    value: rec.complaint.isEmpty ? '–' : rec.complaint,
+                    divider: true,
                   ),
-                  TextButton(
-                    onPressed: _addAddendum,
-                    style: TextButton.styleFrom(
-                      foregroundColor: c.brand,
-                      textStyle: t.button,
+                  if (rec.cause != null)
+                    OlInfoRow(
+                      label: 'Penyebab',
+                      value: [
+                        rec.cause!.label,
+                        if (rec.injuryDuration != null)
+                          '${rec.injuryDuration} ${rec.injuryDurationUnit?.label ?? ''}',
+                      ].join(' · '),
                     ),
-                    child: const Text('+ Tambah'),
+                  OlInfoRow(
+                    label: 'Area ditangani',
+                    value: join([
+                      for (final a in rec.treatedAreas) bodyAreaLabel(a),
+                    ]),
+                  ),
+                  if (rec.calmingAreas.isNotEmpty)
+                    OlInfoRow(
+                      label: 'Area penenang',
+                      value: join([
+                        for (final a in rec.calmingAreas) bodyAreaLabel(a),
+                      ]),
+                    ),
+                  if (rec.painBefore != null || rec.painAfter != null)
+                    OlInfoRow(
+                      label: 'Nyeri',
+                      value:
+                          '${rec.painBefore ?? '–'}  →  ${rec.painAfter ?? '–'}',
+                      valueStyle: t.heading.copyWith(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  OlInfoRow(
+                    label: 'Treatment',
+                    value: join([
+                      ...rec.treatments,
+                      if (rec.treatmentNote.isNotEmpty) rec.treatmentNote,
+                    ]),
+                    divider: true,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Analisa (internal)',
+                    style: t.body.copyWith(fontSize: 15, color: c.muted),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    join([
+                      if (rec.analysis.isNotEmpty) rec.analysis,
+                      ...rec.analysisTags,
+                    ]),
+                    style: t.body.copyWith(fontSize: 15),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Kesimpulan & saran',
+                    style: t.body.copyWith(fontSize: 15, color: c.muted),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    join([
+                      if (rec.conclusion.isNotEmpty) rec.conclusion,
+                      ...rec.conclusionTags,
+                    ]),
+                    style: t.body.copyWith(fontSize: 15),
                   ),
                 ],
               ),
-              if (_addenda.isEmpty)
-                Text(
-                  'Tersedia setelah 24 jam — catatan asli tidak bisa diubah, tambahan ditulis di sini.',
-                  style: t.body.copyWith(color: c.muted),
-                )
-              else
-                for (final a in _addenda)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text('Dimas · baru saja — $a', style: t.body),
-                  ),
-            ],
-          ),
-        ),
-        OlCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Riwayat perubahan',
-                style: t.heading.copyWith(fontSize: 17),
-              ),
-              const SizedBox(height: 6),
-              for (final (what, at) in d.changes)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(what, style: t.body.copyWith(fontSize: 15)),
-                      ),
-                      Text(
-                        at,
-                        style: t.mono.copyWith(fontSize: 14, color: c.muted),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-        Center(
-          child: OlButton(
-            label: 'Hapus catatan',
-            variant: OlButtonVariant.dangerText,
-            expand: false,
-            onPressed: _delete,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _AddendumForm extends StatefulWidget {
-  const _AddendumForm({required this.onSubmit});
-  final ValueChanged<String> onSubmit;
-
-  @override
-  State<_AddendumForm> createState() => _AddendumFormState();
-}
-
-class _AddendumFormState extends State<_AddendumForm> {
-  final _ctrl = TextEditingController();
-  String? _error;
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      OlTextField(
-        label: 'Isi addendum',
-        isRequired: true,
-        controller: _ctrl,
-        maxLines: 4,
-        error: _error,
-      ),
-      const SizedBox(height: OlSpace.lg),
-      OlButton(
-        label: 'Simpan addendum',
-        onPressed: () {
-          if (_ctrl.text.trim().isEmpty) {
-            setState(() => _error = 'Tulis isi addendum.');
-            return;
-          }
-          widget.onSubmit(_ctrl.text.trim());
+            ),
+          ];
         },
       ),
     ],

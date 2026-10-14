@@ -17,6 +17,7 @@ import 'masuk/persetujuan_page.dart';
 import 'pasien_routes.dart';
 import 'pasien_session.dart';
 import 'profil/alamat_page.dart';
+import '../router/routes.dart';
 import 'profil/beli_paket_page.dart';
 import 'profil/hapus_akun_page.dart';
 import 'profil/notifikasi_page.dart';
@@ -28,6 +29,7 @@ import 'profil/struk_page.dart';
 
 /// Layar masuk pasien sesuai tahapnya; null bila sudah siap.
 String? pasienEntry(PasienPhase phase) => switch (phase) {
+  PasienPhase.restoring => Routes.splash,
   PasienPhase.onboarding => PRoutes.onboarding,
   PasienPhase.otp => PRoutes.masuk,
   PasienPhase.link => PRoutes.hubungkan,

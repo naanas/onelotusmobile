@@ -4,4 +4,6 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Debug saja: izinkan API lokal lewat HTTP (http://<ip-laptop>:8080). Build rilis tetap wajib HTTPS. -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

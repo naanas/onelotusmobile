@@ -3,17 +3,21 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/format.dart';
+import '../../data/api/one_lotus_api.dart';
 import '../../data/auth/auth_controller.dart';
+import '../../data/models/models.dart';
 import '../../data/sync/sync_providers.dart';
 import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import '../shell/role_shell.dart';
 import '../umum/sync_details.dart';
-import 'demo_data.dart';
 
-/// KS-01 Antrian hari ini (tab Antrian kasir): tandai hadir, ganti terapis/ruang,
-/// lengkapi data pasien baru, tagih sesi selesai, walk-in.
+typedef _Queue = ({List<Session> today, int bookings});
+
+/// KS-01 Antrian hari ini (tab Antrian kasir): jadwal cabang hari ini dari `GET /v1/sessions`.
+/// Tandai hadir, ganti terapis/ruang, tidak datang / batal (alasan wajib), walk-in, booking masuk.
 class AntrianPage extends ConsumerStatefulWidget {
   const AntrianPage({super.key});
 
@@ -22,43 +26,158 @@ class AntrianPage extends ConsumerStatefulWidget {
 }
 
 class _AntrianPageState extends ConsumerState<AntrianPage> {
-  final _items = demoQueue();
+  int _gen = 0;
 
-  Future<void> _changeTherapist(DemoQueueItem it) async {
+  OneLotusApi get _api => ref.read(oneLotusApiProvider);
+  Branch? get _branch => ref.read(authProvider).activeBranch;
+
+  Future<_Queue> _load() async {
+    final branch = _branch;
+    if (branch == null) return (today: <Session>[], bookings: 0);
+    final now = DateTime.now();
+    final day = DateTime(now.year, now.month, now.day);
+    final r = await (
+      _api.sessions(
+        branchId: branch.id,
+        from: day,
+        to: day.add(const Duration(days: 1)),
+      ),
+      _api.sessions(
+        branchId: branch.id,
+        from: day,
+        to: day.add(const Duration(days: 31)),
+      ),
+    ).wait;
+    return (
+      today: [
+        for (final s in r.$1)
+          if (s.status != SessionStatus.awaitingConfirmation &&
+              s.status != SessionStatus.cancelled)
+            s,
+      ],
+      bookings: r.$2
+          .where((s) => s.status == SessionStatus.awaitingConfirmation)
+          .length,
+    );
+  }
+
+  void _reload() => setState(() => _gen++);
+
+  Future<void> _run(Future<void> Function() action, String success) async {
+    try {
+      await action();
+      if (!mounted) return;
+      context.feedback.success(success);
+      _reload();
+    } on AppError catch (e) {
+      if (!mounted) return;
+      final msg = e.fieldErrors.values.expand((v) => v).firstOrNull;
+      if (msg != null) {
+        context.feedback.info(msg);
+      } else {
+        context.feedback.error(e);
+      }
+    }
+  }
+
+  Future<void> _markArrived(Session s) {
+    HapticFeedback.lightImpact();
+    return _run(
+      () => _api.setStatus(s.id, SessionStatus.arrived),
+      '${s.patientName} ditandai hadir.',
+    );
+  }
+
+  Future<void> _changeTherapist(Session s) async {
+    final branch = _branch;
+    if (branch == null) return;
+    final List<Therapist> therapists;
+    final List<Room> rooms;
+    try {
+      therapists = await _api.therapists(branch.id, date: s.startAt);
+      rooms = await _api.rooms(branch.id);
+    } on AppError catch (e) {
+      if (mounted) context.feedback.error(e);
+      return;
+    }
+    if (!mounted) return;
     final pick = await context.feedback.sheet<String>(
-      title: 'Ganti terapis / ruang',
-      message: '${it.name} · ${it.time}',
+      title: 'Ganti terapis',
+      message: '${s.patientName} · ${Fmt.time(s.startAt)}',
       actions: [
-        for (final t in const [
-          'Dimas · ruang 2',
-          'Laras · ruang 1',
-          'Fajar · ruang 3',
-        ])
-          SheetAction(
-            t,
-            t,
-            variant: t.startsWith(it.therapist)
-                ? OlButtonVariant.primary
-                : OlButtonVariant.secondary,
-          ),
+        for (final t in therapists)
+          if (t.available != false)
+            SheetAction(
+              t.name,
+              t.id,
+              variant: t.id == s.therapistId
+                  ? OlButtonVariant.primary
+                  : OlButtonVariant.secondary,
+            ),
       ],
     );
     if (pick == null || !mounted) return;
-    final [th, room] = pick.split(' · ');
-    setState(() {
-      it.therapist = th;
-      it.room = room;
-    });
-    context.feedback.success('Dipindah ke $th, $room. Terapis diberi tahu.');
+    String? room = s.room;
+    if (rooms.isNotEmpty && !s.isHomeVisit) {
+      room = await context.feedback.sheet<String>(
+        title: 'Pilih ruang',
+        actions: [
+          for (final r in rooms)
+            SheetAction(
+              r.name,
+              r.name,
+              variant: r.name == s.room
+                  ? OlButtonVariant.primary
+                  : OlButtonVariant.secondary,
+            ),
+        ],
+      );
+      if (room == null || !mounted) return;
+    }
+    final name = therapists.firstWhere((t) => t.id == pick).name;
+    await _run(
+      () => _api.updateSession(s.id, therapistId: pick, room: room),
+      'Dipindah ke $name${room == null ? '' : ', $room'}.',
+    );
   }
 
-  void _markArrived(DemoQueueItem it) {
-    HapticFeedback.lightImpact();
-    setState(() {
-      it.state = QueueState.arrived;
-      it.arrivedAt = TimeOfDay.now().format(context).replaceAll(':', '.');
-    });
-    context.feedback.success('${it.name} ditandai hadir. Terapis diberi tahu.');
+  Future<void> _more(Session s) async {
+    final action = await context.feedback.sheet<String>(
+      title: s.patientName,
+      message: '${Fmt.time(s.startAt)} · ${s.serviceName}',
+      actions: const [
+        SheetAction(
+          'Tidak datang',
+          'no_show',
+          variant: OlButtonVariant.secondary,
+        ),
+        SheetAction(
+          'Batalkan sesi',
+          'cancel',
+          variant: OlButtonVariant.secondary,
+        ),
+      ],
+    );
+    if (action == null || !mounted) return;
+    final noShow = action == 'no_show';
+    final res = await context.feedback.choose(
+      ConfirmSpec(
+        title: noShow ? 'Tandai tidak datang?' : 'Batalkan sesi ini?',
+        message:
+            '${s.patientName} · ${Fmt.time(s.startAt)}. Tercatat di riwayat & audit log.',
+        confirmLabel: noShow ? 'Tidak datang' : 'Batalkan sesi',
+        reasonLabel: 'Alasan',
+      ),
+    );
+    if (!res.confirmed || !mounted) return;
+    await _run(
+      () => _api.setStatus(
+        s.id,
+        noShow ? SessionStatus.noShow : SessionStatus.cancelled,
+        reason: res.reason,
+      ),
+      noShow ? 'Ditandai tidak datang.' : 'Sesi dibatalkan.',
+    );
   }
 
   @override
@@ -78,11 +197,10 @@ class _AntrianPageState extends ConsumerState<AntrianPage> {
         ),
         const SizedBox(width: 4),
         OlIconButton(
-          icon: OlIcons.bell,
-          semanticLabel: 'Notifikasi',
-          badge: 2,
+          icon: OlIcons.refresh,
+          semanticLabel: 'Muat ulang',
           onHero: true,
-          onPressed: () => context.push(Routes.notifications),
+          onPressed: _reload,
         ),
       ],
       below: SyncIndicator(
@@ -92,38 +210,67 @@ class _AntrianPageState extends ConsumerState<AntrianPage> {
       ),
     );
 
-    // Urutan kolom status (§5.11): berjalan → hadir → dijadwalkan → selesai/belum bayar.
-    int order(QueueState s) => switch (s) {
-      QueueState.running => 0,
-      QueueState.arrived => 1,
-      QueueState.scheduled => 2,
-      QueueState.unpaid => 3,
-      QueueState.paid => 4,
+    // Urutan (§5.11): berjalan → hadir → dijadwalkan → selesai/belum bayar → lunas → tidak datang.
+    int order(SessionStatus s) => switch (s) {
+      SessionStatus.running => 0,
+      SessionStatus.arrived => 1,
+      SessionStatus.scheduled => 2,
+      SessionStatus.done || SessionStatus.unpaid => 3,
+      SessionStatus.paid => 4,
+      _ => 5,
     };
-    final sorted = [..._items]
-      ..sort((a, b) => order(a.state).compareTo(order(b.state)));
 
     return OlPageBody(
       heroOverlap: true,
       header: header,
       children: [
         const FeedbackBannerHost(),
-        for (final it in sorted)
-          _QueueCard(
-            item: it,
-            onChangeTherapist: () => _changeTherapist(it),
-            onMarkArrived: () => _markArrived(it),
-            onCompleteData: () => context.push(Routes.kasirPasienForm),
-            onBill: () => context.go(Routes.kasirKasir),
-          ),
-        OlButton.secondary(
-          label: '+ Sesi tanpa jadwal (walk-in)',
-          onPressed: () => context.push(Routes.kasirBuatJadwal),
-        ),
-        OlButton.text(
-          label: 'Booking masuk · 3 menunggu',
-          expand: true,
-          onPressed: () => context.push(Routes.kasirBooking),
+        OlAsync<_Queue>(
+          key: ValueKey(_gen),
+          load: _load,
+          builder: (context, q, _) {
+            final sorted = [...q.today]
+              ..sort((a, b) {
+                final o = order(a.status).compareTo(order(b.status));
+                return o != 0 ? o : a.startAt.compareTo(b.startAt);
+              });
+            return [
+              if (sorted.isEmpty)
+                const OlCard(
+                  child: EmptyState(
+                    illustration: OlIllustration.emptySchedule,
+                    title: 'Belum ada antrian hari ini',
+                    message:
+                        'Buat jadwal atau tambah sesi tanpa jadwal (walk-in).',
+                  ),
+                ),
+              for (final s in sorted)
+                _QueueCard(
+                  session: s,
+                  now: now,
+                  onChangeTherapist: () => _changeTherapist(s),
+                  onMarkArrived: () => _markArrived(s),
+                  onMore: () => _more(s),
+                ),
+              OlButton.secondary(
+                label: '+ Sesi tanpa jadwal (walk-in)',
+                onPressed: () async {
+                  await context.push('${Routes.kasirBuatJadwal}?walkin=1');
+                  _reload();
+                },
+              ),
+              OlButton.text(
+                label: q.bookings > 0
+                    ? 'Booking masuk · ${q.bookings} menunggu'
+                    : 'Booking masuk',
+                expand: true,
+                onPressed: () async {
+                  await context.push(Routes.kasirBooking);
+                  _reload();
+                },
+              ),
+            ];
+          },
         ),
       ],
     );
@@ -132,37 +279,50 @@ class _AntrianPageState extends ConsumerState<AntrianPage> {
 
 class _QueueCard extends StatelessWidget {
   const _QueueCard({
-    required this.item,
+    required this.session,
+    required this.now,
     required this.onChangeTherapist,
     required this.onMarkArrived,
-    required this.onCompleteData,
-    required this.onBill,
+    required this.onMore,
   });
 
-  final DemoQueueItem item;
+  final Session session;
+  final DateTime now;
   final VoidCallback onChangeTherapist;
   final VoidCallback onMarkArrived;
-  final VoidCallback onCompleteData;
-  final VoidCallback onBill;
+  final VoidCallback onMore;
 
   @override
   Widget build(BuildContext context) {
     final c = context.ol;
     final t = context.olText;
-    final it = item;
-    final tag = switch (it.state) {
-      QueueState.running => const OlTag('Berjalan', tone: OlTagTone.fill),
-      QueueState.arrived => OlTag('Hadir ${it.arrivedAt ?? ''}'.trim()),
-      QueueState.scheduled => const OlTag('Dijadwalkan', tone: OlTagTone.muted),
-      QueueState.unpaid => const OlTag('Belum bayar', tone: OlTagTone.warn),
-      QueueState.paid => const OlTag('Lunas', tone: OlTagTone.ok),
+    final s = session;
+    final tag = switch (s.status) {
+      SessionStatus.running => const OlTag('Berjalan', tone: OlTagTone.fill),
+      SessionStatus.arrived => OlTag(
+        'Hadir ${s.arrivedAt == null ? '' : Fmt.time(s.arrivedAt!)}'.trim(),
+      ),
+      SessionStatus.scheduled =>
+        s.isLateAt(now)
+            ? const OlTag('Terlambat', tone: OlTagTone.warn)
+            : const OlTag('Dijadwalkan', tone: OlTagTone.muted),
+      SessionStatus.done || SessionStatus.unpaid => const OlTag(
+        'Selesai · belum bayar',
+        tone: OlTagTone.warn,
+      ),
+      SessionStatus.paid => const OlTag('Lunas', tone: OlTagTone.ok),
+      SessionStatus.noShow => const OlTag('Tidak datang', tone: OlTagTone.crit),
+      _ => OlTag(s.status.label, tone: OlTagTone.muted),
     };
-    final caption = switch (it.state) {
-      QueueState.unpaid => 'Selesai ${it.finishedAt} · siap ditagih',
-      _ => [it.service, it.therapist, ?it.room].join(' · '),
-    };
+    final caption = [
+      s.serviceName,
+      s.therapistName,
+      if (s.isHomeVisit) 'home visit' else ?s.room,
+    ].join(' · ');
+    final active =
+        s.status == SessionStatus.scheduled ||
+        s.status == SessionStatus.arrived;
     return OlCard(
-      onTap: it.state == QueueState.unpaid ? onBill : null,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -170,7 +330,7 @@ class _QueueCard extends StatelessWidget {
           Row(
             children: [
               Text(
-                it.time,
+                Fmt.time(s.startAt),
                 style: t.mono.copyWith(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
@@ -183,18 +343,26 @@ class _QueueCard extends StatelessWidget {
                   spacing: 6,
                   runSpacing: 6,
                   children: [
-                    if (it.newPatient)
+                    if (s.isNewPatient)
                       const OlTag('Pasien baru', tone: OlTagTone.outline),
+                    if (s.needsAction)
+                      const OlTag('Perlu tindakan', tone: OlTagTone.crit),
                     tag,
                   ],
                 ),
               ),
+              if (active)
+                OlIconButton(
+                  icon: OlIcons.more,
+                  semanticLabel: 'Aksi lain',
+                  onPressed: onMore,
+                ),
             ],
           ),
           const SizedBox(height: 6),
-          Text(it.name, style: t.heading),
+          Text(s.patientName, style: t.heading),
           Text(caption, style: t.body.copyWith(color: c.muted)),
-          if (it.state == QueueState.arrived) ...[
+          if (s.status == SessionStatus.arrived) ...[
             const SizedBox(height: 10),
             OlButton.secondary(
               label: 'Ganti terapis / ruang',
@@ -202,52 +370,21 @@ class _QueueCard extends StatelessWidget {
               onPressed: onChangeTherapist,
             ),
           ],
-          if (it.state == QueueState.scheduled) ...[
-            if (it.dataIncomplete) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 9,
-                ),
-                decoration: BoxDecoration(
-                  color: c.warnSoft,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Lengkapi data pasien sebelum tandai hadir',
-                  style: t.caption.copyWith(
-                    fontSize: 13,
-                    color: c.warn,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+          if (s.status == SessionStatus.scheduled) ...[
             const SizedBox(height: 10),
             OlFootRow(
               children: [
-                if (it.dataIncomplete)
-                  OlButton.secondary(
-                    label: 'Lengkapi data',
-                    small: true,
-                    onPressed: onCompleteData,
-                  ),
+                OlButton.secondary(
+                  label: 'Ganti terapis',
+                  small: true,
+                  onPressed: onChangeTherapist,
+                ),
                 OlButton(
                   label: 'Tandai hadir',
                   small: true,
-                  onPressed: it.dataIncomplete ? null : onMarkArrived,
+                  onPressed: onMarkArrived,
                 ),
               ],
-            ),
-          ],
-          if (it.state == QueueState.unpaid) ...[
-            const SizedBox(height: 10),
-            OlButton(
-              label: 'Tagih',
-              small: true,
-              icon: OlIcons.receipt,
-              onPressed: onBill,
             ),
           ],
         ],

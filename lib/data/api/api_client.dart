@@ -72,6 +72,16 @@ class ApiClient {
     (d) => parse(unwrap(d)),
   );
 
+  /// GET tanpa membuka `{ data }` — untuk paginator `{ data, meta }`.
+  Future<T> getBody<T>(
+    String path,
+    T Function(dynamic body) parse, {
+    Map<String, dynamic>? query,
+  }) => _send(() => dio.get<dynamic>(path, queryParameters: query), parse);
+
+  Future<T> delete<T>(String path, T Function(dynamic data) parse) =>
+      _send(() => dio.delete<dynamic>(path), (d) => parse(unwrap(d)));
+
   Future<T> post<T>(
     String path,
     Object? body,

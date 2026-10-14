@@ -8,7 +8,7 @@
 
 ## Umum
 
-- Base URL dari build: `flutter run --dart-define=API_URL=https://…` (kosong = mode mock di HP).
+- Base URL dari build (wajib): `API_URL` di `env/dev.json` → `flutter run --dart-define-from-file=env/dev.json` (atau `--dart-define=API_URL=https://…`). Aplikasi tidak punya mode data contoh; tanpa `API_URL` muncul layar "Alamat server belum diatur".
 - Prefix `/v1`. JSON, `snake_case`, tanggal ISO-8601 UTC (`2026-10-06T03:30:00Z`), tanggal lahir `YYYY-MM-DD`.
 - Uang dalam rupiah, bilangan bulat (`450000`).
 - Auth: Laravel Sanctum, header `Authorization: Bearer <token>`. Header `X-App-Version` dikirim tiap request.
@@ -53,6 +53,7 @@ Penguncian 5× gagal sebaiknya juga ditegakkan di server.
 | Method | Path | Keterangan |
 |---|---|---|
 | GET | `/v1/sessions?branch_id=&from=&to=&therapist_id=` | Daftar sesi rentang waktu, urut `start_at` |
+| GET | `/v1/sessions/{id}` | Detail satu sesi (rekam sesi TR-04, home visit TR-09); aturan akses sama dengan daftar |
 | PATCH | `/v1/sessions/{id}/status` | `{ status, at, reason? }` — dikirim lewat outbox, bisa terlambat (offline) |
 | POST | `/v1/sessions/{id}/reschedule-requests` | `{ reason, proposal?, at }` — terapis minta pindah jadwal, notifikasi ke front desk (TR-01) |
 

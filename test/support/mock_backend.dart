@@ -1,9 +1,9 @@
-import '../../ui/feedback/app_error.dart';
-import '../models/models.dart';
-import '../repositories/repositories.dart';
-import '../sync/outbox.dart';
-import '../sync/sync_engine.dart';
-import 'remote.dart';
+import 'package:onelotus_staff/ui/feedback/app_error.dart';
+import 'package:onelotus_staff/data/models/models.dart';
+import 'package:onelotus_staff/data/repositories/repositories.dart';
+import 'package:onelotus_staff/data/sync/outbox.dart';
+import 'package:onelotus_staff/data/sync/sync_engine.dart';
+import 'package:onelotus_staff/data/remote/remote.dart';
 
 /// "Server" contoh di memori untuk mode mock (API_URL kosong).
 /// Nama, angka, & harga mengikuti mockup — hanya contoh, bukan data asli (CLAUDE.md).

@@ -2,11 +2,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:onelotus_staff/data/auth/auth_controller.dart';
 import 'package:onelotus_staff/data/auth/device_security.dart';
-import 'package:onelotus_staff/data/auth/mock_auth_repository.dart';
+import '../support/mock_auth_repository.dart';
 import 'package:onelotus_staff/data/auth/session_store.dart';
 import 'package:onelotus_staff/data/local/kv_store.dart';
 import 'package:onelotus_staff/data/providers.dart';
-import 'package:onelotus_staff/data/remote/mock_backend.dart';
+import '../support/mock_backend.dart';
 import 'package:onelotus_staff/data/sync/outbox.dart';
 
 class FakeDeviceSecurity implements DeviceSecurity {
@@ -61,7 +61,10 @@ class AuthHarness {
     outboxStoreProvider.overrideWithValue(outbox),
     draftStoreProvider.overrideWithValue(drafts),
     cacheStoreProvider.overrideWithValue(cache),
-    mockBackendProvider.overrideWithValue(backend),
+    remoteProvider.overrideWithValue(
+      MockRemote(backend, currentUserId: () => null),
+    ),
+    outboxSenderProvider.overrideWithValue(MockOutboxSender(backend)),
     connectivityProvider.overrideWithValue(const Stream<bool>.empty()),
   ];
 

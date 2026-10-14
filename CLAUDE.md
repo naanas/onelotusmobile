@@ -30,4 +30,8 @@ Backend: sistem Laravel yang sudah ada, dinaikkan versinya dan dibuka sebagai RE
 
 ## Aturan kerja
 - Ikuti layar di `design/screens` dan aturan di spec; jangan menambah pustaka ikon lain.
-- Data di mockup (nama pasien, angka) hanyalah contoh.
+- Data di mockup (nama pasien, angka) hanyalah contoh — jangan dimasukkan ke kode aplikasi.
+- Aplikasi tidak punya mode mock: semua data dari One Lotus API (`API_URL` di `env/dev.json`,
+  `flutter run --dart-define-from-file=env/dev.json`). Layar yang
+  backend-nya belum ada memakai `OlUnavailablePage`/`OlUnavailableTab` (tanpa data contoh). Pengganti palsu
+  hanya untuk tes, di `test/support/`. Tes kontrak ke backend sungguhan: `test/contract/live_api_test.dart`.

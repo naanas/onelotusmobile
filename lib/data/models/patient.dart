@@ -63,6 +63,7 @@ class Patient {
     this.medicalAlert,
     this.activePackage,
     this.lastVisitAt,
+    this.archivedAt,
   });
 
   final String id;
@@ -88,6 +89,9 @@ class Patient {
   final String? medicalAlert;
   final PackageSummary? activePackage;
   final DateTime? lastVisitAt;
+
+  /// Diarsipkan (soft delete) — hanya terlihat oleh owner (OW-03).
+  final DateTime? archivedAt;
 
   int? ageOn(DateTime today) {
     final b = birthDate;
@@ -118,6 +122,7 @@ class Patient {
         ? null
         : PackageSummary.fromJson(j['active_package'] as Map<String, dynamic>),
     lastVisitAt: parseDate(j['last_visit_at']),
+    archivedAt: parseDate(j['archived_at']),
   );
 
   Map<String, dynamic> toJson() => {
@@ -136,5 +141,6 @@ class Patient {
     'medical_alert': medicalAlert,
     'active_package': activePackage?.toJson(),
     'last_visit_at': formatDate(lastVisitAt),
+    'archived_at': formatDate(archivedAt),
   };
 }

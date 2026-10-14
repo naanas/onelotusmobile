@@ -1,65 +1,188 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/format.dart';
+import '../../../data/api/one_lotus_api.dart';
+import '../../../data/auth/auth_controller.dart';
+import '../../../data/models/models.dart';
 import '../../../router/routes.dart';
 import '../../../theme/app_theme.dart';
 import '../../../ui/ui.dart';
-import '../demo_data.dart';
 
-/// TR-02 Jadwal minggu & ketersediaan: grid jam × hari, tandai jam tidak tersedia, status cuti.
-class JadwalMingguPage extends StatefulWidget {
+typedef _Week = ({
+  List<Session> sessions,
+  List<TherapistBlock> blocks,
+  List<LeaveRequest> leaves,
+  Map<String, List<String>> hours,
+});
+
+/// TR-02 Jadwal minggu & ketersediaan: grid jam × hari dari jadwal, blok tidak tersedia,
+/// dan cuti di server. Mode "Tandai tidak tersedia" membuat/menghapus blok 1 jam
+/// (`/v1/therapist-blocks`); jam yang sudah ada sesinya ditolak server.
+class JadwalMingguPage extends ConsumerStatefulWidget {
   const JadwalMingguPage({super.key});
 
   @override
-  State<JadwalMingguPage> createState() => _JadwalMingguPageState();
+  ConsumerState<JadwalMingguPage> createState() => _JadwalMingguPageState();
 }
 
-class _JadwalMingguPageState extends State<JadwalMingguPage> {
-  static const _days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
-  static const _todayCol = 1;
-  late final _grid = [
-    for (final r in demoWeekGrid) [...r],
-  ];
+class _JadwalMingguPageState extends ConsumerState<JadwalMingguPage> {
+  static const _days = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+  static const _firstHour = 8;
+  static const _lastHour = 19;
   int _week = 0;
   bool _marking = false;
+  bool _busy = false;
+  int _gen = 0;
 
-  String get _range {
-    final start = 5 + _week * 7;
-    final end = start + 5;
-    return '$start–$end Okt';
+  DateTime get _monday {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return today
+        .subtract(Duration(days: today.weekday - 1))
+        .add(Duration(days: 7 * _week));
   }
 
-  void _tap(int row, int col) {
-    final slot = _grid[row][col];
+  Future<_Week> _load() async {
+    final auth = ref.read(authProvider);
+    final api = ref.read(oneLotusApiProvider);
+    final branch = auth.activeBranch!;
+    final from = _monday;
+    final r = await (
+      api.sessions(
+        branchId: branch.id,
+        from: from,
+        to: from.add(const Duration(days: 7)),
+        therapistId: auth.user!.id,
+      ),
+      api.blocks(),
+      api.leaves(mine: true),
+      api.branch(branch.id),
+    ).wait;
+    return (
+      sessions: r.$1,
+      blocks: r.$2,
+      leaves: r.$3,
+      hours: r.$4.openingHours,
+    );
+  }
+
+  void _reload() => setState(() => _gen++);
+
+  bool _overlaps(DateTime a1, DateTime a2, DateTime b1, DateTime b2) =>
+      a1.isBefore(b2) && b1.isBefore(a2);
+
+  /// Status satu jam; blok "sekali" yang tepat 1 jam di jam ini dikembalikan agar bisa dihapus.
+  (_Slot, TherapistBlock?) _slotAt(_Week w, int col, int hour) {
+    final day = _monday.add(Duration(days: col));
+    final open = w.hours['${col + 1}'];
+    if (open == null || open.length < 2) return (_Slot.closed, null);
+    final start = DateTime(day.year, day.month, day.day, hour);
+    final end = start.add(const Duration(hours: 1));
+    final oh = int.tryParse(open[0].split(':')[0]) ?? 0;
+    final ch = int.tryParse(open[1].split(':')[0]) ?? 24;
+    if (hour < oh || hour >= ch) return (_Slot.closed, null);
+    for (final s in w.sessions) {
+      if (s.status == SessionStatus.cancelled ||
+          s.status == SessionStatus.noShow) {
+        continue;
+      }
+      if (_overlaps(s.startAt, s.endAt, start, end)) {
+        return (s.isHomeVisit ? _Slot.homeVisit : _Slot.session, null);
+      }
+    }
+    for (final l in w.leaves) {
+      if (l.status == LeaveStatus.approved &&
+          _overlaps(l.startsAt, l.endsAt, start, end)) {
+        return (_Slot.unavailable, null);
+      }
+    }
+    for (final b in w.blocks) {
+      if (b.kind == 'once' &&
+          b.startsAt != null &&
+          b.endsAt != null &&
+          _overlaps(b.startsAt!, b.endsAt!, start, end)) {
+        final exact =
+            b.startsAt!.isAtSameMomentAs(start) &&
+            b.endsAt!.isAtSameMomentAs(end);
+        return (_Slot.unavailable, exact ? b : null);
+      }
+      if (b.kind == 'weekly' && b.weekday == col + 1) {
+        final bs = int.tryParse(b.startTime!.split(':')[0]) ?? 0;
+        final be = int.tryParse(b.endTime!.split(':')[0]) ?? 0;
+        final bem = int.tryParse(b.endTime!.split(':')[1]) ?? 0;
+        if (hour >= bs && (hour < be || (hour == be && bem > 0))) {
+          return (_Slot.unavailable, null);
+        }
+      }
+    }
+    return (_Slot.free, null);
+  }
+
+  Future<void> _tap(_Week w, int col, int hour) async {
+    final (slot, block) = _slotAt(w, col, hour);
+    final label = '${_days[col]} ${hour.toString().padLeft(2, '0')}.00';
     if (!_marking) {
-      final hour = (8 + row).toString().padLeft(2, '0');
       context.feedback.info(switch (slot) {
-        DemoSlot.session => '${_days[col]} $hour.00 · sesi terjadwal',
-        DemoSlot.homeVisit => '${_days[col]} $hour.00 · home visit',
-        DemoSlot.unavailable => '${_days[col]} $hour.00 · tidak tersedia',
-        DemoSlot.free => '${_days[col]} $hour.00 · kosong',
+        _Slot.session => '$label · sesi terjadwal',
+        _Slot.homeVisit => '$label · home visit',
+        _Slot.unavailable => '$label · tidak tersedia',
+        _Slot.free => '$label · kosong',
+        _Slot.closed => '$label · cabang tutup',
       });
       return;
     }
-    if (slot == DemoSlot.session || slot == DemoSlot.homeVisit) {
+    if (_busy || slot == _Slot.closed) return;
+    if (slot == _Slot.session || slot == _Slot.homeVisit) {
       context.feedback.info(
         'Jam ini sudah ada sesi. Minta kasir memindahkan sesi dulu.',
       );
       return;
     }
+    if (slot == _Slot.unavailable && block == null) {
+      context.feedback.info(
+        'Jam ini tidak tersedia karena cuti atau blok mingguan.',
+      );
+      return;
+    }
     HapticFeedback.selectionClick();
-    setState(
-      () => _grid[row][col] = slot == DemoSlot.free
-          ? DemoSlot.unavailable
-          : DemoSlot.free,
-    );
+    setState(() => _busy = true);
+    final api = ref.read(oneLotusApiProvider);
+    final day = _monday.add(Duration(days: col));
+    final start = DateTime(day.year, day.month, day.day, hour);
+    try {
+      if (block != null) {
+        await api.deleteBlock(block.id);
+      } else {
+        await api.createBlock(
+          kind: 'once',
+          startsAt: start,
+          endsAt: start.add(const Duration(hours: 1)),
+        );
+      }
+      _reload();
+    } on AppError catch (e) {
+      if (!mounted) return;
+      final msg = e.fieldError('starts_at') ?? e.fieldError('ends_at');
+      if (msg != null) {
+        context.feedback.info(msg);
+      } else {
+        context.feedback.error(e);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.ol;
     final t = context.olText;
+    final monday = _monday;
+    final sunday = monday.add(const Duration(days: 6));
+    final today = DateTime.now();
     return OlDetailScaffold(
       title: _week == 0 ? 'Jadwal minggu ini' : 'Jadwal minggu depan',
       actions: [
@@ -70,7 +193,10 @@ class _JadwalMingguPageState extends State<JadwalMingguPage> {
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text(_range, style: t.bodyStrong.copyWith(fontSize: 15)),
+          child: Text(
+            '${monday.day}–${Fmt.dateNoDay(sunday)}',
+            style: t.bodyStrong.copyWith(fontSize: 15),
+          ),
         ),
         OlIconButton(
           icon: OlIcons.chevronRight,
@@ -87,14 +213,17 @@ class _JadwalMingguPageState extends State<JadwalMingguPage> {
                 setState(() => _marking = !_marking);
                 if (_marking) {
                   context.feedback.info(
-                    'Ketuk jam kosong untuk menandai tidak tersedia.',
+                    'Ketuk jam kosong untuk menandai tidak tersedia; ketuk lagi untuk membatalkan.',
                   );
                 }
               },
             ),
             OlButton(
               label: 'Ajukan cuti',
-              onPressed: () => context.push(Routes.terapisAjukanCuti),
+              onPressed: () async {
+                await context.push(Routes.terapisAjukanCuti);
+                _reload();
+              },
             ),
           ],
         ),
@@ -109,82 +238,105 @@ class _JadwalMingguPageState extends State<JadwalMingguPage> {
             const _Legend(striped: true, label: 'Tidak tersedia'),
           ],
         ),
-        OlCard(
-          padding: const EdgeInsets.fromLTRB(10, 14, 10, 14),
-          child: Column(
-            children: [
-              Row(
+        OlAsync<_Week>(
+          key: ValueKey('$_week-$_gen'),
+          load: _load,
+          builder: (context, w, _) => [
+            OlCard(
+              padding: const EdgeInsets.fromLTRB(10, 14, 10, 14),
+              child: Column(
                 children: [
-                  const SizedBox(width: 36),
-                  for (final (i, d) in _days.indexed)
-                    Expanded(
-                      child: Center(
-                        child: Text(
-                          d,
-                          style: t.body.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: i == _todayCol && _week == 0
-                                ? c.brand
-                                : c.muted,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              for (final (r, row) in _grid.indexed)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Row(
+                  Row(
                     children: [
-                      SizedBox(
-                        width: 36,
-                        child: Text(
-                          (8 + r).toString().padLeft(2, '0'),
-                          style: t.mono.copyWith(color: c.muted),
-                        ),
-                      ),
-                      for (final (col, slot) in row.indexed)
+                      const SizedBox(width: 30),
+                      for (final (i, d) in _days.indexed)
                         Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 2),
-                            child: _Cell(
-                              slot: _week == 0
-                                  ? slot
-                                  : (col + r).isEven
-                                  ? DemoSlot.free
-                                  : DemoSlot.session,
-                              label: '${_days[col]} jam ${8 + r}',
-                              onTap: () => _tap(r, col),
+                          child: Center(
+                            child: Text(
+                              d,
+                              style: t.body.copyWith(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color:
+                                    DateUtils.isSameDay(
+                                      monday.add(Duration(days: i)),
+                                      today,
+                                    )
+                                    ? c.brand
+                                    : c.muted,
+                              ),
                             ),
                           ),
                         ),
                     ],
                   ),
-                ),
-            ],
-          ),
-        ),
-        OlCard(
-          child: Row(
-            children: [
-              const OlTag('Menunggu', tone: OlTagTone.warn),
-              const SizedBox(width: OlSpace.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Cuti 14–15 Okt', style: t.heading),
-                    Text(
-                      'Keperluan keluarga · 3 sesi terdampak',
-                      style: t.body.copyWith(color: c.muted),
+                  const SizedBox(height: 6),
+                  for (var h = _firstHour; h <= _lastHour; h++)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 30,
+                            child: Text(
+                              h.toString().padLeft(2, '0'),
+                              style: t.mono.copyWith(color: c.muted),
+                            ),
+                          ),
+                          for (var col = 0; col < 7; col++)
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 2,
+                                ),
+                                child: _Cell(
+                                  slot: _slotAt(w, col, h).$1,
+                                  label: '${_days[col]} jam $h',
+                                  onTap: () => _tap(w, col, h),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+            for (final l in w.leaves)
+              if (l.status != LeaveStatus.cancelled &&
+                  l.endsAt.isAfter(DateTime.now()))
+                OlCard(
+                  child: Row(
+                    children: [
+                      OlTag(
+                        l.status.label,
+                        tone: switch (l.status) {
+                          LeaveStatus.approved => OlTagTone.ok,
+                          LeaveStatus.rejected => OlTagTone.crit,
+                          _ => OlTagTone.warn,
+                        },
+                      ),
+                      const SizedBox(width: OlSpace.md),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Cuti ${Fmt.dateNoDay(l.startsAt)}'
+                              '${l.allDay && l.endsAt.difference(l.startsAt).inDays > 1 ? ' – ${Fmt.dateNoDay(l.endsAt.subtract(const Duration(days: 1)))}' : ''}',
+                              style: t.heading,
+                            ),
+                            Text(
+                              '${l.reason} · ${l.affectedSessions} sesi terdampak',
+                              style: t.body.copyWith(color: c.muted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+          ],
         ),
       ],
     );
@@ -226,9 +378,11 @@ class _Legend extends StatelessWidget {
   );
 }
 
+enum _Slot { session, homeVisit, unavailable, free, closed }
+
 class _Cell extends StatelessWidget {
   const _Cell({required this.slot, required this.label, required this.onTap});
-  final DemoSlot slot;
+  final _Slot slot;
   final String label;
   final VoidCallback onTap;
 
@@ -237,10 +391,11 @@ class _Cell extends StatelessWidget {
     final c = context.ol;
     final radius = BorderRadius.circular(9);
     final status = switch (slot) {
-      DemoSlot.session => 'sesi',
-      DemoSlot.homeVisit => 'home visit',
-      DemoSlot.unavailable => 'tidak tersedia',
-      DemoSlot.free => 'kosong',
+      _Slot.session => 'sesi',
+      _Slot.homeVisit => 'home visit',
+      _Slot.unavailable => 'tidak tersedia',
+      _Slot.free => 'kosong',
+      _Slot.closed => 'cabang tutup',
     };
     return Semantics(
       container: true,
@@ -255,13 +410,14 @@ class _Cell extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: radius,
             color: switch (slot) {
-              DemoSlot.session => c.brand,
-              DemoSlot.homeVisit => const Color(0xFFF2B263),
-              DemoSlot.unavailable => const Color(0xFFE3EBF2),
-              DemoSlot.free => const Color(0xFFE9F1F8),
+              _Slot.session => c.brand,
+              _Slot.homeVisit => const Color(0xFFF2B263),
+              _Slot.unavailable => const Color(0xFFE3EBF2),
+              _Slot.free => const Color(0xFFE9F1F8),
+              _Slot.closed => Colors.transparent,
             },
           ),
-          child: slot == DemoSlot.unavailable
+          child: slot == _Slot.unavailable
               ? ClipRRect(
                   borderRadius: radius,
                   child: CustomPaint(painter: _StripePainter()),

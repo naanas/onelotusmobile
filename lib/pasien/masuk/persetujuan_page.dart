@@ -22,6 +22,23 @@ class _PersetujuanPageState extends ConsumerState<PersetujuanPage> {
   late bool _promo = widget.review
       ? ref.read(pasienSessionProvider).promoConsent
       : false;
+  bool _busy = false;
+
+  Future<void> _save() async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(pasienSessionProvider.notifier).consent(promo: _promo);
+      if (!mounted) return;
+      if (widget.review) {
+        context.feedback.success('Persetujuan disimpan.');
+        Navigator.of(context).maybePop();
+      }
+    } on AppError catch (e) {
+      if (mounted) context.feedback.error(e, retry: _save);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,21 +68,8 @@ class _PersetujuanPageState extends ConsumerState<PersetujuanPage> {
       foot: [
         OlButton(
           label: widget.review ? 'Simpan' : 'Setuju & lanjutkan',
-          onPressed: _health && _reminder
-              ? () {
-                  if (widget.review) {
-                    ref
-                        .read(pasienSessionProvider.notifier)
-                        .consented(promo: _promo);
-                    context.feedback.success('Persetujuan disimpan.');
-                    Navigator.of(context).maybePop();
-                  } else {
-                    ref
-                        .read(pasienSessionProvider.notifier)
-                        .consented(promo: _promo);
-                  }
-                }
-              : null,
+          loading: _busy,
+          onPressed: _health && _reminder && !_busy ? _save : null,
         ),
       ],
       children: [

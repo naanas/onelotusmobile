@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/config.dart';
 import '../../core/format.dart';
 import '../../data/auth/auth_controller.dart';
 import '../../data/models/staff_user.dart';
-import '../../data/providers.dart';
 import '../../data/sync/sync_providers.dart';
 import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
@@ -98,13 +96,12 @@ class AkunPage extends ConsumerWidget {
             if (role == Role.kasir) ...[
               OlListItem(
                 title: 'Terima kas terapis',
-                subtitle: 'Dimas · Rp445.000 menunggu',
-                trailing: const OlTag('1', tone: OlTagTone.warn),
+                showChevron: true,
                 onTap: () => context.push(Routes.kasirTerimaKas),
               ),
               OlListItem(
                 title: 'Verifikasi transfer',
-                trailing: const OlTag('2', tone: OlTagTone.warn),
+                showChevron: true,
                 onTap: () => context.push(Routes.kasirVerifikasiTransfer),
               ),
               OlListItem(
@@ -121,8 +118,7 @@ class AkunPage extends ConsumerWidget {
             if (role == Role.terapis) ...[
               OlListItem(
                 title: 'Kas dibawa',
-                subtitle: 'Rp445.000 belum diserahkan',
-                trailing: const OlTag('1', tone: OlTagTone.warn),
+                showChevron: true,
                 onTap: () => context.push(Routes.terapisKas),
               ),
               OlListItem(
@@ -139,28 +135,6 @@ class AkunPage extends ConsumerWidget {
               ),
               onTap: () => context.push(Routes.syncStatus),
             ),
-            if (kDebugMode && AppConfig.useMock)
-              OlListItem(
-                title: 'Simulasi offline',
-                subtitle: 'Mode mock · khusus build debug',
-                trailing: OlToggle(
-                  semanticLabel: 'Simulasi offline',
-                  value: ref.watch(mockOfflineProvider),
-                  onChanged: (v) =>
-                      ref.read(mockOfflineProvider.notifier).set(v),
-                ),
-              ),
-            if (kDebugMode && AppConfig.useMock)
-              OlListItem(
-                title: 'Simulasi gangguan server',
-                subtitle: 'Mode mock · tarik jadwal untuk memuat ulang',
-                trailing: OlToggle(
-                  semanticLabel: 'Simulasi gangguan server',
-                  value: ref.watch(mockServerDownProvider),
-                  onChanged: (v) =>
-                      ref.read(mockServerDownProvider.notifier).set(v),
-                ),
-              ),
             if (kDebugMode)
               OlListItem(
                 title: 'Galeri komponen',

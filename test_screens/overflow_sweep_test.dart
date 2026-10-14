@@ -9,8 +9,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:onelotus_staff/app.dart';
+import 'package:onelotus_staff/data/models/models.dart';
 import 'package:onelotus_staff/data/auth/auth_controller.dart';
-import 'package:onelotus_staff/data/models/staff_user.dart';
 import 'package:onelotus_staff/pasien/pasien_session.dart';
 import 'package:onelotus_staff/router/app_router.dart';
 
@@ -148,7 +148,19 @@ Future<void> _open(
       }
     });
   }
-  if (pasien) c.read(pasienSessionProvider.notifier).skipToReady();
+  if (pasien) {
+    c
+        .read(pasienSessionProvider.notifier)
+        // ignore: invalid_use_of_visible_for_testing_member
+        .debugSetReady(
+          const PasienAccount(
+            id: 'a1',
+            phone: '6281234567890',
+            consent: PasienConsent(health: true, reminder: true),
+            nextStep: PasienNextStep.ready,
+          ),
+        );
+  }
   addTearDown(c.dispose);
   await t.pumpWidget(
     UncontrolledProviderScope(container: c, child: const OneLotusApp()),

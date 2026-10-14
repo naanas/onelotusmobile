@@ -44,3 +44,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/.kotlin/
+
+# Alamat API per orang/lingkungan (contoh: env/dev.example.json)
+/env/*.json
+!/env/*.example.json

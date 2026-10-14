@@ -1,249 +1,174 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/format.dart';
+import '../../../data/api/one_lotus_api.dart';
+import '../../../data/models/models.dart';
 import '../../../router/routes.dart';
 import '../../../theme/app_theme.dart';
 import '../../../ui/ui.dart';
-import '../demo_data.dart';
 
-/// TR-05 Detail pasien: profil, tren nyeri, paket, latihan rumah, riwayat sesi,
-/// catatan lama (baca-saja), kontak disamarkan untuk terapis (§7, §10).
-class DetailPasienPage extends StatelessWidget {
+typedef _Detail = ({
+  Patient patient,
+  PageResult<SessionRecord> records,
+  List<LegacyRecord> legacy,
+});
+
+/// TR-05 Detail pasien: profil, peringatan medis, tren nyeri, paket, riwayat rekam sesi,
+/// catatan lama Laravel (baca-saja). Telepon & alamat disaring server untuk terapis (§7, §10).
+class DetailPasienPage extends ConsumerWidget {
   const DetailPasienPage({super.key, required this.patientId});
 
   final String patientId;
 
+  Future<_Detail> _load(OneLotusApi api) async {
+    final r = await (
+      api.patient(patientId),
+      api.patientRecords(patientId),
+      api.legacyRecords(patientId),
+    ).wait;
+    return (patient: r.$1, records: r.$2, legacy: r.$3);
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) => OlDetailScaffold(
+    title: 'Detail pasien',
+    children: [
+      OlAsync<_Detail>(
+        load: () => _load(ref.read(oneLotusApiProvider)),
+        builder: (context, d, _) => _content(context, d),
+      ),
+    ],
+  );
+
+  List<Widget> _content(BuildContext context, _Detail d) {
     final c = context.ol;
     final t = context.olText;
-    final p = demoPatient(patientId);
-    final change = p.painChangePct;
+    final p = d.patient;
+    final now = DateTime.now();
+    final age = p.ageOn(now);
+    // Nyeri sebelum sesi, urut lama → baru.
+    final pain = [
+      for (final r in d.records.items.reversed)
+        if (r.painBefore != null) r.painBefore!,
+    ];
+    final body = [
+      if (p.heightCm != null) 'TB ${p.heightCm!.round()} cm',
+      if (p.weightKg != null) 'BB ${p.weightKg!.round()} kg',
+    ];
+    final pkg = p.activePackage;
 
-    return OlDetailScaffold(
-      title: '',
-      actions: [
-        OlIconButton(
-          icon: OlIcons.more,
-          semanticLabel: 'Aksi lain',
-          onPressed: () => context.feedback.sheet<void>(
-            title: p.name,
-            actions: const [
-              SheetAction('Tutup', null, variant: OlButtonVariant.secondary),
-            ],
-          ),
-        ),
-      ],
-      children: [
-        // Profil
-        Row(
-          children: [
-            OlAvatar(name: p.name, large: true),
-            const SizedBox(width: OlSpace.lg),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Semantics(header: true, child: Text(p.name, style: t.title)),
-                  const SizedBox(height: 2),
-                  Text.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: p.number,
-                          style: t.mono.copyWith(color: c.muted),
-                        ),
-                        TextSpan(
-                          text: ' · ${p.age} th · ${p.gender} · ${p.activity}',
-                        ),
-                      ],
-                    ),
-                    style: t.body.copyWith(color: c.muted),
+    return [
+      Row(
+        children: [
+          OlAvatar(name: p.name, large: true),
+          const SizedBox(width: OlSpace.lg),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Semantics(header: true, child: Text(p.name, style: t.title)),
+                const SizedBox(height: 2),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: Fmt.patientNo(p.number),
+                        style: t.mono.copyWith(color: c.muted),
+                      ),
+                      TextSpan(
+                        text: [
+                          '',
+                          if (age != null) '$age th',
+                          if (p.gender != null) p.gender!.label,
+                          if (p.hobby != null) p.hobby!,
+                        ].join(' · '),
+                      ),
+                    ],
                   ),
+                  style: t.body.copyWith(color: c.muted),
+                ),
+                if (body.isNotEmpty)
                   Text(
-                    'TB ${p.height} cm · BB ${p.weight} kg',
+                    body.join(' · '),
                     style: t.body.copyWith(color: c.muted),
                   ),
-                ],
-              ),
+              ],
             ),
-          ],
-        ),
-        if (p.medicalAlert != null)
-          OlBanner(tone: OlBannerTone.crit, message: p.medicalAlert!),
-        // Cedera utama + tren nyeri
+          ),
+        ],
+      ),
+      if (p.medicalAlert != null)
+        OlBanner(tone: OlBannerTone.crit, message: p.medicalAlert!),
+      if (pain.length > 1)
         OlCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      p.injury,
-                      style: t.heading.copyWith(fontSize: 17),
-                    ),
-                  ),
-                  if (p.pain.length > 1)
-                    OlTag(
-                      '${change > 0 ? '+' : ''}$change%',
-                      tone: change <= 0 ? OlTagTone.ok : OlTagTone.crit,
-                    ),
-                ],
-              ),
+              Text('Tren nyeri', style: t.heading.copyWith(fontSize: 17)),
               const SizedBox(height: 4),
               Text(
-                'Tren nyeri ${p.pain.length} sesi (sebelum sesi)',
+                '${pain.length} sesi terakhir (sebelum sesi)',
                 style: t.caption.copyWith(fontSize: 13),
               ),
               const SizedBox(height: 12),
               PainTrendChart(
-                values: p.pain,
-                startLabel: p.painFrom,
-                endLabel: p.painTo,
+                values: pain,
+                startLabel: 'Sesi awal',
+                endLabel: 'Terakhir',
               ),
             ],
           ),
         ),
-        // Paket & latihan
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: OlCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Paket aktif',
-                        style: t.caption.copyWith(fontSize: 13),
-                      ),
-                      Text(
-                        p.packageName ?? 'Tidak ada',
-                        style: t.bodyStrong.copyWith(fontSize: 15),
-                      ),
-                      if (p.packageLeft != null) ...[
-                        const SizedBox(height: 6),
-                        OlTag(
-                          'Sisa ${p.packageLeft} sesi',
-                          tone: p.packageLeft! <= 1
-                              ? OlTagTone.warn
-                              : OlTagTone.brand,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: OlSpace.md),
-              Expanded(
-                child: OlCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Latihan rumah',
-                        style: t.caption.copyWith(fontSize: 13),
-                      ),
-                      Text(
-                        p.exerciseProgram ?? 'Belum ada',
-                        style: t.bodyStrong.copyWith(fontSize: 15),
-                      ),
-                      if (p.exerciseCompliance != null)
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              const TextSpan(text: 'Kepatuhan '),
-                              TextSpan(
-                                text: '${p.exerciseCompliance}%',
-                                style: TextStyle(
-                                  color: c.ok,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              const TextSpan(text: ' minggu ini'),
-                            ],
-                          ),
-                          style: t.body.copyWith(color: c.muted),
-                        ),
-                    ],
-                  ),
-                ),
+      OlCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Paket aktif', style: t.caption.copyWith(fontSize: 13)),
+            Text(
+              pkg?.name ?? 'Tidak ada',
+              style: t.bodyStrong.copyWith(fontSize: 15),
+            ),
+            if (pkg != null) ...[
+              const SizedBox(height: 6),
+              OlTag(
+                'Sisa ${pkg.remaining} dari ${pkg.total} sesi',
+                tone: pkg.almostEmpty ? OlTagTone.warn : OlTagTone.brand,
               ),
             ],
+          ],
+        ),
+      ),
+      const OlSectionHeader(title: 'Riwayat rekam sesi'),
+      if (d.records.items.isEmpty)
+        OlCard(
+          child: Text(
+            'Belum ada rekam sesi di aplikasi baru.',
+            style: t.body.copyWith(color: c.muted),
           ),
-        ),
-        OlSectionHeader(
-          title: 'Riwayat sesi',
-          actionLabel: 'Kirim latihan',
-          onAction: () => context.push(Routes.terapisKirimLatihan(p.id)),
-        ),
+        )
+      else
         OlCard(
           padding: const EdgeInsets.symmetric(horizontal: OlSpace.lg),
           child: Column(
             children: [
-              for (final s in p.sessions)
-                InkWell(
-                  onTap: () => context.push(Routes.terapisSesi(s.sessionId)),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      border: Border(bottom: BorderSide(color: c.line)),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 76,
-                          child: Text(
-                            s.date,
-                            style: t.mono.copyWith(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                s.title,
-                                style: t.body.copyWith(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              Text(
-                                s.caption,
-                                style: t.body.copyWith(color: c.muted),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              for (final (i, r) in d.records.items.indexed)
+                OlListItem(
+                  title: r.complaint.isEmpty ? 'Rekam sesi' : r.complaint,
+                  subtitle: [
+                    if (r.updatedAt != null) Fmt.dateNoDay(r.updatedAt!),
+                    if (r.painBefore != null && r.painAfter != null)
+                      'nyeri ${r.painBefore} → ${r.painAfter}',
+                    if (r.treatments.isNotEmpty) r.treatments.join(', '),
+                  ].join(' · '),
+                  divider: i < d.records.items.length - 1,
+                  onTap: () => context.push(Routes.terapisSesi(r.sessionId)),
                 ),
-              if (p.moreSessions > 0)
-                TextButton(
-                  onPressed: () {},
-                  style: TextButton.styleFrom(
-                    foregroundColor: c.muted,
-                    minimumSize: const Size.fromHeight(48),
-                  ),
-                  child: Text(
-                    'Muat ${p.moreSessions} sesi lagi',
-                    style: t.body,
-                  ),
-                )
-              else
-                const SizedBox(height: 4),
             ],
           ),
         ),
-        // Catatan sistem lama — ditampilkan apa adanya (§5.3)
+      if (d.legacy.isNotEmpty)
         Container(
           padding: const EdgeInsets.all(OlSpace.lg),
           decoration: BoxDecoration(
@@ -259,45 +184,48 @@ class DetailPasienPage extends StatelessWidget {
                   const OlTag('Sistem lama · baca-saja', tone: OlTagTone.muted),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text(p.legacy, style: t.body.copyWith(color: c.muted)),
+              for (final l in d.legacy) ...[
+                const SizedBox(height: 10),
+                Text(
+                  Fmt.dateNoDay(l.date),
+                  style: t.bodyStrong.copyWith(fontSize: 14),
+                ),
+                for (final e in l.fields.entries)
+                  Text(
+                    '${e.key}: ${e.value}',
+                    style: t.body.copyWith(color: c.muted),
+                  ),
+              ],
             ],
           ),
         ),
-        // Kontak: terapis tidak melihat nomor lengkap (§7)
-        OlCard(
-          child: Row(
-            children: [
-              OlIcon(OlIcons.phone, color: c.muted),
-              const SizedBox(width: OlSpace.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Kontak pasien',
-                      style: t.bodyStrong.copyWith(fontSize: 15),
+      OlCard(
+        child: Row(
+          children: [
+            OlIcon(OlIcons.phone, color: c.muted),
+            const SizedBox(width: OlSpace.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Kontak pasien',
+                    style: t.bodyStrong.copyWith(fontSize: 15),
+                  ),
+                  Text(
+                    p.phone ?? 'Nomor hanya terlihat oleh front desk',
+                    style: (p.phone == null ? t.body : t.mono).copyWith(
+                      color: c.muted,
                     ),
-                    Text(
-                      'Nomor disamarkan ·',
-                      style: t.body.copyWith(color: c.muted),
-                    ),
-                    Text(p.maskedPhone, style: t.mono.copyWith(color: c.muted)),
-                  ],
-                ),
+                  ),
+                  if (p.address != null)
+                    Text(p.address!, style: t.body.copyWith(color: c.muted)),
+                ],
               ),
-              OlButton.secondary(
-                label: 'Hubungi via klinik',
-                small: true,
-                expand: false,
-                onPressed: () => context.feedback.success(
-                  'Permintaan menghubungi pasien dikirim ke front desk.',
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
-    );
+      ),
+    ];
   }
 }

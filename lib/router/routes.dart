@@ -1,4 +1,6 @@
+import '../core/format.dart';
 import '../data/auth/auth_controller.dart';
+import '../data/auth/auth_repository.dart';
 import '../data/models/staff_user.dart';
 import '../pasien/pasien_router.dart';
 import '../pasien/pasien_routes.dart';
@@ -122,7 +124,22 @@ abstract final class Routes {
 /// Sesi staf aktif (atau sedang dipulihkan/terkunci) selalu didahulukan.
 /// Belum login: perkenalan pasien sekali, lalu layar masuk bersama yang
 /// mengenali nomor HP (pasien) atau username (staf).
-String? appRedirect(AuthState auth, PasienSession pasien, String location) {
+String? appRedirect(
+  AuthState auth,
+  PasienSession pasien,
+  String location, [
+  AppStatus? status,
+]) {
+  // UM-03 / UM-02 dari `/v1/app/status` (dibaca saat splash): pemeliharaan & versi minimum
+  // didahulukan. Staf yang sudah masuk tetap bisa bekerja offline (rekam sesi tersimpan di HP).
+  if (status != null && auth.phase != AuthPhase.ready) {
+    if (status.maintenance) {
+      return location == Routes.maintenance ? null : Routes.maintenance;
+    }
+    if (isOlderVersion(kAppVersion, status.minVersion)) {
+      return location == Routes.update ? null : Routes.update;
+    }
+  }
   // Formulir intake terbuka untuk siapa pun (pasien baru belum punya akun),
   // termasuk saat dibuka langsung dari QR ketika aplikasi baru dijalankan.
   if (Routes.isIntake(location)) return null;

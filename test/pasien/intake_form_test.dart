@@ -10,6 +10,7 @@ import 'package:onelotus_staff/pasien/pasien_session.dart';
 import 'package:onelotus_staff/router/routes.dart';
 
 import '../helpers.dart';
+import '../support/mock_intake.dart';
 
 void main() {
   setUpAll(() => initializeDateFormatting('id_ID'));

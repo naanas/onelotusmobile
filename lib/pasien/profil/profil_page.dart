@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/format.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
-import '../demo_data.dart';
 import '../pasien_routes.dart';
 import '../pasien_session.dart';
 
@@ -17,7 +17,8 @@ class ProfilPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.ol;
     final t = context.olText;
-    final phone = ref.watch(pasienSessionProvider.select((s) => s.phone));
+    final account = ref.watch(pasienSessionProvider.select((s) => s.account));
+    final patient = account?.patient;
 
     Widget group(List<OlListItem> items) => OlCard(
       padding: const EdgeInsets.symmetric(horizontal: OlSpace.lg),
@@ -48,16 +49,19 @@ class ProfilPage extends ConsumerWidget {
         OlCard(
           child: Row(
             children: [
-              const OlAvatar(name: 'Rina Setiawati', large: true),
+              OlAvatar(name: patient?.name ?? '-', large: true),
               const SizedBox(width: OlSpace.lg),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Rina Setiawati', style: t.heading),
+                    Text(patient?.name ?? '-', style: t.heading),
                     const SizedBox(height: 2),
                     Text(
-                      '#0387 · ${phone.isEmpty ? '0812 3456 7890' : phone}',
+                      [
+                        if (patient != null) Fmt.patientNo(patient.number),
+                        ?account?.phoneDisplay,
+                      ].join(' · '),
                       style: t.mono.copyWith(fontSize: 13.5, color: c.muted),
                     ),
                   ],
@@ -77,7 +81,7 @@ class ProfilPage extends ConsumerWidget {
         group([
           OlListItem(
             title: 'Jadwal saya',
-            trailing: const OlTag('1 mendatang', tone: OlTagTone.outline),
+            showChevron: true,
             onTap: () => context.push(PRoutes.jadwal),
           ),
           OlListItem(
@@ -87,18 +91,12 @@ class ProfilPage extends ConsumerWidget {
           ),
           OlListItem(
             title: 'Paket & pembayaran',
-            trailing: const OlTag('1 belum lunas', tone: OlTagTone.warn),
+            showChevron: true,
             onTap: () => context.push(PRoutes.paket),
           ),
           OlListItem(
             title: 'Poin & referral',
-            trailing: Text(
-              '$demoPoints poin',
-              style: t.mono.copyWith(
-                fontWeight: FontWeight.w700,
-                color: c.warn,
-              ),
-            ),
+            showChevron: true,
             onTap: () => context.push(PRoutes.poin),
           ),
           OlListItem(
@@ -110,7 +108,7 @@ class ProfilPage extends ConsumerWidget {
         group([
           OlListItem(
             title: 'Alamat tersimpan',
-            trailing: Text('2 alamat', style: t.body.copyWith(color: c.muted)),
+            showChevron: true,
             onTap: () => context.push(PRoutes.alamat),
           ),
           OlListItem(
@@ -124,9 +122,8 @@ class ProfilPage extends ConsumerWidget {
             onTap: () => context.feedback.sheet<void>(
               title: 'Bantuan & kontak klinik',
               message:
-                  'Klinik Pusat Malang · Jl. Soekarno-Hatta No. 9\nBuka Senin–Jumat 08.00–20.00, Sabtu 08.00–17.00',
+                  'Untuk mengubah data diri atau jadwal, hubungi front desk One Lotus.',
               actions: const [
-                SheetAction('Chat WhatsApp klinik', null),
                 SheetAction('Tutup', null, variant: OlButtonVariant.secondary),
               ],
             ),

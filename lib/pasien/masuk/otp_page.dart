@@ -12,7 +12,6 @@ import '../pasien_session.dart';
 
 /// PS-02 Masukkan kode: nomor HP dikenali di layar masuk bersama (UM-04),
 /// lalu kode OTP 6 digit dikirim lewat WhatsApp.
-/// Slicing UI: kode apa pun diterima kecuali `000000` (contoh kode salah).
 class OtpPage extends ConsumerStatefulWidget {
   const OtpPage({super.key});
 
@@ -54,8 +53,14 @@ class _OtpPageState extends ConsumerState<OtpPage> {
       _error = null;
       _code.clear();
     });
-    context.feedback.info('Kode baru dikirim lewat WhatsApp.');
-    _startTimer();
+    try {
+      final wait = await ref.read(pasienSessionProvider.notifier).resendOtp();
+      if (!mounted) return;
+      context.feedback.info('Kode baru dikirim lewat WhatsApp.');
+      _startTimer(wait);
+    } on AppError catch (e) {
+      if (mounted) context.feedback.error(e);
+    }
   }
 
   /// Kembali ke layar masuk untuk mengganti nomor.
@@ -64,9 +69,9 @@ class _OtpPageState extends ConsumerState<OtpPage> {
     context.go(Routes.login);
   }
 
-  void _startTimer() {
+  void _startTimer([int seconds = 60]) {
     _timer?.cancel();
-    setState(() => _resendIn = 45);
+    setState(() => _resendIn = seconds);
     _timer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) return;
       setState(() => _resendIn--);
@@ -75,17 +80,22 @@ class _OtpPageState extends ConsumerState<OtpPage> {
   }
 
   Future<void> _verify() async {
+    if (_busy) return;
     setState(() => _busy = true);
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-    if (_code.text == '000000') {
+    try {
+      await ref.read(pasienSessionProvider.notifier).verify(_code.text);
+    } on AppError catch (e) {
+      if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = 'Kode salah. Periksa lagi pesan WhatsApp Anda.';
+        _error =
+            e.fieldError('code') ??
+            (e.type == ErrorCode.rateLimited
+                ? 'Terlalu banyak kode salah. Coba lagi dalam 15 menit.'
+                : null);
       });
-      return;
+      if (_error == null) context.feedback.error(e, retry: _verify);
     }
-    ref.read(pasienSessionProvider.notifier).verified();
   }
 
   @override

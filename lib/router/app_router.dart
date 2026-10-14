@@ -114,6 +114,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     refresh.value++;
   });
   ref.listen(pasienSessionProvider, (_, _) => refresh.value++);
+  ref.listen(appStatusProvider, (_, _) => refresh.value++);
   ref.onDispose(refresh.dispose);
 
   return GoRouter(
@@ -124,6 +125,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ref.read(authProvider),
       ref.read(pasienSessionProvider),
       state.matchedLocation,
+      ref.read(appStatusProvider),
     ),
     routes: [
       GoRoute(
@@ -340,13 +342,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.kasirPasienForm,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, state) =>
-            PasienFormPage(intakeId: state.uri.queryParameters['intake']),
+        builder: (_, state) => PasienFormPage(
+          intakeId: state.uri.queryParameters['intake'],
+          patientId: state.uri.queryParameters['pasien'],
+        ),
       ),
       GoRoute(
         path: Routes.kasirBuatJadwal,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const BuatJadwalPage(),
+        builder: (_, s) => BuatJadwalPage(
+          walkIn: s.uri.queryParameters['walkin'] == '1',
+          patientId: s.uri.queryParameters['pasien'],
+        ),
       ),
       GoRoute(
         path: Routes.kasirBooking,
@@ -356,7 +363,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.kasirPindahMassal,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PindahMassalPage(),
+        builder: (_, s) => PindahMassalPage(
+          therapistId: s.uri.queryParameters['terapis'],
+          from: DateTime.tryParse(s.uri.queryParameters['dari'] ?? ''),
+          to: DateTime.tryParse(s.uri.queryParameters['sampai'] ?? ''),
+        ),
       ),
       GoRoute(
         path: Routes.kasirBayar,

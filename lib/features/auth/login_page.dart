@@ -154,11 +154,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       _usernameError = null;
       _busy = true;
     });
-    // Slicing UI: anggap kode terkirim; nanti POST /pasien/otp.
-    await Future<void>.delayed(const Duration(milliseconds: 500));
+    try {
+      await ref
+          .read(pasienSessionProvider.notifier)
+          .requestOtp(_normalizePhone(raw));
+    } on AppError catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _usernameError = e.fieldError('phone');
+      });
+      if (e.fieldError('phone') == null) {
+        context.feedback.error(e, retry: _submit);
+      }
+      return;
+    }
     if (!mounted) return;
     setState(() => _busy = false);
-    ref.read(pasienSessionProvider.notifier).requestOtp(_normalizePhone(raw));
     context.go(PRoutes.masuk);
   }
 

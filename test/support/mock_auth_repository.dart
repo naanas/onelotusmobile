@@ -1,5 +1,5 @@
-import '../models/staff_user.dart';
-import 'auth_repository.dart';
+import 'package:onelotus_staff/data/models/staff_user.dart';
+import 'package:onelotus_staff/data/auth/auth_repository.dart';
 
 /// Data contoh — nama & cabang mengikuti mockup, bukan data asli.
 abstract final class MockBranches {

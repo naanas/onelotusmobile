@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:onelotus_staff/data/auth/auth_controller.dart';
-import 'package:onelotus_staff/data/auth/mock_auth_repository.dart';
+import '../support/mock_auth_repository.dart';
 import 'package:onelotus_staff/data/models/staff_user.dart';
 import 'package:onelotus_staff/router/routes.dart';
 

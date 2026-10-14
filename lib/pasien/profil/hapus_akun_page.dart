@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
-import '../demo_data.dart';
 import '../pasien_session.dart';
 
 /// PS-20 Hapus akun aplikasi (§10, UU PDP): jelaskan dampak, alasan opsional,
@@ -30,13 +29,50 @@ class _HapusAkunPageState extends ConsumerState<HapusAkunPage> {
     );
     if (r.choice != ConfirmChoice.confirm || !mounted) return;
     setState(() => _busy = true);
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() => _busy = false);
-    context.feedback.success(
-      'Permintaan hapus akun terkirim. Status bisa dilihat di sini.',
-    );
-    ref.read(pasienSessionProvider.notifier).logout();
+    final api = ref.read(pasienApiProvider);
+    try {
+      await api.requestDeletionOtp();
+      if (!mounted) return;
+      setState(() => _busy = false);
+      final code = await context.feedback.formSheet<String>(
+        title: 'Masukkan kode',
+        message: 'Kode 6 digit dikirim lewat WhatsApp.',
+        builder: (ctx, close) {
+          var v = '';
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              OlTextField(
+                label: 'Kode OTP',
+                keyboardType: TextInputType.number,
+                mono: true,
+                onChanged: (s) => v = s.trim(),
+              ),
+              const SizedBox(height: OlSpace.lg),
+              OlButton.danger(
+                label: 'Hapus akun',
+                onPressed: () {
+                  if (v.length == 6) close(v);
+                },
+              ),
+            ],
+          );
+        },
+      );
+      if (code == null || !mounted) return;
+      setState(() => _busy = true);
+      await api.requestDeletion(code);
+      if (!mounted) return;
+      context.feedback.success(
+        'Permintaan hapus akun terkirim. Rekam medis tetap disimpan klinik.',
+      );
+      await ref.read(pasienSessionProvider.notifier).expire();
+    } on AppError catch (e) {
+      if (!mounted) return;
+      setState(() => _busy = false);
+      final msg = e.fieldError('code');
+      msg != null ? context.feedback.info(msg) : context.feedback.error(e);
+    }
   }
 
   @override
@@ -80,7 +116,7 @@ class _HapusAkunPageState extends ConsumerState<HapusAkunPage> {
               point(
                 OlIcons.close,
                 c.crit,
-                'Akun aplikasi, poin ($demoPoints), alamat tersimpan, dan program latihan akan dihapus.',
+                'Akun aplikasi Anda dihapus dan Anda keluar dari semua perangkat.',
               ),
               point(
                 OlIcons.lock,
@@ -90,7 +126,7 @@ class _HapusAkunPageState extends ConsumerState<HapusAkunPage> {
               point(
                 OlIcons.package,
                 c.warn,
-                'Sisa 1 sesi paket tetap bisa dipakai di klinik dengan menunjukkan nomor pasien.',
+                'Paket yang masih aktif tetap bisa dipakai di klinik dengan menunjukkan nomor pasien.',
               ),
             ],
           ),
@@ -115,7 +151,7 @@ class _HapusAkunPageState extends ConsumerState<HapusAkunPage> {
         ),
         const OlBanner(
           message:
-              'Kami akan mengirim kode OTP untuk konfirmasi. Status permintaan bisa dilihat di sini.',
+              'Kami akan mengirim kode OTP lewat WhatsApp untuk konfirmasi.',
         ),
       ],
     );

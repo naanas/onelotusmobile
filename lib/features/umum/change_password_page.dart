@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/auth/auth_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 
 /// UM-12 Ubah password & PIN.
-class ChangePasswordPage extends StatefulWidget {
+class ChangePasswordPage extends ConsumerStatefulWidget {
   const ChangePasswordPage({super.key});
 
   @override
-  State<ChangePasswordPage> createState() => _ChangePasswordPageState();
+  ConsumerState<ChangePasswordPage> createState() => _ChangePasswordPageState();
 }
 
-class _ChangePasswordPageState extends State<ChangePasswordPage> {
+class _ChangePasswordPageState extends ConsumerState<ChangePasswordPage> {
   String _tab = 'password';
   final _old = TextEditingController();
   final _new = TextEditingController();
   final _again = TextEditingController();
-  bool _bio = true;
   bool _busy = false;
   String _pin = '';
   String? _firstPin;
@@ -43,13 +44,23 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   Future<void> _savePassword() async {
     setState(() => _busy = true);
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-    setState(() => _busy = false);
-    context.feedback.success(
-      'Password diganti. Perangkat lain sudah dikeluarkan.',
-    );
-    Navigator.of(context).maybePop();
+    try {
+      final token = ref.read(authProvider).token!;
+      await ref
+          .read(authRepositoryProvider)
+          .changePassword(token, current: _old.text, next: _new.text);
+      if (!mounted) return;
+      context.feedback.success(
+        'Password diganti. Perangkat lain sudah dikeluarkan.',
+      );
+      Navigator.of(context).maybePop();
+    } on AppError catch (e) {
+      if (!mounted) return;
+      final msg = e.fieldErrors.values.expand((v) => v).firstOrNull;
+      msg != null ? context.feedback.info(msg) : context.feedback.error(e);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   void _pinDigit(String d) {
@@ -62,8 +73,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         _pin = '';
       });
     } else if (_firstPin == _pin) {
-      context.feedback.success('PIN baru tersimpan.');
-      Navigator.of(context).maybePop();
+      // PIN disimpan di HP ini saja (hash + salt di secure storage, UM-07).
+      ref.read(authProvider.notifier).setPin(_pin).then((_) {
+        if (!mounted) return;
+        context.feedback.success('PIN baru tersimpan.');
+        Navigator.of(context).maybePop();
+      });
     } else {
       context.feedback.info('PIN tidak cocok. Ulangi dari awal.');
       setState(() {
@@ -159,8 +174,19 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               ),
               OlToggle(
                 semanticLabel: 'Buka dengan biometrik',
-                value: _bio,
-                onChanged: (v) => setState(() => _bio = v),
+                value: ref.watch(
+                  authProvider.select((a) => a.biometricEnabled),
+                ),
+                onChanged: (v) async {
+                  final auth = ref.read(authProvider.notifier);
+                  if (!v) return auth.disableBiometric();
+                  final ok = await auth.enableBiometric();
+                  if (!ok && context.mounted) {
+                    context.feedback.info(
+                      'Biometrik belum bisa diaktifkan di HP ini.',
+                    );
+                  }
+                },
               ),
             ],
           ),

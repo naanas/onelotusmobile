@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format.dart';
 import '../../data/api/api_error_mapper.dart';
+import '../../data/api/one_lotus_api.dart';
 import '../../data/intake/intake_repository.dart';
 import '../../data/models/models.dart';
 import '../../theme/app_theme.dart';
@@ -14,9 +15,12 @@ import '../../ui/ui.dart';
 /// cek ganda (ST-08) dari server. Persetujuan PDP wajib untuk pasien baru (§5.11) — pada intake
 /// sudah dicentang pasien sendiri di formulir.
 class PasienFormPage extends ConsumerStatefulWidget {
-  const PasienFormPage({super.key, this.intakeId});
+  const PasienFormPage({super.key, this.intakeId, this.patientId});
 
   final String? intakeId;
+
+  /// Ubah data pasien yang sudah ada (KS-04 edit).
+  final String? patientId;
 
   @override
   ConsumerState<PasienFormPage> createState() => _PasienFormPageState();
@@ -41,7 +45,10 @@ class _PasienFormPageState extends ConsumerState<PasienFormPage> {
   AppError? _loadError;
   Map<String, List<String>> _fieldErrors = const {};
 
+  Patient? _editing;
+
   bool get _fromIntake => widget.intakeId != null;
+  bool get _editMode => widget.patientId != null;
   PatientIntakeRepository get _repo =>
       ref.read(patientIntakeRepositoryProvider);
 
@@ -49,6 +56,31 @@ class _PasienFormPageState extends ConsumerState<PasienFormPage> {
   void initState() {
     super.initState();
     if (_fromIntake) _loadIntake();
+    if (_editMode) _loadPatient();
+  }
+
+  Future<void> _loadPatient() async {
+    setState(() => _loadError = null);
+    try {
+      final p = await ref.read(oneLotusApiProvider).patient(widget.patientId!);
+      if (!mounted) return;
+      setState(() {
+        _editing = p;
+        _name.text = p.name;
+        _birth = p.birthDate;
+        _place.text = p.birthPlace ?? '';
+        _gender = p.gender ?? Gender.female;
+        _phone.text = p.phone ?? '';
+        _address.text = p.address == '-' ? '' : (p.address ?? '');
+        _tb.text = p.heightCm?.round().toString() ?? '';
+        _bb.text = p.weightKg?.round().toString() ?? '';
+        _job.text = p.institution == '-' ? '' : (p.institution ?? '');
+        _hobby.text = p.hobby ?? '';
+        _consent = true;
+      });
+    } on AppError catch (e) {
+      if (mounted) setState(() => _loadError = e);
+    }
   }
 
   @override
@@ -128,7 +160,15 @@ class _PasienFormPageState extends ConsumerState<PasienFormPage> {
     healthConsent: _consent,
   );
 
-  Future<Patient> _send({bool confirm = false, String? existing}) => _fromIntake
+  Future<Patient> _send({bool confirm = false, String? existing}) => _editMode
+      ? ref
+            .read(oneLotusApiProvider)
+            .updatePatient(
+              widget.patientId!,
+              _draft,
+              confirmNotDuplicate: confirm,
+            )
+      : _fromIntake
       ? _repo.process(
           widget.intakeId!,
           _draft,
@@ -169,6 +209,13 @@ class _PasienFormPageState extends ConsumerState<PasienFormPage> {
         if (choice == null || !mounted) return;
         setState(() => _busy = true);
         if (choice == DuplicateChoice.openExisting) {
+          if (_editMode) {
+            context.feedback.info(
+              'Perubahan dibatalkan. Data lama tidak diubah.',
+            );
+            Navigator.of(context).maybePop();
+            return;
+          }
           if (!_fromIntake) {
             // Tambah manual: tidak ada yang digabung, cukup batal dan buka data lama dari daftar pasien.
             context.feedback.info(
@@ -185,7 +232,9 @@ class _PasienFormPageState extends ConsumerState<PasienFormPage> {
       }
       if (!mounted) return;
       context.feedback.success(
-        merged
+        _editMode
+            ? 'Data ${patient.name} disimpan.'
+            : merged
             ? 'Kiriman digabung ke ${Fmt.patientNo(patient.number)} ${patient.name}.'
             : 'Pasien ${Fmt.patientNo(patient.number)} dibuat.',
       );
@@ -245,9 +294,9 @@ class _PasienFormPageState extends ConsumerState<PasienFormPage> {
     final t = context.olText;
     final intake = _intake;
 
-    if (_fromIntake && intake == null) {
+    if ((_fromIntake && intake == null) || (_editMode && _editing == null)) {
       return OlDetailScaffold(
-        title: 'Verifikasi pasien baru',
+        title: _editMode ? 'Edit data pasien' : 'Verifikasi pasien baru',
         children: [
           if (_loadError == null)
             const OlCard(
@@ -268,8 +317,10 @@ class _PasienFormPageState extends ConsumerState<PasienFormPage> {
                 children: [
                   Text(
                     _loadError!.type == ErrorCode.notFound
-                        ? 'Kiriman ini sudah diproses atau dibuang.'
-                        : 'Kiriman belum bisa dimuat. Coba beberapa saat lagi.',
+                        ? (_editMode
+                              ? 'Data pasien tidak ditemukan atau sudah diarsipkan.'
+                              : 'Kiriman ini sudah diproses atau dibuang.')
+                        : 'Data belum bisa dimuat. Coba beberapa saat lagi.',
                     style: t.body.copyWith(color: c.muted),
                     textAlign: TextAlign.center,
                   ),
@@ -277,7 +328,7 @@ class _PasienFormPageState extends ConsumerState<PasienFormPage> {
                   OlButton(
                     label: 'Coba lagi',
                     expand: false,
-                    onPressed: _loadIntake,
+                    onPressed: _editMode ? _loadPatient : _loadIntake,
                   ),
                 ],
               ),
@@ -297,13 +348,17 @@ class _PasienFormPageState extends ConsumerState<PasienFormPage> {
     void touch(String _) => setState(() {});
 
     return OlDetailScaffold(
-      title: _fromIntake ? 'Verifikasi pasien baru' : 'Tambah pasien',
+      title: _editMode
+          ? 'Edit data pasien'
+          : _fromIntake
+          ? 'Verifikasi pasien baru'
+          : 'Tambah pasien',
       context_: intake == null
           ? null
           : 'Dari intake QR · ${intake.summary.queueLabel} · ${Fmt.time(intake.summary.createdAt)}',
       foot: [
         OlButton(
-          label: 'Simpan & buat nomor pasien',
+          label: _editMode ? 'Simpan perubahan' : 'Simpan & buat nomor pasien',
           loading: _busy,
           onPressed: _valid && !_busy ? _save : null,
         ),
@@ -331,7 +386,9 @@ class _PasienFormPageState extends ConsumerState<PasienFormPage> {
                 ),
               ),
               Text(
-                'Otomatis saat disimpan',
+                _editing != null
+                    ? Fmt.patientNo(_editing!.number)
+                    : 'Otomatis saat disimpan',
                 style: t.mono.copyWith(fontWeight: FontWeight.w700),
               ),
             ],
@@ -428,7 +485,9 @@ class _PasienFormPageState extends ConsumerState<PasienFormPage> {
             ],
           ),
         ],
-        if (intake != null)
+        if (_editMode)
+          const SizedBox.shrink()
+        else if (intake != null)
           OlBanner(
             tone: OlBannerTone.ok,
             message:

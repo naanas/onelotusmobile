@@ -9,6 +9,7 @@ import 'package:onelotus_staff/features/kasir/pasien_form_page.dart';
 
 import '../data/api_error_mapper_test.dart' show http;
 import '../helpers.dart';
+import '../support/mock_intake.dart';
 
 void main() {
   setUpAll(() => initializeDateFormatting('id_ID'));
@@ -112,6 +113,9 @@ void main() {
     await t.pumpAndSettle();
     // Sheet ST-08 muncul dengan data lama #0291.
     expect(find.textContaining('#0291', findRichText: true), findsWidgets);
-    expect(find.text('Pasien dengan nama & tanggal lahir ini sudah ada.'), findsOneWidget);
+    expect(
+      find.text('Pasien dengan nama & tanggal lahir ini sudah ada.'),
+      findsOneWidget,
+    );
   });
 }

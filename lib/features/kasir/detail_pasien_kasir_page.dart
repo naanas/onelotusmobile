@@ -1,231 +1,230 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/format.dart';
+import '../../data/api/one_lotus_api.dart';
+import '../../data/auth/auth_controller.dart';
+import '../../data/models/models.dart';
 import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
+import '../shared/patient_list.dart';
 
-/// KS-05 Detail pasien (kasir): nomor HP terlihat (§7), tagihan, paket, poin, jadwal, riwayat.
-class DetailPasienKasirPage extends StatelessWidget {
+typedef _Detail = ({Patient patient, PageResult<SessionRecord> records});
+
+/// KS-05 Detail pasien (kasir; juga owner OW-03): identitas & kontak lengkap, paket, riwayat
+/// kunjungan ringkas (catatan medis hanya ringkasan, §7). Aksi: edit, buat jadwal, arsip,
+/// pulihkan dari arsip (owner).
+class DetailPasienKasirPage extends ConsumerStatefulWidget {
   const DetailPasienKasirPage({super.key, required this.patientId});
 
   final String patientId;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.ol;
-    final t = context.olText;
-    Widget visit(
-      String date,
-      String title,
-      String sub,
-      Widget tag, {
-      bool divider = true,
-    }) => Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        border: divider ? Border(bottom: BorderSide(color: c.line)) : null,
-      ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 64,
-            child: Text(date, style: t.mono.copyWith(fontSize: 14)),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: t.body.copyWith(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(sub, style: t.body.copyWith(color: c.muted)),
-              ],
-            ),
-          ),
-          tag,
-        ],
+  ConsumerState<DetailPasienKasirPage> createState() =>
+      _DetailPasienKasirPageState();
+}
+
+class _DetailPasienKasirPageState extends ConsumerState<DetailPasienKasirPage> {
+  int _gen = 0;
+
+  OneLotusApi get _api => ref.read(oneLotusApiProvider);
+
+  Future<_Detail> _load() async {
+    final r = await (
+      _api.patient(widget.patientId),
+      _api.patientRecords(widget.patientId),
+    ).wait;
+    return (patient: r.$1, records: r.$2);
+  }
+
+  void _reload() => setState(() => _gen++);
+
+  Future<void> _archive(Patient p, bool archive) async {
+    final ok = await context.feedback.confirm(
+      ConfirmSpec(
+        title: archive ? 'Arsipkan ${p.name}?' : 'Pulihkan ${p.name}?',
+        message: archive
+            ? 'Pasien tidak muncul di daftar aktif. Riwayat terapi tetap tersimpan dan bisa dipulihkan owner.'
+            : 'Pasien kembali muncul di daftar aktif.',
+        confirmLabel: archive ? 'Arsipkan' : 'Pulihkan',
+        danger: archive,
       ),
     );
+    if (!ok || !mounted) return;
+    try {
+      archive
+          ? await _api.archivePatient(p.id)
+          : await _api.restorePatient(p.id);
+      if (!mounted) return;
+      context.feedback.success(
+        archive ? 'Data pasien diarsipkan.' : 'Pasien dipulihkan.',
+      );
+      _reload();
+    } on AppError catch (e) {
+      if (!mounted) return;
+      final msg = e.fieldErrors.values.expand((v) => v).firstOrNull;
+      msg != null ? context.feedback.info(msg) : context.feedback.error(e);
+    }
+  }
 
+  @override
+  Widget build(BuildContext context) {
+    final isOwner =
+        ref.watch(authProvider.select((a) => a.activeRole)) == Role.owner;
     return OlDetailScaffold(
-      title: '',
+      title: 'Detail pasien',
       actions: [
         OlButton.secondary(
           label: 'Edit',
           small: true,
           expand: false,
-          onPressed: () => context.push(Routes.kasirPasienForm),
+          onPressed: () async {
+            await context.push(
+              '${Routes.kasirPasienForm}?pasien=${widget.patientId}',
+            );
+            _reload();
+          },
         ),
       ],
       foot: [
-        OlFootRow(
-          children: [
-            OlButton.secondary(
-              label: 'Buat jadwal',
-              onPressed: () => context.push(Routes.kasirBuatJadwal),
-            ),
-            OlButton.secondary(
-              label: 'Kirim link bayar',
-              onPressed: () => context.feedback.success(
-                'Link bayar terkirim ke WhatsApp pasien.',
-              ),
-            ),
-          ],
+        OlButton(
+          label: 'Buat jadwal',
+          onPressed: () => context.push(
+            '${Routes.kasirBuatJadwal}?pasien=${widget.patientId}',
+          ),
         ),
       ],
       children: [
-        Row(
-          children: [
-            const OlAvatar(name: 'Andi Pratama', large: true),
-            const SizedBox(width: OlSpace.lg),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        OlAsync<_Detail>(
+          key: ValueKey(_gen),
+          load: _load,
+          builder: (context, d, _) {
+            final c = context.ol;
+            final t = context.olText;
+            final p = d.patient;
+            final age = p.ageOn(DateTime.now());
+            final pkg = p.activePackage;
+            return [
+              if (p.archivedAt != null)
+                OlBanner(
+                  tone: OlBannerTone.warn,
+                  message: 'Diarsipkan ${Fmt.dateNoDay(p.archivedAt!)}.',
+                  actionLabel: isOwner ? 'Pulihkan' : null,
+                  onAction: isOwner ? () => _archive(p, false) : null,
+                ),
+              Row(
                 children: [
-                  Semantics(
-                    header: true,
-                    child: Text('Andi Pratama', style: t.title),
-                  ),
-                  Text.rich(
-                    TextSpan(
+                  OlAvatar(name: p.name, large: true),
+                  const SizedBox(width: OlSpace.lg),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        TextSpan(
-                          text: '#0412',
-                          style: t.mono.copyWith(color: c.muted),
+                        Semantics(
+                          header: true,
+                          child: Text(p.name, style: t.title),
                         ),
-                        const TextSpan(text: ' · 34 th · Laki-laki · Member'),
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(
+                                text: Fmt.patientNo(p.number),
+                                style: t.mono.copyWith(color: c.muted),
+                              ),
+                              TextSpan(
+                                text: [
+                                  '',
+                                  if (age != null) '$age th',
+                                  if (p.gender != null) p.gender!.label,
+                                ].join(' · '),
+                              ),
+                            ],
+                          ),
+                          style: t.body.copyWith(color: c.muted),
+                        ),
+                        if (p.phone != null)
+                          Text(
+                            p.phone!,
+                            style: t.mono.copyWith(color: c.muted),
+                          ),
                       ],
                     ),
-                    style: t.body.copyWith(color: c.muted),
-                  ),
-                  Text(
-                    '0812 3301 7745',
-                    style: t.mono.copyWith(color: c.muted),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-        Container(
-          padding: const EdgeInsets.all(OlSpace.lg),
-          decoration: BoxDecoration(
-            color: c.warnSoft,
-            borderRadius: BorderRadius.circular(OlRadius.card),
-          ),
-          child: Row(
-            children: [
-              Expanded(
+              if (p.medicalAlert != null)
+                OlBanner(tone: OlBannerTone.crit, message: p.medicalAlert!),
+              OlCard(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Tagihan belum lunas',
-                      style: t.heading.copyWith(color: c.warn),
+                    OlInfoRow(
+                      label: 'Tanggal lahir',
+                      value: [
+                        if (p.birthPlace != null) p.birthPlace!,
+                        if (p.birthDate != null) Fmt.dateNoDay(p.birthDate!),
+                      ].join(', '),
                     ),
-                    Text(
-                      'Sesi hari ini · Rp450.000',
-                      style: t.body.copyWith(color: c.warn),
+                    OlInfoRow(label: 'Alamat', value: p.address ?? '–'),
+                    OlInfoRow(
+                      label: 'Pekerjaan / instansi',
+                      value: p.institution ?? '–',
+                    ),
+                    OlInfoRow(label: 'Hobi', value: p.hobby ?? '–'),
+                    OlInfoRow(
+                      label: 'TB / BB',
+                      value:
+                          '${p.heightCm?.round() ?? '–'} cm / ${p.weightKg?.round() ?? '–'} kg',
+                    ),
+                    OlInfoRow(
+                      label: 'Paket',
+                      value: pkg == null
+                          ? 'Tidak ada'
+                          : '${pkg.name} · sisa ${pkg.remaining}/${pkg.total}',
+                    ),
+                    OlInfoRow(
+                      label: 'Kunjungan terakhir',
+                      value: lastVisitLabel(p.lastVisitAt, DateTime.now()),
                     ),
                   ],
                 ),
               ),
-              OlButton(
-                label: 'Tagih',
-                small: true,
-                expand: false,
-                onPressed: () => context.go(Routes.kasirKasir),
-              ),
-            ],
-          ),
-        ),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: OlCard(
+              const OlSectionHeader(title: 'Riwayat kunjungan'),
+              if (d.records.items.isEmpty)
+                OlCard(
+                  child: Text(
+                    'Belum ada rekam sesi di aplikasi baru.',
+                    style: t.body.copyWith(color: c.muted),
+                  ),
+                )
+              else
+                OlCard(
+                  padding: const EdgeInsets.symmetric(horizontal: OlSpace.lg),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Paket', style: t.body.copyWith(color: c.muted)),
-                      Text('—', style: t.heading),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: () => context.push(Routes.kasirJualPaket),
-                        child: Text(
-                          'Jual paket',
-                          style: t.bodyStrong.copyWith(color: c.brand),
+                      for (final (i, r) in d.records.items.indexed)
+                        OlListItem(
+                          title: r.complaint.isEmpty ? 'Sesi' : r.complaint,
+                          subtitle: [
+                            if (r.updatedAt != null)
+                              Fmt.dateNoDay(r.updatedAt!),
+                            if (r.treatments.isNotEmpty)
+                              r.treatments.join(', '),
+                          ].join(' · '),
+                          divider: i < d.records.items.length - 1,
                         ),
-                      ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(width: OlSpace.md),
-              Expanded(
-                child: OlCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Poin Lotus',
-                        style: t.body.copyWith(color: c.muted),
-                      ),
-                      Text(
-                        '1.120',
-                        style: t.mono.copyWith(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      Text(
-                        '= Rp112.000',
-                        style: t.body.copyWith(color: c.muted),
-                      ),
-                    ],
-                  ),
+              if (p.archivedAt == null)
+                OlButton.text(
+                  label: 'Arsipkan pasien',
+                  expand: true,
+                  onPressed: () => _archive(p, true),
                 ),
-              ),
-            ],
-          ),
-        ),
-        const OlOverline('Jadwal mendatang'),
-        OlCard(
-          padding: const EdgeInsets.symmetric(horizontal: OlSpace.lg),
-          child: visit(
-            '13 Okt',
-            'Adjustment Therapy',
-            '10.30 · Dimas',
-            const OlTag('Dijadwalkan', tone: OlTagTone.outline),
-            divider: false,
-          ),
-        ),
-        const OlOverline('Riwayat kunjungan'),
-        OlCard(
-          padding: const EdgeInsets.symmetric(horizontal: OlSpace.lg),
-          child: Column(
-            children: [
-              visit(
-                '6 Okt',
-                'Adjustment · Dimas',
-                'Ringkasan: nyeri 7→3',
-                const OlTag('Belum bayar', tone: OlTagTone.warn),
-              ),
-              visit(
-                '29 Sep',
-                'Adjustment · Dimas',
-                'Ringkasan: nyeri 8→6',
-                const OlTag('Lunas', tone: OlTagTone.ok),
-                divider: false,
-              ),
-            ],
-          ),
+            ];
+          },
         ),
       ],
     );

@@ -1,8 +1,8 @@
 import '../models/models.dart';
 import '../repositories/repositories.dart';
 
-/// Sumber data server untuk operasi baca. Dua implementasi: [MockRemote] (data contoh di HP)
-/// dan [HttpRemote] (One Lotus API). Operasi tulis lewat outbox → `OutboxSender`.
+/// Sumber data server untuk operasi baca ([HttpRemote] ke One Lotus API; tes memakai pengganti
+/// di `test/support`). Operasi tulis lewat outbox → `OutboxSender`.
 abstract interface class OneLotusRemote {
   Future<List<Session>> sessions({
     required String branchId,

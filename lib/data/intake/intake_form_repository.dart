@@ -3,8 +3,6 @@ import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/config.dart';
-import '../../ui/feedback/app_error.dart';
 import '../api/api_client.dart';
 import '../models/json.dart';
 import '../models/models.dart';
@@ -21,9 +19,7 @@ abstract interface class IntakeFormRepository {
 }
 
 final intakeFormRepositoryProvider = Provider<IntakeFormRepository>(
-  (ref) => AppConfig.useMock
-      ? MockIntakeFormRepository()
-      : HttpIntakeFormRepository(ref.watch(apiClientProvider)),
+  (ref) => HttpIntakeFormRepository(ref.watch(apiClientProvider)),
 );
 
 /// Prefiks isi QR KS-02 (sama dengan backend `intakeLinkPrefix`).
@@ -135,27 +131,4 @@ class HttpIntakeFormRepository implements IntakeFormRepository {
       );
     },
   );
-}
-
-/// Mode mock: kode `invalid` = QR tidak berlaku; selain itu Klinik Pusat Malang.
-class MockIntakeFormRepository implements IntakeFormRepository {
-  int _queue = 6;
-  final _sent = <String, IntakeReceipt>{};
-
-  @override
-  Future<String> branchName(String code) async {
-    await Future<void>.delayed(const Duration(milliseconds: 300));
-    if (code == 'invalid') throw const AppError(ErrorCode.notFound);
-    return 'Klinik Pusat Malang';
-  }
-
-  @override
-  Future<IntakeReceipt> submit(String code, IntakeSubmission s) async {
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    if (code == 'invalid') throw const AppError(ErrorCode.notFound);
-    return _sent[s.clientId] ??= IntakeReceipt(
-      queueLabel: 'A-${(++_queue).toString().padLeft(2, '0')}',
-      firstName: s.name.trim().split(RegExp(r'\s+')).first,
-    );
-  }
 }

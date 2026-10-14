@@ -1,199 +1,215 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/providers.dart';
+import '../../data/sync/outbox.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
+import 'sync_items.dart';
 
-enum _State { conflict, failed, sending, waiting }
-
-class _Item {
-  _Item(this.title, this.meta, this.state, {this.error});
-  final String title;
-  final String meta;
-  _State state;
-  final String? error;
-}
-
-/// UM-14 Status sinkron: daftar item outbox & statusnya. Item tidak bisa dihapus
-/// agar catatan medis tidak hilang. (Slicing UI: isi contoh dari mockup.)
-class SyncStatusPage extends StatefulWidget {
+/// UM-14 Status sinkron: isi outbox di HP ini (rekam sesi, status sesi, permintaan pindah jadwal)
+/// dan statusnya. Item tidak bisa dihapus dari sini agar catatan medis tidak hilang; konflik
+/// dipilih versinya (ST-09), yang gagal bisa dicoba lagi.
+class SyncStatusPage extends ConsumerStatefulWidget {
   const SyncStatusPage({super.key});
 
   @override
-  State<SyncStatusPage> createState() => _SyncStatusPageState();
+  ConsumerState<SyncStatusPage> createState() => _SyncStatusPageState();
 }
 
-class _SyncStatusPageState extends State<SyncStatusPage> {
-  final _items = [
-    _Item(
-      'Foto rontgen · Andi Pratama',
-      'Dibuat 10.41 · 3,2 MB',
-      _State.failed,
-      error: 'Gagal mengunggah. Sinyal terputus.',
-    ),
-    _Item(
-      'Rekam sesi · Andi Pratama',
-      'Dibuat 10.48 · mengirim…',
-      _State.sending,
-    ),
-    _Item('Checklist alat · Budi Hartono', 'Dibuat 12.31', _State.waiting),
-    _Item(
-      'Kesimpulan sesi · Rina Setiawati',
-      'Diubah 09.51 · juga diubah di tablet ruang 2',
-      _State.conflict,
-      error: 'Versi berbeda — pilih yang dipakai.',
-    ),
-  ];
+class _SyncStatusPageState extends ConsumerState<SyncStatusPage> {
+  List<OutboxItem>? _items;
 
-  Future<void> _resolve(_Item i) async {
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final all = await ref.read(syncEngineProvider).store.all();
+    if (mounted) setState(() => _items = all);
+  }
+
+  Future<void> _resolve(OutboxItem i) async {
+    final engine = ref.read(syncEngineProvider);
+    String text(Map<String, dynamic>? p) => [
+      p?['complaint'],
+      p?['conclusion'],
+    ].whereType<String>().where((s) => s.isNotEmpty).join(' · ');
     final pick = await showConflictSheet(
       context,
-      mine: const ConflictVersion(
-        label: 'Versi HP ini · 09.51',
-        text: 'Lanjut calf raise 3×12, kontrol Kamis.',
-      ),
-      theirs: const ConflictVersion(
-        label: 'Versi tablet ruang 2 · 09.53',
-        text: 'Lanjut calf raise 3×12 + kompres hangat, kontrol Kamis.',
+      mine: ConflictVersion(label: 'Versi HP ini', text: text(i.payload)),
+      theirs: ConflictVersion(
+        label: 'Versi server',
+        text: text(i.serverPayload),
       ),
     );
     if (pick == null || !mounted) return;
-    setState(() => i.state = _State.sending);
+    if (pick == 0) {
+      await engine.resolveKeepMine(i.id);
+    } else {
+      await engine.resolveKeepServer(i.id);
+    }
+    if (!mounted) return;
     context.feedback.success(
-      pick == 0 ? 'Versi HP ini dipakai.' : 'Versi tablet ruang 2 dipakai.',
+      pick == 0 ? 'Versi HP ini dipakai.' : 'Versi server dipakai.',
     );
-  }
-
-  void _retry(_Item i) {
-    setState(() => i.state = _State.sending);
-    context.feedback.info('Mencoba mengirim lagi…');
+    _load();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Muat ulang tiap kali status sinkron berubah (terkirim, gagal, konflik).
+    ref.listen(syncSnapshotProvider, (_, _) => _load());
     final c = context.ol;
     final t = context.olText;
-    final failed = _items
-        .where((i) => i.state == _State.failed || i.state == _State.conflict)
-        .length;
-    final waiting = _items.length - failed;
+    final items = _items;
+    final failed =
+        items
+            ?.where(
+              (i) =>
+                  i.status == OutboxStatus.failed ||
+                  i.status == OutboxStatus.conflict,
+            )
+            .length ??
+        0;
+    final waiting = (items?.length ?? 0) - failed;
     return OlDetailScaffold(
       title: 'Status sinkron',
-      below: Align(
-        alignment: Alignment.centerLeft,
-        child: SyncIndicator(
-          status: failed > 0 ? SyncFailed(failed) : SyncOffline(waiting),
-          label: [
-            if (failed > 0) '$failed gagal',
-            if (waiting > 0) '$waiting menunggu',
-          ].join(' · '),
-        ),
-      ),
+      below: items == null || items.isEmpty
+          ? null
+          : Align(
+              alignment: Alignment.centerLeft,
+              child: SyncIndicator(
+                status: failed > 0 ? SyncFailed(failed) : SyncOffline(waiting),
+                label: [
+                  if (failed > 0) '$failed gagal',
+                  if (waiting > 0) '$waiting menunggu',
+                ].join(' · '),
+              ),
+            ),
       foot: [
-        OlButton(
-          label: 'Coba lagi semua',
-          onPressed: () {
-            setState(() {
-              for (final i in _items) {
-                if (i.state == _State.failed) i.state = _State.sending;
+        if (items != null && items.isNotEmpty)
+          OlButton(
+            label: 'Coba kirim sekarang',
+            onPressed: () async {
+              final engine = ref.read(syncEngineProvider);
+              for (final i in items) {
+                if (i.status == OutboxStatus.failed) await engine.retry(i.id);
               }
-            });
-            context.feedback.info('Mencoba mengirim semua…');
-          },
-        ),
-        OlButton.text(
-          label: 'Kirim log ke tim',
-          expand: true,
-          onPressed: () => context.feedback.success(
-            'Log terkirim ke tim teknis. Ref: OL-7F3A',
+              await engine.retryNow();
+              if (context.mounted) {
+                context.feedback.info('Mencoba mengirim semua…');
+              }
+              _load();
+            },
           ),
-        ),
       ],
       children: [
-        OlCard(
-          padding: const EdgeInsets.symmetric(horizontal: OlSpace.lg),
-          child: Column(
-            children: [
-              for (final (idx, i) in _items.indexed)
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  decoration: BoxDecoration(
-                    border: idx < _items.length - 1
-                        ? Border(bottom: BorderSide(color: c.line))
-                        : null,
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      OlIcon(
-                        switch (i.state) {
-                          _State.failed => OlIcons.cloudAlert,
-                          _State.conflict => OlIcons.alert,
-                          _State.sending => OlIcons.sync,
-                          _State.waiting => OlIcons.clock,
-                        },
-                        color: switch (i.state) {
-                          _State.failed => c.crit,
-                          _State.conflict => c.warn,
-                          _State.sending => c.warn,
-                          _State.waiting => c.muted,
-                        },
-                        weight: OlIconWeight.duotone,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              i.title,
-                              style: t.bodyStrong.copyWith(fontSize: 15),
-                            ),
-                            Text(
-                              i.meta,
-                              style: t.body.copyWith(color: c.muted),
-                            ),
-                            if ((i.state == _State.failed ||
-                                    i.state == _State.conflict) &&
-                                i.error != null)
+        if (items == null)
+          const OlLoadingCard()
+        else if (items.isEmpty)
+          const OlCard(
+            child: EmptyState(
+              illustration: OlIllustration.emptyInbox,
+              title: 'Semua sudah tersinkron',
+              message: 'Tidak ada catatan yang menunggu dikirim dari HP ini.',
+            ),
+          )
+        else
+          OlCard(
+            padding: const EdgeInsets.symmetric(horizontal: OlSpace.lg),
+            child: Column(
+              children: [
+                for (final (idx, i) in items.indexed)
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      border: idx < items.length - 1
+                          ? Border(bottom: BorderSide(color: c.line))
+                          : null,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        OlIcon(
+                          switch (i.status) {
+                            OutboxStatus.failed => OlIcons.cloudAlert,
+                            OutboxStatus.conflict => OlIcons.alert,
+                            OutboxStatus.sending => OlIcons.sync,
+                            OutboxStatus.pending => OlIcons.clock,
+                          },
+                          color: switch (i.status) {
+                            OutboxStatus.failed => c.crit,
+                            OutboxStatus.conflict ||
+                            OutboxStatus.sending => c.warn,
+                            OutboxStatus.pending => c.muted,
+                          },
+                          weight: OlIconWeight.duotone,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
-                                i.error!,
-                                style: t.body.copyWith(
-                                  color: c.crit,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                outboxTitle(i),
+                                style: t.bodyStrong.copyWith(fontSize: 15),
                               ),
-                          ],
+                              Text(
+                                outboxMeta(i),
+                                style: t.body.copyWith(color: c.muted),
+                              ),
+                              if (i.lastError != null &&
+                                  (i.status == OutboxStatus.failed ||
+                                      i.status == OutboxStatus.conflict))
+                                Text(
+                                  [
+                                    i.lastError!,
+                                    if (i.lastErrorRef != null)
+                                      'Kode ${i.lastErrorRef}',
+                                  ].join(' · '),
+                                  style: t.body.copyWith(
+                                    color: c.crit,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      switch (i.state) {
-                        _State.failed => OlButton.secondary(
-                          label: 'Coba lagi',
-                          small: true,
-                          expand: false,
-                          onPressed: () => _retry(i),
-                        ),
-                        _State.conflict => OlButton.secondary(
-                          label: 'Pilih versi',
-                          small: true,
-                          expand: false,
-                          onPressed: () => _resolve(i),
-                        ),
-                        _State.sending => const OlTag(
-                          'Mengirim',
-                          tone: OlTagTone.warn,
-                        ),
-                        _State.waiting => const OlTag(
-                          'Menunggu',
-                          tone: OlTagTone.muted,
-                        ),
-                      },
-                    ],
+                        const SizedBox(width: 8),
+                        switch (i.status) {
+                          OutboxStatus.failed => OlButton.secondary(
+                            label: 'Coba lagi',
+                            small: true,
+                            expand: false,
+                            onPressed: () async {
+                              await ref.read(syncEngineProvider).retry(i.id);
+                              _load();
+                            },
+                          ),
+                          OutboxStatus.conflict => OlButton.secondary(
+                            label: 'Pilih versi',
+                            small: true,
+                            expand: false,
+                            onPressed: () => _resolve(i),
+                          ),
+                          OutboxStatus.sending => const OlTag(
+                            'Mengirim',
+                            tone: OlTagTone.warn,
+                          ),
+                          OutboxStatus.pending => const OlTag(
+                            'Menunggu',
+                            tone: OlTagTone.muted,
+                          ),
+                        },
+                      ],
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
-        ),
         Text(
           'Item di sini tidak bisa dihapus agar catatan medis tidak hilang. Semua terkirim otomatis saat koneksi kembali.',
           style: t.body.copyWith(color: c.muted),

@@ -59,6 +59,7 @@ class Session {
     this.startedAt,
     this.endedAt,
     this.arrivedAt,
+    this.needsAction = false,
   });
 
   final String id;
@@ -82,6 +83,9 @@ class Session {
   final DateTime? arrivedAt;
   final DateTime? startedAt;
   final DateTime? endedAt;
+
+  /// Sesi terdampak pindah massal yang belum dapat pengganti (KS-08).
+  final bool needsAction;
 
   bool get isHomeVisit => homeVisit != null;
 
@@ -122,6 +126,7 @@ class Session {
     arrivedAt: arrivedAt ?? this.arrivedAt,
     startedAt: startedAt ?? this.startedAt,
     endedAt: endedAt ?? this.endedAt,
+    needsAction: needsAction,
   );
 
   factory Session.fromJson(Map<String, dynamic> j) => Session(
@@ -146,6 +151,7 @@ class Session {
     arrivedAt: parseDate(j['arrived_at']),
     startedAt: parseDate(j['started_at']),
     endedAt: parseDate(j['ended_at']),
+    needsAction: j['needs_action'] as bool? ?? false,
   );
 
   Map<String, dynamic> toJson() => {
@@ -168,5 +174,6 @@ class Session {
     'arrived_at': formatDate(arrivedAt),
     'started_at': formatDate(startedAt),
     'ended_at': formatDate(endedAt),
+    'needs_action': needsAction,
   };
 }

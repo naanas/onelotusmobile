@@ -90,3 +90,23 @@ class StaffUser {
     mustChangePassword: j['mustChangePassword'] as bool? ?? false,
   );
 }
+
+/// User dari API: `roles` berisi id peran, `branches` daftar cabang, `must_change_password`.
+StaffUser staffUserFromApi(Map<String, dynamic> m) => StaffUser(
+  id: m['id'].toString(),
+  username: m['username'] as String,
+  name: m['name'] as String,
+  roles: [
+    for (final r in (m['roles'] as List? ?? const []))
+      ?Role.fromId(r.toString()),
+  ],
+  branches: [
+    for (final b in (m['branches'] as List? ?? const []))
+      Branch(
+        id: (b as Map)['id'].toString(),
+        name: b['name'] as String,
+        address: b['address'] as String? ?? '',
+      ),
+  ],
+  mustChangePassword: m['must_change_password'] as bool? ?? false,
+);

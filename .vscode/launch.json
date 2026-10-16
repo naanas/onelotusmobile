@@ -2,11 +2,18 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "One Lotus (dev)",
+      "name": "One Lotus (dev, backend laptop)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
       "args": ["--dart-define-from-file=env/dev.json"]
+    },
+    {
+      "name": "One Lotus (Render)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "args": ["--dart-define-from-file=env/prod.json"]
     }
   ]
 }

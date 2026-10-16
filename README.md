@@ -16,7 +16,19 @@ One Lotus API (`../backend`); aplikasi tidak punya mode data contoh.
    flutter run --dart-define-from-file=env/dev.json
    ```
 
-   Di VS Code cukup pilih konfigurasi **One Lotus (dev)** lalu Run.
+   Di VS Code cukup pilih konfigurasi **One Lotus (dev, backend laptop)** lalu Run.
+
+## Memakai backend Render
+
+`env/prod.json` berisi alamat API yang sudah di-deploy (salin dari `env/prod.example.json`):
+
+```
+flutter run --dart-define-from-file=env/prod.json                    # HP tersambung, debug
+flutter build apk --release --dart-define-from-file=env/prod.json    # APK untuk dibagikan
+```
+
+Di VS Code: konfigurasi **One Lotus (Render)**. Instance gratis Render tidur bila lama tak dipakai;
+permintaan pertama sesudahnya bisa > 50 detik sehingga aplikasi menampilkan error koneksi — coba lagi.
 
 Nilai `API_URL` ditanam saat build: setelah mengubahnya, hentikan lalu `flutter run` lagi (hot reload tidak cukup).
 `env/*.json` tidak masuk git, kecuali `*.example.json`.

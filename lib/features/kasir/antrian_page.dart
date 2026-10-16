@@ -36,26 +36,22 @@ class _AntrianPageState extends ConsumerState<AntrianPage> {
     if (branch == null) return (today: <Session>[], bookings: 0);
     final now = DateTime.now();
     final day = DateTime(now.year, now.month, now.day);
-    final r = await (
-      _api.sessions(
-        branchId: branch.id,
-        from: day,
-        to: day.add(const Duration(days: 1)),
-      ),
-      _api.sessions(
-        branchId: branch.id,
-        from: day,
-        to: day.add(const Duration(days: 31)),
-      ),
-    ).wait;
+    // Satu request: antrian hari ini + jumlah booking menunggu konfirmasi 31 hari ke depan.
+    final list = await _api.sessions(
+      branchId: branch.id,
+      from: day,
+      to: day.add(const Duration(days: 31)),
+    );
+    final tomorrow = day.add(const Duration(days: 1));
     return (
       today: [
-        for (final s in r.$1)
-          if (s.status != SessionStatus.awaitingConfirmation &&
+        for (final s in list)
+          if (s.startAt.toLocal().isBefore(tomorrow) &&
+              s.status != SessionStatus.awaitingConfirmation &&
               s.status != SessionStatus.cancelled)
             s,
       ],
-      bookings: r.$2
+      bookings: list
           .where((s) => s.status == SessionStatus.awaitingConfirmation)
           .length,
     );

@@ -112,6 +112,7 @@ class MockAuthRepository implements AuthRepository {
     final token =
         'mock-${acc.user.id}-${DateTime.now().millisecondsSinceEpoch}';
     _tokens[token] = acc.user.username;
+    _lastLogin = acc.user.username;
     return LoginSuccess(token: token, user: acc.user);
   }
 
@@ -131,6 +132,24 @@ class MockAuthRepository implements AuthRepository {
       ..password = next
       ..user = acc.user.copyWith(mustChangePassword: false);
   }
+
+  @override
+  Future<TokenPair?> firstLogin(String newPassword) async {
+    await _wait();
+    final acc = _accounts[_lastLogin];
+    if (acc == null) return null;
+    acc
+      ..password = newPassword
+      ..user = acc.user.copyWith(mustChangePassword: false);
+    final token = 'mock-${acc.user.id}-${DateTime.now().microsecondsSinceEpoch}';
+    _tokens[token] = acc.user.username;
+    return TokenPair(access: token, refresh: 'refresh-$token');
+  }
+
+  String? _lastLogin;
+
+  @override
+  Future<TokenPair?> refresh(String refreshToken) async => null;
 
   @override
   Future<void> requestPasswordReset(String username, {String? note}) => _wait();

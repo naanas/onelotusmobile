@@ -162,7 +162,10 @@ bool isOlderVersion(String current, String minimum) {
 }
 
 final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => ApiAuthRepository(ref.watch(apiClientProvider)),
+  (ref) => ApiAuthRepository(
+    ref.watch(apiClientProvider),
+    deviceId: () => ref.read(authProvider.notifier).deviceId(),
+  ),
 );
 final sessionStoreProvider = Provider<SessionStore>(
   (ref) => SecureSessionStore(),
@@ -184,6 +187,47 @@ class AuthController extends Notifier<AuthState> {
 
   /// Password sementara, disimpan di memori hanya selama UM-05 (syarat "berbeda dari sementara").
   String? _tempPassword;
+
+  /// Refresh token & ID perangkat (dibaca sinkron oleh ApiClient).
+  String? _refreshToken;
+  String? _deviceId;
+  bool _remember = true;
+
+  String? get deviceIdSync => _deviceId;
+
+  /// ID perangkat tetap; dibuat sekali lalu disimpan.
+  Future<String> deviceId() async {
+    if (_deviceId != null) return _deviceId!;
+    var id = await _store.read(SessionKeys.deviceId);
+    if (id == null) {
+      final r = Random.secure();
+      id = List.generate(16, (_) => r.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
+      await _store.write(SessionKeys.deviceId, id);
+    }
+    return _deviceId = id;
+  }
+
+  /// Tukar refresh token (dipanggil ApiClient saat 401). `false` → sesi berakhir.
+  Future<bool> refreshTokens() async {
+    final rt = _refreshToken;
+    if (rt == null) return false;
+    try {
+      final pair = await _repo.refresh(rt);
+      if (pair == null) return false;
+      await _saveTokens(pair.access, pair.refresh);
+      state = state.copyWith(token: pair.access);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _saveTokens(String access, String? refresh) async {
+    _refreshToken = refresh;
+    if (!_remember) return;
+    await _store.write(SessionKeys.token, access);
+    if (refresh != null) await _store.write(SessionKeys.refresh, refresh);
+  }
   DateTime? _backgroundedAt;
 
   @override
@@ -201,7 +245,9 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<AuthState> _resolveBoot() async {
+    await deviceId();
     final token = await _store.read(SessionKeys.token);
+    _refreshToken = await _store.read(SessionKeys.refresh);
     final userJson = await _store.read(SessionKeys.user);
     final user = userJson == null
         ? null
@@ -245,14 +291,18 @@ class AuthController extends Notifier<AuthState> {
     if (lockedUntil != null) return LoginLocked(lockedUntil);
 
     try {
+      await deviceId();
       final res = await _repo.login(username.trim(), password);
       await _store.delete(SessionKeys.loginFails);
       await _store.delete(SessionKeys.loginLockedUntil);
+      _remember = remember;
+      _refreshToken = res.refreshToken;
       if (remember) {
-        await _store.write(SessionKeys.token, res.token);
+        await _saveTokens(res.token, res.refreshToken);
         await _store.write(SessionKeys.user, jsonEncode(res.user.toJson()));
       } else {
         await _store.delete(SessionKeys.token);
+        await _store.delete(SessionKeys.refresh);
         await _store.delete(SessionKeys.user);
       }
       if (res.user.mustChangePassword) _tempPassword = password;
@@ -266,6 +316,12 @@ class AuthController extends Notifier<AuthState> {
     } on LoginException catch (e) {
       if (e.reason == LoginFailure.accountDisabled) {
         return const LoginDisabled();
+      }
+      if (e.reason == LoginFailure.locked) {
+        final until = _now().add(e.retryAfter ?? AuthRules.loginLockout);
+        await _store.write(SessionKeys.loginLockedUntil, until.toIso8601String());
+        await _store.delete(SessionKeys.loginFails);
+        return LoginLocked(until);
       }
       final fails =
           int.parse(await _store.read(SessionKeys.loginFails) ?? '0') + 1;
@@ -308,17 +364,15 @@ class AuthController extends Notifier<AuthState> {
 
   Future<void> changeTemporaryPassword(String next) async {
     final s = state;
-    await _repo.changePassword(
-      s.token!,
-      current: _tempPassword ?? '',
-      next: next,
-    );
+    // Login pertama mencabut semua sesi lama dan mengembalikan token baru (§4).
+    final pair = await _repo.firstLogin(next);
     _tempPassword = null;
     final user = s.user!.copyWith(mustChangePassword: false);
-    if (await _store.read(SessionKeys.token) != null) {
+    if (await _store.read(SessionKeys.user) != null) {
       await _store.write(SessionKeys.user, jsonEncode(user.toJson()));
     }
-    state = s.copyWith(user: user);
+    if (pair != null) await _saveTokens(pair.access, pair.refresh);
+    state = s.copyWith(user: user, token: pair?.access);
   }
 
   Future<void> setPin(String pin) async {
@@ -441,8 +495,10 @@ class AuthController extends Notifier<AuthState> {
   Future<void> logout() async {
     final token = state.token;
     if (token != null) unawaited(_repo.logout(token).catchError((_) {}));
+    _refreshToken = null;
     for (final k in [
       SessionKeys.token,
+      SessionKeys.refresh,
       SessionKeys.user,
       SessionKeys.activeRole,
       SessionKeys.activeBranch,

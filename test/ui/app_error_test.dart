@@ -5,10 +5,8 @@ void main() {
   test('fromApi memetakan format error seragam', () {
     final e = AppError.fromApi({
       'code': 'validation',
-      'message': 'The bb must be a number.',
-      'errors': {
-        'bb': ['Berat badan harus angka, mis. 58'],
-      },
+      'message': 'Berat badan harus angka, mis. 58',
+      'fields': {'bb': 'Berat badan harus angka, mis. 58'},
       'ref': 'OL-7F3A',
     });
     expect(e.type, ErrorCode.validation);

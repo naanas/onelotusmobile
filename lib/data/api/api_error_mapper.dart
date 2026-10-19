@@ -3,11 +3,17 @@ import 'package:dio/dio.dart';
 import '../../ui/feedback/app_error.dart';
 
 /// Memetakan kegagalan HTTP ke [AppError] (§12.4, §12.7).
-/// API Laravel mengembalikan `{ code, message, errors: {field: [...]}, ref }`.
+/// One Lotus API v1 mengembalikan `{ "error": { code, message, fields: {field: pesan}, details, ref } }`.
 AppError mapDioError(DioException e) {
   final res = e.response;
-  final body = res?.data is Map
+  final raw = res?.data is Map
       ? (res!.data as Map).cast<String, dynamic>()
+      : const <String, dynamic>{};
+  final body = raw['error'] is Map
+      ? (raw['error'] as Map).cast<String, dynamic>()
+      : const <String, dynamic>{};
+  final details = body['details'] is Map
+      ? (body['details'] as Map).cast<String, dynamic>()
       : const <String, dynamic>{};
   final ref = body['ref'] as String? ?? res?.headers.value('x-request-ref');
 
@@ -26,31 +32,46 @@ AppError mapDioError(DioException e) {
   }
 
   final status = res?.statusCode ?? 0;
-  // 409 konflik versi membawa salinan data server agar terapis bisa memilih (§8.4).
-  if (status == 409 && body['server'] is Map) {
-    final server = (body['server'] as Map).cast<String, dynamic>();
+  final code = body['code'] as String?;
+  // 409 edit_conflict membawa versi server (`details.server`) agar terapis bisa memilih (§9.4, ST-09).
+  if (status == 409 && code == 'edit_conflict') {
+    final server = details['server'] is Map
+        ? (details['server'] as Map).cast<String, dynamic>()
+        : const <String, dynamic>{};
     return ConflictError(
       server: server,
-      serverVersion: (server['version'] as num?)?.toInt() ?? 0,
+      serverVersion:
+          (server['version'] as num?)?.toInt() ??
+          (details['server_version'] as num?)?.toInt() ??
+          0,
       refId: ref,
     );
   }
   // 409 pasien ganda membawa kandidat untuk sheet ST-08.
-  if (status == 409 &&
-      body['code'] == 'duplicate_patient' &&
-      body['candidates'] is List) {
+  if (status == 409 && code == 'duplicate_patient') {
     return DuplicatePatientError(
       candidates: [
-        for (final c in body['candidates'] as List)
+        for (final c in (details['candidates'] as List?) ?? const [])
           (c as Map).cast<String, dynamic>(),
       ],
       refId: ref,
     );
   }
-  // Kode eksplisit dari API menang (mis. 409 duplicate_patient / edit_conflict).
-  final explicit = body['code'] as String?;
-  if (explicit != null && ErrorCode.values.any((c) => c.code == explicit)) {
-    return AppError.fromApi({...body, 'ref': ref});
+  final fields = {
+    for (final f in ((body['fields'] as Map?) ?? const {}).entries)
+      f.key.toString(): [f.value.toString()],
+  };
+  // Kode eksplisit dari API menang bila dikenal aplikasi.
+  if (code != null && ErrorCode.values.any((c) => c.code == code)) {
+    return AppError(
+      ErrorCode.fromCode(code),
+      refId: ref,
+      fieldErrors: fields,
+      args: _args(code, details),
+      apiCode: code,
+      apiMessage: body['message'] as String?,
+      details: details,
+    );
   }
   final type = switch (status) {
     401 => ErrorCode.authExpired,
@@ -65,14 +86,19 @@ AppError mapDioError(DioException e) {
   return AppError(
     type,
     refId: ref,
-    fieldErrors: {
-      for (final f in ((body['errors'] as Map?) ?? const {}).entries)
-        f.key.toString(): [
-          for (final m in (f.value as List? ?? const [])) m.toString(),
-        ],
-    },
+    fieldErrors: fields,
+    apiCode: code,
+    apiMessage: body['message'] as String?,
+    details: details,
   );
 }
+
+Map<String, Object> _args(String code, Map<String, dynamic> d) => switch (code) {
+  'checkin_out_of_range' => {
+    if (d['distance_m'] != null) 'jarak': '${d['distance_m']} m',
+  },
+  _ => const {},
+};
 
 /// Error yang layak dicoba ulang otomatis oleh outbox (§8.2).
 bool isRetryable(AppError e) => switch (e.type) {
@@ -95,7 +121,7 @@ class ConflictError extends AppError {
   final int serverVersion;
 }
 
-/// `duplicate_patient` dengan daftar pasien mirip (`{ id, number, name, birth_date, match }`).
+/// `duplicate_patient` dengan daftar pasien mirip (`{ id, number, name, match_on }`).
 class DuplicatePatientError extends AppError {
   const DuplicatePatientError({required this.candidates, super.refId})
     : super(ErrorCode.duplicatePatient);

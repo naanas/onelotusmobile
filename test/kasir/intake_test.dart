@@ -51,9 +51,11 @@ void main() {
       http(409, {
         'code': 'duplicate_patient',
         'message': '…',
-        'candidates': [
-          {'id': '1', 'number': 412, 'name': 'Andi', 'match': 'phone'},
-        ],
+        'details': {
+          'candidates': [
+            {'id': '1', 'number': 412, 'name': 'Andi', 'match_on': ['phone']},
+          ],
+        },
       }),
     );
     expect(e, isA<DuplicatePatientError>());

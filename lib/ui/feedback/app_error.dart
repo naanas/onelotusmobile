@@ -175,18 +175,21 @@ class AppError implements Exception {
     this.refId,
     this.fieldErrors = const {},
     this.args = const {},
+    this.apiCode,
+    this.apiMessage,
+    this.details = const {},
   });
 
-  /// Dari format error API seragam: `{code, message, errors, ref}` (§12.7).
+  /// Dari isi `error` API v1: `{code, message, fields: {field: pesan}, details, ref}` (§12.7).
   factory AppError.fromApi(Map<String, dynamic> body) => AppError(
     ErrorCode.fromCode(body['code'] as String?),
     refId: body['ref'] as String?,
     fieldErrors: {
-      for (final e in ((body['errors'] as Map?) ?? const {}).entries)
-        e.key.toString(): [
-          for (final m in (e.value as List? ?? const [])) m.toString(),
-        ],
+      for (final e in ((body['fields'] as Map?) ?? const {}).entries)
+        e.key.toString(): [e.value.toString()],
     },
+    apiCode: body['code'] as String?,
+    apiMessage: body['message'] as String?,
   );
 
   final ErrorCode type;
@@ -198,7 +201,13 @@ class AppError implements Exception {
   final Map<String, List<String>> fieldErrors;
   final Map<String, Object> args;
 
-  String get code => type.code;
+  /// Kode & pesan asli dari server (mis. `account_locked`, `slot_unavailable`) — untuk kode yang tidak
+  /// ada di katalog aplikasi, [type] = unknown/hasil pemetaan HTTP, tapi kode aslinya tetap tersedia.
+  final String? apiCode;
+  final String? apiMessage;
+  final Map<String, dynamic> details;
+
+  String get code => apiCode ?? type.code;
   FeedbackKind get kind => type.kind;
 
   String get message => type.template.replaceAllMapped(

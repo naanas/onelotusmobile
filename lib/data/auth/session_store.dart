@@ -43,6 +43,10 @@ class MemorySessionStore implements SessionStore {
 /// Nama kunci penyimpanan.
 abstract final class SessionKeys {
   static const token = 'auth.token';
+  static const refresh = 'auth.refresh';
+
+  /// ID perangkat tetap (header `X-Device-Id`, satu sesi refresh per perangkat).
+  static const deviceId = 'device.id';
   static const user = 'auth.user';
   static const activeRole = 'ctx.role';
   static const activeBranch = 'ctx.branch';

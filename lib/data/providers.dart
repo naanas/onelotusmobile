@@ -37,6 +37,9 @@ final apiClientProvider = Provider<ApiClient>(
     baseUrl: AppConfig.apiUrl,
     token: () => ref.read(authProvider).token,
     onUnauthorized: () => ref.read(authProvider.notifier).expireSession(),
+    refresh: () => ref.read(authProvider.notifier).refreshTokens(),
+    deviceId: () => ref.read(authProvider.notifier).deviceIdSync,
+    branchId: () => ref.read(authProvider).activeBranch?.id,
   ),
 );
 

@@ -48,6 +48,7 @@ class PasienSession {
 /// Kunci penyimpanan aman bagian pasien.
 abstract final class PasienKeys {
   static const token = 'pasien.token';
+  static const refresh = 'pasien.refresh';
   static const account = 'pasien.account';
   static const onboarded = 'pasien.onboarded';
 }
@@ -59,7 +60,10 @@ final pasienApiProvider = Provider<PasienApi>(
       baseUrl: AppConfig.apiUrl,
       token: () => ref.read(pasienTokenProvider),
       onUnauthorized: () => ref.read(pasienSessionProvider.notifier).expire(),
+      refresh: () => ref.read(pasienSessionProvider.notifier).refreshTokens(),
+      deviceId: () => ref.read(authProvider.notifier).deviceIdSync,
     ),
+    deviceId: () => ref.read(authProvider.notifier).deviceId(),
   ),
 );
 
@@ -134,12 +138,26 @@ class PasienSessionNotifier extends Notifier<PasienSession> {
 
   Future<int> resendOtp() => _api.requestOtp(state.phone);
 
-  /// Verifikasi kode → akun pasien; tahap berikut sesuai `next_step` server.
+  /// Verifikasi kode → akun pasien; tahap berikut: hubungkan data / persetujuan / siap.
   Future<void> verify(String code) async {
-    final (token, account) = await _api.verifyOtp(state.phone, code);
+    final (token, refresh, account) = await _api.verifyOtp(state.phone, code);
     ref.read(pasienTokenProvider.notifier).set(token);
+    await ref.read(sessionStoreProvider).write(PasienKeys.refresh, refresh);
     await _save(token, account);
     _apply(account);
+  }
+
+  /// Access token pasien kedaluwarsa (15 menit) → tukar refresh token.
+  Future<bool> refreshTokens() async {
+    final store = ref.read(sessionStoreProvider);
+    final rt = await store.read(PasienKeys.refresh);
+    if (rt == null) return false;
+    final pair = await _api.refresh(rt);
+    if (pair == null) return false;
+    ref.read(pasienTokenProvider.notifier).set(pair.$1);
+    await store.write(PasienKeys.token, pair.$1);
+    await store.write(PasienKeys.refresh, pair.$2);
+    return true;
   }
 
   /// "Ubah nomor" / kembali dari layar kode → layar masuk.
@@ -184,6 +202,7 @@ class PasienSessionNotifier extends Notifier<PasienSession> {
     final store = ref.read(sessionStoreProvider);
     ref.read(pasienTokenProvider.notifier).set(null);
     await store.delete(PasienKeys.token);
+    await store.delete(PasienKeys.refresh);
     await store.delete(PasienKeys.account);
     state = const PasienSession(phase: PasienPhase.otp);
   }

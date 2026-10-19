@@ -5,7 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format.dart';
 import '../api/api_client.dart';
+import '../../ui/feedback/app_error.dart';
 import '../api/api_error_mapper.dart';
+import '../api/v1.dart';
+import 'intake_form_repository.dart' show intakeLinkPrefix;
 import '../models/models.dart';
 import '../providers.dart';
 
@@ -52,42 +55,51 @@ class HttpPatientIntakeRepository implements PatientIntakeRepository {
 
   final ApiClient api;
 
-  @override
-  Future<IntakeLink> link(String branchId) => api.get(
-    '/v1/branches/$branchId/intake-link',
-    (d) => IntakeLink.fromJson(asMap(d)),
-  );
+  /// Kiriman terakhir yang dimuat (API v1 tidak punya `GET /v1/intake/{id}`).
+  final _cache = <String, IntakeDetail>{};
+
+  static IntakeLink _link(dynamic d) {
+    final token = asMap(d)['token'] as String;
+    return IntakeLink(code: token, url: '$intakeLinkPrefix$token');
+  }
 
   @override
-  Future<IntakeLink> rotateLink(String branchId) => api.post(
-    '/v1/branches/$branchId/intake-link/rotate',
-    null,
-    (d) => IntakeLink.fromJson(asMap(d)),
-  );
+  Future<IntakeLink> link(String branchId) =>
+      api.get('/v1/branches/$branchId/intake-token', _link);
 
   @override
-  Future<List<IntakeSummary>> pending(String branchId) => api.get(
-    '/v1/intake',
-    (d) => parseList(d, IntakeSummary.fromJson),
-    query: {'branch_id': branchId, 'status': 'new'},
-  );
+  Future<IntakeLink> rotateLink(String branchId) =>
+      api.post('/v1/branches/$branchId/intake-token/rotate', null, _link);
 
   @override
-  Future<IntakeDetail> detail(String id) =>
-      api.get('/v1/intake/$id', (d) => IntakeDetail.fromJson(asMap(d)));
+  Future<List<IntakeSummary>> pending(String branchId) async {
+    final list = await api.get('/v1/intake', (d) => parseList(d, V1.intake), query: {'status': 'new'});
+    for (final d in list) {
+      _cache[d.id] = d;
+    }
+    return [for (final d in list) d.summary];
+  }
 
+  @override
+  Future<IntakeDetail> detail(String id) async {
+    if (_cache[id] case final d?) return d;
+    await pending('');
+    return _cache[id] ?? (throw const AppError(ErrorCode.notFound));
+  }
+
+  /// Rontgen dari form: signed URL (5 menit) lalu unduh langsung dari Storage.
   @override
   Future<Uint8List> attachment(String intakeId, String attachmentId) async {
+    final url = await api.get('/v1/attachments/$attachmentId/url', (d) => asMap(d)['url'] as String);
     try {
-      final res = await api.dio.get<List<int>>(
-        '/v1/intake/$intakeId/attachments/$attachmentId',
-        options: Options(responseType: ResponseType.bytes),
-      );
+      final res = await Dio().get<List<int>>(url, options: Options(responseType: ResponseType.bytes));
       return Uint8List.fromList(res.data ?? const []);
     } on DioException catch (e) {
       throw mapDioError(e);
     }
   }
+
+  static Patient _patient(dynamic d) => V1.patient(asMap(asMap(d)['patient']));
 
   @override
   Future<Patient> process(
@@ -95,30 +107,42 @@ class HttpPatientIntakeRepository implements PatientIntakeRepository {
     PatientDraft draft, {
     bool confirmNotDuplicate = false,
     String? existingPatientId,
-  }) => api.post('/v1/intake/$id/process', {
-    ...draft.toJson(),
-    'confirm_not_duplicate': confirmNotDuplicate,
-    'existing_patient_id': ?existingPatientId,
-  }, (d) => Patient.fromJson(asMap(d)));
+  }) async {
+    try {
+      return await api.post(
+        '/v1/intake/$id/process',
+        existingPatientId != null
+            ? {'action': 'link_existing', 'existing_patient_id': existingPatientId}
+            : {'action': 'create_patient', 'patient': V1.patientInput(draft, force: confirmNotDuplicate)},
+        _patient,
+      );
+    } on DuplicatePatientError catch (e) {
+      throw DuplicatePatientError(candidates: [for (final c in e.candidates) V1.duplicateCandidate(c)], refId: e.refId);
+    }
+  }
 
   @override
   Future<void> discard(String id, String reason) =>
-      api.post('/v1/intake/$id/discard', {'reason': reason}, (_) {});
+      api.post('/v1/intake/$id/process', {'action': 'reject', 'reason': reason}, (_) {});
 
   @override
-  Future<Patient> create(
-    PatientDraft draft, {
-    bool confirmNotDuplicate = false,
-  }) => api.post('/v1/patients', {
-    ...draft.toJson(),
-    'confirm_not_duplicate': confirmNotDuplicate,
-  }, (d) => Patient.fromJson(asMap(d)));
+  Future<Patient> create(PatientDraft draft, {bool confirmNotDuplicate = false}) async {
+    try {
+      return await api.post(
+        '/v1/patients',
+        V1.patientInput(draft, force: confirmNotDuplicate),
+        (d) => V1.patient(asMap(d)),
+      );
+    } on DuplicatePatientError catch (e) {
+      throw DuplicatePatientError(candidates: [for (final c in e.candidates) V1.duplicateCandidate(c)], refId: e.refId);
+    }
+  }
 }
 
 /// Ringkasan kandidat pasien ganda untuk sheet ST-08.
 String duplicateDetail(Map<String, dynamic> c) {
   final birth = DateTime.tryParse(c['birth_date']?.toString() ?? '');
-  final match = c['match'] == 'phone'
+  final match = c['match'] == 'phone' || (c['match_on'] is List && !(c['match_on'] as List).contains('name_birth_date'))
       ? 'nomor HP sama'
       : 'nama & tanggal lahir sama';
   return [if (birth != null) Fmt.dateNoDay(birth), match].join(' · ');

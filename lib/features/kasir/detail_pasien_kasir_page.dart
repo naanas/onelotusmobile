@@ -89,6 +89,11 @@ class _DetailPasienKasirPageState extends ConsumerState<DetailPasienKasirPage> {
         ),
       ],
       foot: [
+        OlButton.secondary(
+          label: 'Jual paket',
+          icon: OlIcons.package,
+          onPressed: () => context.push(Routes.jualPaket(widget.patientId)),
+        ),
         OlButton(
           label: 'Buat jadwal',
           onPressed: () => context.push(

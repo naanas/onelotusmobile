@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
+import '../../data/api/billing_api.dart';
 import '../../data/api/one_lotus_api.dart';
 import '../../data/auth/auth_controller.dart';
 import '../../data/models/models.dart';
@@ -73,6 +74,20 @@ class _AntrianPageState extends ConsumerState<AntrianPage> {
       } else {
         context.feedback.error(e);
       }
+    }
+  }
+
+  Future<void> _bill(Session s) async {
+    try {
+      final inv = await ref.read(billingApiProvider).invoiceForSession(s.id);
+      if (!mounted) return;
+      if (inv == null) {
+        context.feedback.info('Tagihan belum dibuat. Tunggu terapis menyelesaikan rekam sesi.');
+        return;
+      }
+      await context.push(Routes.kasirTagihan(inv.id));
+    } on AppError catch (e) {
+      if (mounted) context.feedback.error(e);
     }
   }
 
@@ -247,6 +262,7 @@ class _AntrianPageState extends ConsumerState<AntrianPage> {
                   onChangeTherapist: () => _changeTherapist(s),
                   onMarkArrived: () => _markArrived(s),
                   onMore: () => _more(s),
+                  onBill: () => _bill(s),
                 ),
               OlButton.secondary(
                 label: '+ Sesi tanpa jadwal (walk-in)',
@@ -280,7 +296,11 @@ class _QueueCard extends StatelessWidget {
     required this.onChangeTherapist,
     required this.onMarkArrived,
     required this.onMore,
+    this.onBill,
   });
+
+  /// Sesi selesai → buka tagihannya (KS-09).
+  final VoidCallback? onBill;
 
   final Session session;
   final DateTime now;
@@ -364,6 +384,15 @@ class _QueueCard extends StatelessWidget {
               label: 'Ganti terapis / ruang',
               small: true,
               onPressed: onChangeTherapist,
+            ),
+          ],
+          if (onBill != null && (s.isFinished)) ...[
+            const SizedBox(height: 10),
+            OlButton(
+              label: s.status == SessionStatus.paid ? 'Lihat tagihan' : 'Tagih',
+              small: true,
+              icon: OlIcons.receipt,
+              onPressed: onBill,
             ),
           ],
           if (s.status == SessionStatus.scheduled) ...[

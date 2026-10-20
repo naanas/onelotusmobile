@@ -55,7 +55,7 @@ class BerandaPage extends ConsumerWidget {
                     illustration: OlIllustration.emptySchedule,
                     title: 'Belum ada jadwal',
                     message:
-                        'Hubungi klinik lewat WhatsApp untuk membuat jadwal terapi.',
+                        'Buat jadwal terapi di tab Booking.',
                   ),
                 ),
               ];

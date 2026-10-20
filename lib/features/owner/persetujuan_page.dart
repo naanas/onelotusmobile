@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
+import '../../data/api/billing_api.dart';
 import '../../data/api/one_lotus_api.dart';
+import '../../data/models/json.dart';
 import '../../data/models/models.dart';
 import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
@@ -13,11 +15,22 @@ import '../../ui/ui.dart';
 typedef _Data = ({
   List<LeaveRequest> leaves,
   List<PasswordResetRequest> resets,
+  List<ApprovalV> others,
 });
+
+const _otherTypes = ['refund', 'manual_discount', 'exercise_proposal', 'cash_difference'];
+
+const _otherLabels = {
+  'refund': 'Refund',
+  'manual_discount': 'Diskon manual',
+  'exercise_proposal': 'Usulan latihan',
+  'cash_difference': 'Selisih kas',
+};
 
 /// OW-06 Persetujuan: cuti terapis (TR-03) dan reset password (UM-06) dari server.
 /// Tolak wajib alasan. Setuju cuti → sesi terdampak bisa langsung dipindah (KS-08);
-/// setuju reset → password sementara ditampilkan sekali. Refund & diskon menunggu modul pembayaran.
+/// setuju reset → password sementara ditampilkan sekali. Juga refund, diskon manual di atas batas,
+/// usulan latihan terapis, dan selisih kas.
 class PersetujuanPage extends ConsumerStatefulWidget {
   const PersetujuanPage({super.key});
 
@@ -34,8 +47,9 @@ class _PersetujuanPageState extends ConsumerState<PersetujuanPage> {
     final r = await (
       _api.leaves(status: 'pending'),
       _api.passwordResets(),
+      Future.wait([for (final t in _otherTypes) ref.read(billingApiProvider).approvals(t)]),
     ).wait;
-    return (leaves: r.$1, resets: r.$2);
+    return (leaves: r.$1, resets: r.$2, others: [for (final l in r.$3) ...l]);
   }
 
   void _reload() => setState(() => _gen++);
@@ -126,6 +140,31 @@ class _PersetujuanPageState extends ConsumerState<PersetujuanPage> {
     }
   }
 
+  Future<void> _decideOther(ApprovalV a, bool approve) async {
+    String? reason;
+    if (!approve) {
+      final r = await context.feedback.choose(
+        ConfirmSpec(
+          title: 'Tolak ${(_otherLabels[a.type] ?? a.type).toLowerCase()}?',
+          message: 'Pengaju diberi tahu beserta alasannya.',
+          confirmLabel: 'Tolak',
+          reasonLabel: 'Alasan',
+        ),
+      );
+      if (!r.confirmed) return;
+      reason = r.reason;
+    }
+    try {
+      await ref.read(billingApiProvider).decide(a.id, approve: approve, reason: reason);
+      if (!mounted) return;
+      HapticFeedback.lightImpact();
+      _reload();
+      context.feedback.success(approve ? 'Disetujui.' : 'Ditolak.');
+    } on AppError catch (e) {
+      if (mounted) _fail(e);
+    }
+  }
+
   @override
   Widget build(BuildContext context) => OlDetailScaffold(
     title: 'Persetujuan',
@@ -136,13 +175,13 @@ class _PersetujuanPageState extends ConsumerState<PersetujuanPage> {
         builder: (context, d, _) {
           final c = context.ol;
           final t = context.olText;
-          if (d.leaves.isEmpty && d.resets.isEmpty) {
+          if (d.leaves.isEmpty && d.resets.isEmpty && d.others.isEmpty) {
             return const [
               OlCard(
                 child: EmptyState(
                   illustration: OlIllustration.emptyInbox,
                   title: 'Tidak ada yang menunggu',
-                  message: 'Pengajuan cuti dan reset password muncul di sini.',
+                  message: 'Pengajuan cuti, reset password, refund, dan diskon muncul di sini.',
                 ),
               ),
             ];
@@ -213,11 +252,42 @@ class _PersetujuanPageState extends ConsumerState<PersetujuanPage> {
                 onReject: () => _decideReset(r, false),
                 onApprove: () => _decideReset(r, true),
               ),
+            for (final a in d.others)
+              card(
+                kind: _otherLabels[a.type] ?? a.type,
+                by: [a.requestedBy, if (a.createdAt != null) Fmt.dateNoDay(a.createdAt!)].where((s) => s.isNotEmpty).join(' · '),
+                title: _otherTitle(a),
+                detail: _otherDetail(a),
+                onReject: () => _decideOther(a, false),
+                onApprove: () => _decideOther(a, true),
+              ),
           ];
         },
       ),
     ],
   );
+}
+
+String _otherTitle(ApprovalV a) {
+  final p = a.payload;
+  final amount = parseInt(p['amount']);
+  return switch (a.type) {
+    'refund' || 'manual_discount' => [?p['invoice_number'] as String?, if (amount != null) Fmt.money(amount)].join(' · '),
+    'exercise_proposal' => p['name'] as String? ?? 'Latihan baru',
+    _ => amount == null ? (_otherLabels[a.type] ?? a.type) : Fmt.money(amount),
+  };
+}
+
+String? _otherDetail(ApprovalV a) {
+  final p = a.payload;
+  final parts = [
+    ?(p['reason'] as String?),
+    ?(p['reason_code'] as String?),
+    ?(p['note'] as String?),
+    if (p['total'] != null) 'total ${Fmt.money(parseInt(p['total']) ?? 0)}',
+    if (p['level'] != null) 'level ${p['level']}',
+  ].where((s) => s.isNotEmpty);
+  return parts.isEmpty ? null : parts.join(' · ');
 }
 
 String formatDayParam(DateTime d) =>

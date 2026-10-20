@@ -117,6 +117,22 @@ class OneLotusApi {
     );
   }
 
+  /// Check-in home visit (TR-09): jarak & akurasi diperiksa server; di luar radius butuh [manualReason].
+  Future<void> homeVisitCheckIn(String sessionId, {required double lat, required double lng, required double accuracy, String? manualReason}) =>
+      api.post('/v1/sessions/$sessionId/home-visit/check-in', {
+        'lat': lat,
+        'lng': lng,
+        'accuracy_m': accuracy,
+        'manual_reason': manualReason,
+      }, (_) {}, headers: {'Idempotency-Key': _key()});
+
+  Future<void> homeVisitCheckOut(String sessionId) =>
+      api.post('/v1/sessions/$sessionId/home-visit/check-out', null, (_) {});
+
+  /// Batal di lokasi (pasien tidak ada / menolak) — sesi dibatalkan, kasir diberi tahu.
+  Future<void> homeVisitCancel(String sessionId, String reason) =>
+      api.post('/v1/sessions/$sessionId/home-visit/cancel', {'reason': reason}, (_) {});
+
   /// Pindah sesi massal (KS-08). Item tanpa terapis & jam tetap "Perlu tindakan" (tidak dikirim).
   Future<List<BulkMoveResult>> bulkMove(
     List<({String sessionId, String? therapistId, DateTime? startAt})> moves, {

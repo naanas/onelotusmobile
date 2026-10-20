@@ -34,6 +34,13 @@ class DetailPasienPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) => OlDetailScaffold(
     title: 'Detail pasien',
+    foot: [
+      OlButton.secondary(
+        label: 'Kirim program latihan',
+        icon: OlIcons.exercise,
+        onPressed: () => context.push(Routes.terapisKirimLatihan(patientId)),
+      ),
+    ],
     children: [
       OlAsync<_Detail>(
         load: () => _load(ref.read(oneLotusApiProvider)),

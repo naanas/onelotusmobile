@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../core/format.dart';
 import '../theme/app_theme.dart';
@@ -11,12 +12,16 @@ import 'pseudo_qr.dart';
 class QrisPanel extends StatefulWidget {
   const QrisPanel({
     super.key,
-    required this.seed,
+    this.seed = 0,
+    this.data,
     this.expiresIn = const Duration(minutes: 15),
     this.onExpired,
   });
 
   final int seed;
+
+  /// Isi QRIS dari gateway; null = pola contoh dari [seed] (galeri komponen).
+  final String? data;
   final Duration expiresIn;
   final VoidCallback? onExpired;
 
@@ -55,11 +60,24 @@ class _QrisPanelState extends State<QrisPanel> {
 
     return Column(
       children: [
-        PseudoQr(
-          seed: widget.seed,
-          faded: expired,
-          semanticLabel: 'Kode QRIS untuk dipindai pasien',
-        ),
+        if (widget.data != null)
+          Semantics(
+            label: 'Kode QRIS untuk dipindai pasien',
+            child: Opacity(
+              opacity: expired ? 0.25 : 1,
+              child: Container(
+                color: Colors.white,
+                padding: const EdgeInsets.all(12),
+                child: QrImageView(data: widget.data!, size: 220),
+              ),
+            ),
+          )
+        else
+          PseudoQr(
+            seed: widget.seed,
+            faded: expired,
+            semanticLabel: 'Kode QRIS untuk dipindai pasien',
+          ),
         const SizedBox(height: 14),
         Semantics(
           liveRegion: true,

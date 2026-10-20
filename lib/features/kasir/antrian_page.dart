@@ -208,6 +208,13 @@ class _AntrianPageState extends ConsumerState<AntrianPage> {
         ),
         const SizedBox(width: 4),
         OlIconButton(
+          icon: OlIcons.bell,
+          semanticLabel: 'Notifikasi',
+          onHero: true,
+          onPressed: () => context.push(Routes.notifications),
+        ),
+        const SizedBox(width: 4),
+        OlIconButton(
           icon: OlIcons.refresh,
           semanticLabel: 'Muat ulang',
           onHero: true,

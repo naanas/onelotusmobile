@@ -1,79 +1,173 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../ui/feedback/app_error.dart';
 import '../api/api_client.dart';
+import '../api/v1.dart';
 import '../models/json.dart';
 import '../models/models.dart';
 
-/// Endpoint pasien `/v1/pasien/*` (token pasien terpisah dari token staf). Kontrak: docs/api-kontrak.md.
+/// Endpoint pasien One Lotus API v1: `/v1/auth/patient/*` (OTP WhatsApp) dan `/v1/patient/*`.
+/// Token pasien terpisah dari token staf.
 class PasienApi {
-  PasienApi(this.api);
+  PasienApi(this.api, {required this.deviceId});
 
   final ApiClient api;
+  final Future<String> Function() deviceId;
+
+  /// Kandidat data lama dari verifikasi OTP terakhir (dipakai layar hubungkan PS-03).
+  LinkCandidates _candidates = const LinkCandidates(candidates: [], locked: false, attemptsLeft: 3);
+  String _phone = '';
 
   /// Kirim kode OTP WhatsApp → detik sampai boleh kirim ulang.
-  Future<int> requestOtp(String phone) => api.post('/v1/pasien/otp', {
-    'phone': phone,
-  }, (d) => parseInt(asMap(d)['resend_in']) ?? 60);
+  Future<int> requestOtp(String phone) async {
+    try {
+      await api.post('/v1/auth/patient/otp', {'phone': phone, 'purpose': 'patient_login'}, (_) {});
+      return 60;
+    } on AppError catch (e) {
+      // Kode masih berlaku: tampilkan sisa waktu kirim ulang.
+      if (e.type == ErrorCode.rateLimited && e.details['retry_after_sec'] is num) {
+        return (e.details['retry_after_sec'] as num).toInt();
+      }
+      rethrow;
+    }
+  }
 
-  Future<(String token, PasienAccount account)> verifyOtp(
-    String phone,
-    String code,
-  ) => api.post(
-    '/v1/pasien/otp/verify',
-    {'phone': phone, 'code': code, 'device_name': 'onelotus-pasien'},
-    (d) {
-      final m = asMap(d);
-      return (
-        m['token'] as String,
-        PasienAccount.fromJson(asMap(m['account'])),
+  /// Verifikasi kode → (access token, refresh token, akun).
+  Future<(String token, String refresh, PasienAccount account)> verifyOtp(String phone, String code) async {
+    final m = await api.post('/v1/auth/patient/verify', {
+      'phone': phone,
+      'code': code,
+      'device_id': await deviceId(),
+      'platform': 'android',
+    }, asMap);
+    final tokens = asMap(m['tokens']);
+    final access = tokens['access_token'] as String;
+    _phone = phone;
+    _candidates = LinkCandidates(
+      candidates: [
+        for (final c in (m['candidates'] as List? ?? const []))
+          LinkCandidate(id: asMap(c)['candidate_id'] as String, maskedName: asMap(c)['masked_name'] as String),
+      ],
+      locked: false,
+      attemptsLeft: 3,
+    );
+    final account = await me(token: access);
+    return (access, tokens['refresh_token'] as String, account);
+  }
+
+  /// Tukar refresh token pasien; null bila ditolak.
+  Future<(String, String)?> refresh(String refreshToken) async {
+    try {
+      final m = await api.dio.post<dynamic>('/v1/auth/refresh', data: {'refresh_token': refreshToken});
+      final d = asMap(ApiClient.unwrap(m.data));
+      return (d['access_token'] as String, d['refresh_token'] as String);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Akun: data pasien tertaut + persetujuan → tahap berikut (hubungkan / persetujuan / siap).
+  Future<PasienAccount> me({String? token}) async {
+    final headers = token == null ? null : {'Authorization': 'Bearer $token'};
+    Map<String, dynamic>? profile;
+    try {
+      profile = await api.get('/v1/patient/profile', asMap, headers: headers);
+    } on AppError catch (e) {
+      // 409 not_linked: akun belum terhubung ke data pasien → layar hubungkan/daftar.
+      if (e.details['reason'] != 'not_linked') rethrow;
+    }
+    if (profile == null) {
+      return PasienAccount(id: '', phone: _phone, consent: const PasienConsent(), nextStep: PasienNextStep.link);
+    }
+    final c = profile['consent'] is Map ? asMap(profile['consent']) : const <String, dynamic>{};
+    final consent = PasienConsent(
+      health: c['health_data'] as bool? ?? false,
+      reminder: c['reminders'] as bool? ?? false,
+      promo: c['promo'] as bool? ?? false,
+      policyVersion: c['policy_version'] as String?,
+    );
+    final patient = V1.patient(profile);
+    final phone = (patient.phone ?? _phone).replaceFirst('+', '');
+    return PasienAccount(
+      id: patient.id,
+      phone: phone,
+      patient: patient,
+      consent: consent,
+      // Data lama Laravel memakai persetujuan 'legacy': pasien tetap diminta menyetujui kebijakan baru.
+      nextStep: consent.health && consent.policyVersion != 'legacy' ? PasienNextStep.ready : PasienNextStep.consent,
+    );
+  }
+
+  Future<void> logout() => api.post('/v1/auth/logout', null, (_) {});
+
+  Future<LinkCandidates> linkCandidates() async => _candidates;
+
+  Future<PasienAccount> link({String? patientId, required DateTime birthDate}) async {
+    await api.post('/v1/patient/link', {'candidate_id': patientId, 'birth_date': formatDay(birthDate)}, (_) {});
+    return me();
+  }
+
+  Future<PasienAccount> register(PatientDraft draft) async {
+    await api.post('/v1/patient/register', {
+      ...V1.patientInput(draft),
+      'consent': {'policy_version': V1.policyVersion.isEmpty ? 'app' : V1.policyVersion, 'health_data': true, 'reminders': true},
+    }, (_) {});
+    return me();
+  }
+
+  Future<PasienAccount> consent({required bool promo}) async {
+    await api.post('/v1/patient/consent', {
+      'policy_version': V1.policyVersion.isEmpty ? 'app' : V1.policyVersion,
+      'health_data': true,
+      'reminders': true,
+      'promo': promo,
+    }, (_) {});
+    return me();
+  }
+
+  static SessionStatus _bookingStatus(String? s) => switch (s) {
+    'accepted' => SessionStatus.scheduled,
+    'cancelled' || 'rejected' || 'expired' => SessionStatus.cancelled,
+    _ => SessionStatus.awaitingConfirmation,
+  };
+
+  /// Jadwal mendatang = booking; riwayat = sesi selesai versi pasien.
+  Future<List<PasienSessionItem>> sessions({bool past = false}) async {
+    if (past) {
+      return api.get('/v1/patient/sessions', (d) => parseList(d, (m) => PasienSessionItem(
+        id: m['session_id'].toString(),
+        serviceName: m['service_name'] as String? ?? '',
+        therapistName: m['therapist_name'] as String? ?? '',
+        branchName: '',
+        branchAddress: '',
+        startAt: parseDate(m['date'])!,
+        durationMin: 60,
+        status: SessionStatus.done,
+      )));
+    }
+    return api.get('/v1/patient/bookings', (d) => parseList(d, (m) {
+      final start = parseDate(m['proposed_start']) ?? parseDate(m['requested_start'])!;
+      return PasienSessionItem(
+        id: m['id'].toString(),
+        serviceName: (m['service'] is Map ? asMap(m['service'])['name'] : null) as String? ?? '',
+        therapistName: '',
+        branchName: '',
+        branchAddress: '',
+        startAt: start,
+        durationMin: 60,
+        status: _bookingStatus(m['status'] as String?),
+        homeVisit: m['location_type'] == 'home_visit' ? const HomeVisit(address: '') : null,
       );
-    },
-  );
+    }), query: {'scope': 'upcoming'});
+  }
 
-  Future<PasienAccount> me() =>
-      api.get('/v1/pasien/me', (d) => PasienAccount.fromJson(asMap(d)));
-
-  Future<void> logout() => api.post('/v1/pasien/logout', null, (_) {});
-
-  Future<LinkCandidates> linkCandidates() => api.get(
-    '/v1/pasien/link-candidates',
-    (d) => LinkCandidates.fromJson(asMap(d)),
-  );
-
-  Future<PasienAccount> link({
-    String? patientId,
-    required DateTime birthDate,
-  }) => api.post('/v1/pasien/link', {
-    'patient_id': ?patientId,
-    'birth_date': formatDay(birthDate),
-  }, (d) => PasienAccount.fromJson(asMap(d)));
-
-  Future<PasienAccount> register(PatientDraft draft) => api.post(
-    '/v1/pasien/register',
-    draft.toJson(),
-    (d) => PasienAccount.fromJson(asMap(d)),
-  );
-
-  Future<PasienAccount> consent({required bool promo}) => api.post(
-    '/v1/pasien/consent',
-    {'health': true, 'reminder': true, 'promo': promo},
-    (d) => PasienAccount.fromJson(asMap(d)),
-  );
-
-  Future<List<PasienSessionItem>> sessions({bool past = false}) => api.get(
-    '/v1/pasien/sessions',
-    (d) => parseList(d, PasienSessionItem.fromJson),
-    query: {'scope': past ? 'past' : 'upcoming'},
-  );
-
-  Future<int> requestDeletionOtp() => api.post(
-    '/v1/pasien/account/deletion-otp',
-    null,
-    (d) => parseInt(asMap(d)['resend_in']) ?? 60,
-  );
+  Future<int> requestDeletionOtp() async {
+    await api.post('/v1/auth/patient/otp', {'phone': _phone.isEmpty ? '0' : _phone, 'purpose': 'delete_account'}, (_) {});
+    return 60;
+  }
 
   Future<void> requestDeletion(String code) =>
-      api.post('/v1/pasien/account/deletion', {'code': code}, (_) {});
+      api.post('/v1/patient/account/deletion', {'otp_code': code}, (_) {});
 }
 
 /// Token pasien saat ini (diisi `PasienSessionNotifier`).

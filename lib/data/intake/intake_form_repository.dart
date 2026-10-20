@@ -1,9 +1,13 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../ui/feedback/app_error.dart';
+
 import '../api/api_client.dart';
+import '../api/v1.dart';
 import '../models/json.dart';
 import '../models/models.dart';
 import '../providers.dart';
@@ -116,19 +120,69 @@ class HttpIntakeFormRepository implements IntakeFormRepository {
   @override
   Future<String> branchName(String code) => api.get(
     '/v1/public/intake/${Uri.encodeComponent(code)}',
-    (d) => (asMap(d)['branch'] as Map)['name'] as String,
-  );
-
-  @override
-  Future<IntakeReceipt> submit(String code, IntakeSubmission s) => api.post(
-    '/v1/public/intake/${Uri.encodeComponent(code)}',
-    s.toJson(),
     (d) {
       final m = asMap(d);
-      return IntakeReceipt(
-        queueLabel: m['queue_label'] as String,
-        firstName: m['first_name'] as String,
-      );
+      if ((m['policy_version'] as String?)?.isNotEmpty ?? false) {
+        V1.policyVersion = m['policy_version'] as String;
+      }
+      return m['branch_name'] as String;
     },
   );
+
+  /// Foto rontgen: minta tiket → PUT ke Supabase Storage → id lampiran (§12, maks 3).
+  Future<String> _upload(String code, Uint8List bytes) async {
+    final ticket = await api.post('/v1/public/intake/uploads', {
+      'branch_token': code,
+      'mime': 'image/jpeg',
+      'size_bytes': bytes.length,
+    }, asMap);
+    try {
+      await Dio().put<void>(
+        ticket['upload_url'] as String,
+        data: Stream.fromIterable([bytes]),
+        options: Options(headers: {
+          'Content-Type': 'image/jpeg',
+          Headers.contentLengthHeader: bytes.length,
+        }),
+      );
+    } on DioException catch (_) {
+      throw const AppError(ErrorCode.uploadFailed);
+    }
+    return ticket['attachment_id'].toString();
+  }
+
+  @override
+  Future<IntakeReceipt> submit(String code, IntakeSubmission s) async {
+    final ids = [for (final p in s.photos.take(3)) await _upload(code, p)];
+    return api.post(
+      '/v1/public/intake',
+      {
+        'branch_token': code,
+        'name': s.name,
+        'birth_date': formatDay(s.birthDate),
+        'gender': V1.genderApi(s.gender),
+        'phone': s.phone,
+        'complaint': s.complaint,
+        'birth_place': s.birthPlace,
+        'address': s.address,
+        'occupation': s.institution,
+        'hobby': s.hobby,
+        'height_cm': s.heightCm,
+        'weight_kg': s.weightKg,
+        'cause': s.cause?.api,
+        'injury_duration_value': s.injuryDuration,
+        if (s.injuryDuration != null) 'injury_duration_unit': s.injuryDurationUnit,
+        'xray_upload_ids': ids,
+        'consent': {
+          'policy_version': V1.policyVersion.isEmpty ? 'intake' : V1.policyVersion,
+          'health_data': s.healthConsent,
+          'reminders': true,
+        },
+      },
+      (d) => IntakeReceipt(
+        queueLabel: asMap(d)['queue_number'] as String,
+        firstName: s.name.split(' ').first,
+      ),
+    );
+  }
 }

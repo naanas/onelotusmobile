@@ -62,6 +62,7 @@ import '../features/kasir/terima_kas_page.dart';
 import '../features/kasir/tutup_kas_page.dart';
 import '../features/kasir/piutang_page.dart';
 import '../features/kasir/tagihan_page.dart';
+import '../features/kasir/invoice_detail_page.dart';
 import '../features/shell/role_shell.dart';
 import '../features/terapis/akun/kas_dibawa_page.dart';
 import '../features/terapis/rekam/rekam_sesi_page.dart';
@@ -242,7 +243,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/terapis/home-visit/:id/tagih',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const TagihPage(),
+        builder: (_, s) => TagihPage(sessionId: s.pathParameters['id']!),
       ),
       GoRoute(
         path: '/terapis/pasien/:id/latihan',
@@ -372,7 +373,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.kasirBayar,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const BayarPage(),
+        builder: (_, s) => BayarPage(
+          invoiceId: s.uri.queryParameters['invoice'] ?? '',
+          homeVisit: s.uri.queryParameters['lokasi'] == 'home_visit',
+        ),
       ),
       GoRoute(
         path: '/kasir/pasien/:id',
@@ -383,12 +387,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.kasirStruk,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const StrukPage(),
+        builder: (_, s) => StrukPage(receiptId: s.uri.queryParameters['receipt'] ?? ''),
       ),
       GoRoute(
         path: Routes.kasirJualPaket,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const JualPaketPage(),
+        builder: (_, s) => JualPaketPage(patientId: s.uri.queryParameters['patient'] ?? ''),
+      ),
+      GoRoute(
+        path: '/kasir/tagihan/:id',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, s) => InvoiceDetailPage(invoiceId: s.pathParameters['id']!),
       ),
       GoRoute(
         path: Routes.kasirRiwayat,
@@ -398,7 +407,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.kasirRefund,
         parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const RefundPage(),
+        builder: (_, s) => RefundPage(invoiceId: s.uri.queryParameters['invoice'] ?? ''),
       ),
       GoRoute(
         path: Routes.kasirVerifikasiTransfer,

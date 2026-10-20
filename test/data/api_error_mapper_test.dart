@@ -3,12 +3,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:onelotus_staff/data/api/api_error_mapper.dart';
 import 'package:onelotus_staff/ui/feedback/app_error.dart';
 
-DioException http(int status, [Map<String, dynamic>? body]) {
+/// Respons error API v1: `{ "error": { code, message, fields, details, ref } }`.
+DioException http(int status, [Map<String, dynamic>? error]) {
   final req = RequestOptions(path: '/x');
   return DioException(
     requestOptions: req,
     type: DioExceptionType.badResponse,
-    response: Response(requestOptions: req, statusCode: status, data: body),
+    response: Response(
+      requestOptions: req,
+      statusCode: status,
+      data: error == null ? null : {'error': error},
+    ),
   );
 }
 
@@ -50,10 +55,9 @@ void main() {
   test('422 membawa pesan per field', () {
     final e = mapDioError(
       http(422, {
-        'message': 'invalid',
-        'errors': {
-          'weight_kg': ['Berat badan harus angka, mis. 58'],
-        },
+        'code': 'validation',
+        'message': 'Berat badan harus angka, mis. 58',
+        'fields': {'weight_kg': 'Berat badan harus angka, mis. 58'},
       }),
     );
     expect(e.type, ErrorCode.validation);
@@ -65,13 +69,19 @@ void main() {
       mapDioError(http(409, {'code': 'duplicate_patient'})).type,
       ErrorCode.duplicatePatient,
     );
+    // Kode di luar katalog aplikasi tetap terbaca lewat apiCode.
+    final e = mapDioError(http(423, {'code': 'account_locked', 'details': {'retry_after_sec': 120}}));
+    expect(e.apiCode, 'account_locked');
+    expect(e.details['retry_after_sec'], 120);
   });
 
   test('409 dengan salinan server → ConflictError', () {
     final e = mapDioError(
       http(409, {
         'code': 'edit_conflict',
-        'server': {'id': 'r1', 'version': 5},
+        'details': {
+          'server': {'session_id': 's1', 'version': 5},
+        },
       }),
     );
     expect(e, isA<ConflictError>());

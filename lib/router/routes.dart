@@ -68,6 +68,12 @@ abstract final class Routes {
   static const kasirBayar = '/kasir/bayar';
   static const kasirStruk = '/kasir/struk';
   static const kasirJualPaket = '/kasir/jual-paket';
+  static String kasirTagihan(String invoiceId) => '/kasir/tagihan/$invoiceId';
+  static String bayar(String invoiceId, {bool homeVisit = false}) =>
+      '$kasirBayar?invoice=$invoiceId${homeVisit ? '&lokasi=home_visit' : ''}';
+  static String struk(String receiptId) => '$kasirStruk?receipt=$receiptId';
+  static String refund(String invoiceId) => '$kasirRefund?invoice=$invoiceId';
+  static String jualPaket(String patientId) => '$kasirJualPaket?patient=$patientId';
   static const kasirRiwayat = '/kasir/riwayat';
   static const kasirRefund = '/kasir/refund';
   static const kasirVerifikasiTransfer = '/kasir/verifikasi-transfer';

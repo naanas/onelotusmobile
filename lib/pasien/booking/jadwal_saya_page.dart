@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
 import '../../data/models/models.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
+import '../pasien_routes.dart';
 import '../pasien_session.dart';
 
-/// PS-10 Jadwal saya (`GET /v1/pasien/sessions`): mendatang & riwayat. Ubah/batal jadwal sendiri
-/// menunggu aturan batas waktu dari workshop (§16 no. 8) — sementara lewat klinik.
+/// PS-10 Jadwal saya: booking mendatang & riwayat sesi. Ubah/batal → PS-11 (batas waktu dari server, TODO(workshop) §16 no. 8).
 class JadwalSayaPage extends ConsumerStatefulWidget {
   const JadwalSayaPage({super.key});
 
@@ -117,13 +118,19 @@ class _JadwalSayaPageState extends ConsumerState<JadwalSayaPage> {
                             ].join(' · '),
                       style: t.body.copyWith(fontSize: 14.5),
                     ),
+                    if (!_history && s.status != SessionStatus.cancelled) ...[
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OlButton.text(
+                          label: 'Ubah / batalkan',
+                          small: true,
+                          onPressed: () => context.push('${PRoutes.ubahJadwal}?id=${s.id}'),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-              ),
-            if (!_history)
-              Text(
-                'Untuk mengubah atau membatalkan jadwal, hubungi klinik lewat WhatsApp.',
-                style: t.body.copyWith(color: c.muted),
               ),
           ];
         },

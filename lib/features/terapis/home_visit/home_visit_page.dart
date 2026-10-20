@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/format.dart';
@@ -67,19 +68,64 @@ class _HomeVisitPageState extends ConsumerState<HomeVisitPage> {
     final r = await context.feedback.choose(
       const ConfirmSpec(
         title: 'Tidak jadi di lokasi?',
-        message: 'Sesi ditandai Tidak datang. Front desk melihat alasannya.',
+        message: 'Sesi dibatalkan dan front desk melihat alasannya.',
         confirmLabel: 'Tandai tidak jadi',
         reasonLabel: 'Alasan',
       ),
     );
     if (!r.confirmed || !mounted) return;
-    await _status(
-      s,
-      SessionStatus.noShow,
-      reason: r.reason,
-      ok: 'Ditandai tidak jadi.',
-    );
-    if (mounted) Navigator.of(context).maybePop();
+    setState(() => _busy = true);
+    try {
+      await ref.read(oneLotusApiProvider).homeVisitCancel(s.id, r.reason ?? '');
+      if (!mounted) return;
+      context.feedback.success('Ditandai tidak jadi.');
+      Navigator.of(context).maybePop();
+    } on AppError catch (e) {
+      if (mounted) context.feedback.error(e);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Check-in GPS (§8): di luar radius / akurasi buruk → konfirmasi dengan alasan, tetap tercatat.
+  Future<void> _checkIn(Session s) async {
+    setState(() => _busy = true);
+    try {
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
+      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
+        if (mounted) context.feedback.error(const AppError(ErrorCode.permLocation));
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 20)),
+      );
+      final api = ref.read(oneLotusApiProvider);
+      try {
+        await api.homeVisitCheckIn(s.id, lat: pos.latitude, lng: pos.longitude, accuracy: pos.accuracy);
+      } on AppError catch (e) {
+        if (e.apiCode != 'checkin_out_of_range' || !mounted) rethrow;
+        final r = await context.feedback.choose(
+          ConfirmSpec(
+            title: 'Di luar radius alamat',
+            message: 'Kamu ±${e.details['distance_m']} m dari alamat pasien. Tetap check-in? Alasan tercatat.',
+            confirmLabel: 'Tetap check-in',
+            danger: false,
+            reasonLabel: 'Alasan',
+          ),
+        );
+        if (!r.confirmed) return;
+        await api.homeVisitCheckIn(s.id, lat: pos.latitude, lng: pos.longitude, accuracy: pos.accuracy, manualReason: r.reason);
+      }
+      if (!mounted) return;
+      await _status(s, SessionStatus.running, ok: 'Check-in tercatat ${Fmt.time(DateTime.now())}.');
+    } on AppError catch (e) {
+      if (mounted) context.feedback.error(e);
+    } catch (_) {
+      if (mounted) context.feedback.error(const AppError(ErrorCode.permLocation));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -129,18 +175,18 @@ class _HomeVisitPageState extends ConsumerState<HomeVisitPage> {
             label: 'Check-in & mulai sesi',
             icon: OlIcons.pin,
             loading: _busy,
-            onPressed: _busy
-                ? null
-                : () => _status(
-                    s,
-                    SessionStatus.running,
-                    ok: 'Check-in tercatat ${Fmt.time(DateTime.now())}.',
-                  ),
+            onPressed: _busy ? null : () => _checkIn(s),
           ),
         if (running)
           OlButton(
             label: 'Isi rekam sesi',
             onPressed: () => context.push(Routes.terapisRekam(s.id)),
+          ),
+        if (s.isFinished)
+          OlButton(
+            label: 'Tagih di lokasi',
+            icon: OlIcons.cash,
+            onPressed: () => context.push(Routes.terapisTagih(s.id)),
           ),
         if (waiting)
           OlButton(

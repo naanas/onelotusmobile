@@ -91,6 +91,11 @@ class _RingkasanPageState extends ConsumerState<RingkasanPage> {
           variant: OlButtonVariant.secondary,
         ),
         SheetAction(
+          'Kirim pengingat',
+          Routes.ownerPengingat,
+          variant: OlButtonVariant.secondary,
+        ),
+        SheetAction(
           'Audit log',
           Routes.ownerAudit,
           variant: OlButtonVariant.secondary,
@@ -159,6 +164,12 @@ class _RingkasanPageState extends ConsumerState<RingkasanPage> {
         title: 'Ringkasan',
         context_: ref.watch(authProvider.select((a) => a.activeBranch?.name)),
         actions: [
+          OlIconButton(
+            icon: OlIcons.bell,
+            semanticLabel: 'Notifikasi',
+            onHero: true,
+            onPressed: () => context.push(Routes.notifications),
+          ),
           OlIconButton(
             icon: OlIcons.checkCircle,
             semanticLabel: 'Persetujuan',
@@ -270,9 +281,11 @@ class _RingkasanPageState extends ConsumerState<RingkasanPage> {
                     ],
                   ),
                 ),
-              Text(
-                'Omzet, retensi, dan piutang tampil setelah modul pembayaran tersedia.',
-                style: t.body.copyWith(color: c.muted),
+              OlButton.text(
+                label: 'Omzet, retensi & piutang di tab Laporan',
+                icon: OlIcons.report,
+                onPressed: () => context.go(Routes.ownerLaporan),
+                expand: true,
               ),
             ];
           },

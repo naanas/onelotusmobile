@@ -783,3 +783,68 @@ class ServiceV {
     branchIds: parseStrings(j['branch_ids']),
   );
 }
+
+// ---- booking masuk (KS-07) ----
+
+/// Booking dari aplikasi pasien / website / staf, menunggu keputusan front desk.
+/// Sesi baru dibuat backend saat booking diterima.
+class BookingReqV {
+  const BookingReqV({
+    required this.id,
+    required this.status,
+    required this.requestedStart,
+    this.source = 'patient_app',
+    this.proposedStart,
+    this.patientId,
+    this.patientName,
+    this.patientNumber,
+    this.guestName,
+    this.guestPhone,
+    this.serviceId,
+    this.serviceName = '',
+    this.branchId,
+    this.homeVisit = false,
+    this.note,
+    this.slotStillFree = true,
+    this.dpStatus,
+    this.createdAt,
+  });
+  final String id, status, source, serviceName;
+  final DateTime requestedStart;
+  final DateTime? proposedStart, createdAt;
+  final String? patientId, patientName, guestName, guestPhone, serviceId, branchId, note, dpStatus;
+  final int? patientNumber;
+  final bool homeVisit, slotStillFree;
+
+  DateTime get start => proposedStart ?? requestedStart;
+  String get displayName => patientName ?? guestName ?? 'Tamu';
+  bool get isNewPatient => patientId == null;
+
+  factory BookingReqV.fromJson(Map<String, dynamic> j) {
+    final p = _m(j['patient']);
+    final g = _m(j['guest']);
+    final s = _m(j['service']);
+    return BookingReqV(
+      id: j['id'].toString(),
+      status: j['status'] as String? ?? 'pending',
+      source: j['source'] as String? ?? 'patient_app',
+      requestedStart: parseDate(j['requested_start']) ?? DateTime.now(),
+      proposedStart: parseDate(j['proposed_start']),
+      patientId: p['id']?.toString(),
+      patientName: p['name'] as String?,
+      patientNumber: parseInt(p['number']),
+      guestName: g['name'] as String?,
+      guestPhone: g['phone'] as String?,
+      serviceId: s['id']?.toString(),
+      serviceName: s['name'] as String? ?? '',
+      branchId: j['branch_id']?.toString(),
+      homeVisit: j['location_type'] == 'home_visit',
+      note: j['note'] as String?,
+      slotStillFree: j['slot_still_free'] as bool? ?? true,
+      dpStatus: j['dp_status'] as String?,
+      createdAt: parseDate(j['created_at']),
+    );
+  }
+}
+
+const bookingSourceLabels = {'patient_app': 'Aplikasi pasien', 'website': 'Website', 'staff': 'Front desk'};

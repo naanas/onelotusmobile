@@ -521,42 +521,4 @@ abstract final class V1 {
       resolution: a['status'] == 'pending' ? null : a['status'] as String?,
     );
   }
-
-  /// IntakeSubmission (KS-02) → ringkasan + detail.
-  static IntakeDetail intake(Map<String, dynamic> j) {
-    final p = asMap(j['payload'] ?? const {});
-    final xr = parseStrings(p['xray_upload_ids']);
-    final summary = IntakeSummary(
-      id: j['id'].toString(),
-      queueLabel: j['queue_number'] as String? ?? '',
-      name: p['name'] as String? ?? '',
-      complaint: p['complaint'] as String? ?? '',
-      bodyComplete: p['height_cm'] != null && p['weight_kg'] != null,
-      attachmentCount: xr.length,
-      status: switch (j['status']) {
-        'processed' || 'merged' => IntakeStatus.processed,
-        'rejected' => IntakeStatus.discarded,
-        _ => IntakeStatus.pending,
-      },
-      stale: j['overdue'] as bool? ?? false,
-      createdAt: parseDate(j['submitted_at']) ?? DateTime.now(),
-      patientId: j['patient_id']?.toString(),
-    );
-    return IntakeDetail(
-      summary: summary,
-      birthDate: DateTime.tryParse(p['birth_date'] as String? ?? '') ?? DateTime(2000),
-      gender: gender(p['gender']) ?? Gender.female,
-      phone: p['phone'] as String? ?? '',
-      birthPlace: p['birth_place'] as String?,
-      address: p['address'] as String?,
-      institution: p['occupation'] as String?,
-      hobby: p['hobby'] as String?,
-      heightCm: parseInt(p['height_cm']),
-      weightKg: parseDouble(p['weight_kg'])?.round(),
-      cause: IntakeCause.fromApi(p['cause']),
-      injuryDuration: parseInt(p['injury_duration_value']),
-      injuryDurationUnit: p['injury_duration_unit'] as String?,
-      attachments: [for (final id in xr) IntakeAttachment(id: id, contentType: 'image/*')],
-    );
-  }
 }

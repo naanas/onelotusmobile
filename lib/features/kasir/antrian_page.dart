@@ -37,12 +37,18 @@ class _AntrianPageState extends ConsumerState<AntrianPage> {
     if (branch == null) return (today: <Session>[], bookings: 0);
     final now = DateTime.now();
     final day = DateTime(now.year, now.month, now.day);
-    // Satu request: antrian hari ini + jumlah booking menunggu konfirmasi 31 hari ke depan.
-    final list = await _api.sessions(
-      branchId: branch.id,
-      from: day,
-      to: day.add(const Duration(days: 31)),
-    );
+    // Antrian hari ini + jumlah booking (aplikasi pasien / website) yang menunggu konfirmasi.
+    final (list, pending) = await (
+      _api.sessions(
+        branchId: branch.id,
+        from: day,
+        to: day.add(const Duration(days: 1)),
+      ),
+      ref
+          .read(billingApiProvider)
+          .bookings(status: 'pending', branchId: branch.id)
+          .then((b) => b.length, onError: (_) => 0),
+    ).wait;
     final tomorrow = day.add(const Duration(days: 1));
     return (
       today: [
@@ -52,9 +58,7 @@ class _AntrianPageState extends ConsumerState<AntrianPage> {
               s.status != SessionStatus.cancelled)
             s,
       ],
-      bookings: list
-          .where((s) => s.status == SessionStatus.awaitingConfirmation)
-          .length,
+      bookings: pending,
     );
   }
 
@@ -82,7 +86,9 @@ class _AntrianPageState extends ConsumerState<AntrianPage> {
       final inv = await ref.read(billingApiProvider).invoiceForSession(s.id);
       if (!mounted) return;
       if (inv == null) {
-        context.feedback.info('Tagihan belum dibuat. Tunggu terapis menyelesaikan rekam sesi.');
+        context.feedback.info(
+          'Tagihan belum dibuat. Tunggu terapis menyelesaikan rekam sesi.',
+        );
         return;
       }
       await context.push(Routes.kasirTagihan(inv.id));

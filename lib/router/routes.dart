@@ -16,12 +16,6 @@ abstract final class Routes {
   static const sessionExpired = '/sesi-berakhir';
   static const devComponents = '/dev/komponen';
 
-  /// Formulir pasien baru (WB-01): pindai QR KS-02, atau tautan `onelotus://app/intake/{kode}`.
-  static const intakeScan = '/intake';
-  static String intakeForm(String code) => '/intake/$code';
-  static bool isIntake(String location) =>
-      location == intakeScan || location.startsWith('$intakeScan/');
-
   // Terapis: Jadwal · Pasien · + · Riwayat · Akun
   static const terapisJadwal = '/terapis/jadwal';
   static const terapisPasien = '/terapis/pasien';
@@ -59,7 +53,6 @@ abstract final class Routes {
   static const kasirKasir = '/kasir/kasir';
   static const kasirAkun = '/kasir/akun';
   static const _kasirTabs = {kasirAntrian, kasirPasien, kasirKasir, kasirAkun};
-  static const kasirIntake = '/kasir/intake';
   static const kasirPasienForm = '/kasir/pasien-form';
   static String kasirPasienDetail(String id) => '/kasir/pasien/$id';
   static const kasirBuatJadwal = '/kasir/buat-jadwal';
@@ -146,17 +139,13 @@ String? appRedirect(
       return location == Routes.update ? null : Routes.update;
     }
   }
-  // Formulir intake terbuka untuk siapa pun (pasien baru belum punya akun),
-  // termasuk saat dibuka langsung dari QR ketika aplikasi baru dijalankan.
-  if (Routes.isIntake(location)) return null;
   if (auth.phase != AuthPhase.signedOut) return authRedirect(auth, location);
 
   // Tujuan menurut tahap pasien; null = pasien sudah masuk.
   final target = switch (pasien.phase) {
-    PasienPhase.otp when !pasien.awaitingCode => Routes.login,
     final p => pasienEntry(p),
   };
-  final atLogin = location == Routes.login || location == Routes.forgotPassword;
+  final atLogin = location == Routes.login || location == Routes.forgotPassword || PRoutes.isPublic(location);
 
   if (target == null) {
     // Pasien sudah masuk: layar masuk & layar staf → beranda pasien.

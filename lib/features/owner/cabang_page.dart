@@ -219,6 +219,7 @@ class _CabangPageState extends ConsumerState<CabangPage> {
     String? err(String f) => _errors[f]?.firstOrNull;
     return OlDetailScaffold(
       title: d?.branch.name ?? 'Cabang & ruang',
+      onRefresh: _load,
       titleTrailing: many
           ? OlButton.text(label: 'Ganti', onPressed: _switchBranch)
           : null,

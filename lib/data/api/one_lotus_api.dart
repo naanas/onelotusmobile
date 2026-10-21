@@ -1,3 +1,4 @@
+import '../../core/format.dart';
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -311,6 +312,19 @@ class OneLotusApi {
 
   Future<List<LegacyRecord>> legacyRecords(String id) => _remote.legacyRecords(id);
 
+  /// KS-04 tambah pasien manual. Kandidat ganda (ST-08) → [DuplicatePatientError].
+  Future<Patient> createPatient(PatientDraft draft, {bool confirmNotDuplicate = false}) async {
+    try {
+      return await api.post(
+        '/v1/patients',
+        V1.patientInput(draft, force: confirmNotDuplicate),
+        (d) => V1.patient(asMap(d)),
+      );
+    } on DuplicatePatientError catch (e) {
+      throw DuplicatePatientError(candidates: [for (final c in e.candidates) V1.duplicateCandidate(c)], refId: e.refId);
+    }
+  }
+
   Future<Patient> updatePatient(
     String id,
     PatientDraft draft, {
@@ -519,3 +533,12 @@ class OneLotusApi {
 final oneLotusApiProvider = Provider<OneLotusApi>(
   (ref) => OneLotusApi(ref.watch(apiClientProvider), me: () => ref.read(authProvider).user),
 );
+
+/// Ringkasan kandidat pasien ganda untuk sheet ST-08.
+String duplicateDetail(Map<String, dynamic> c) {
+  final birth = DateTime.tryParse(c['birth_date']?.toString() ?? '');
+  final match = c['match'] == 'phone' || (c['match_on'] is List && !(c['match_on'] as List).contains('name_birth_date'))
+      ? 'nomor HP sama'
+      : 'nama & tanggal lahir sama';
+  return [if (birth != null) Fmt.dateNoDay(birth), match].join(' · ');
+}

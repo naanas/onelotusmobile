@@ -53,6 +53,8 @@ dependencies:
   connectivity_plus: ^7.3.1
   qr_flutter: ^4.1.0
   mobile_scanner: ^7.4.2
+  talker_flutter: ^5.1.20
+  talker_dio_logger: ^5.1.20
 
 dev_dependencies:
   flutter_test:

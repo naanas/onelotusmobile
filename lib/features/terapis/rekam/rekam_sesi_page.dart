@@ -47,6 +47,7 @@ class _RekamSesiPageState extends ConsumerState<RekamSesiPage> {
   String? _areaError;
   String? _treatmentError;
   String? _complaintError;
+  String? _painError;
 
   Session? _session;
   Patient? _patient;
@@ -166,9 +167,13 @@ class _RekamSesiPageState extends ConsumerState<RekamSesiPage> {
     });
   }
 
-  /// Validasi lunak §5.2: keluhan, area & minimal 1 treatment.
-  bool _validate() {
+  /// Validasi lunak §5.2: keluhan, area & minimal 1 treatment. Saat menyelesaikan sesi, skala nyeri
+  /// sebelum & sesudah juga wajib (backend menolak `complete` tanpa keduanya).
+  bool _validate({bool finish = false}) {
     setState(() {
+      _painError = finish && (_before == null || _after == null)
+          ? 'Isi skala nyeri sebelum & sesudah sebelum menyelesaikan sesi.'
+          : null;
       _complaintError = _complaint.text.trim().isEmpty
           ? 'Keluhan wajib diisi.'
           : null;
@@ -181,11 +186,12 @@ class _RekamSesiPageState extends ConsumerState<RekamSesiPage> {
     });
     return _complaintError == null &&
         _areaError == null &&
-        _treatmentError == null;
+        _treatmentError == null &&
+        _painError == null;
   }
 
   Future<void> _save({bool finish = false}) async {
-    if (!_validate()) {
+    if (!_validate(finish: finish)) {
       context.feedback.info('Lengkapi isian yang ditandai dulu.');
       return;
     }
@@ -439,13 +445,16 @@ class _RekamSesiPageState extends ConsumerState<RekamSesiPage> {
               onBefore: (v) => setState(() {
                 _before = v;
                 _dirty = true;
+                if (_after != null) _painError = null;
               }),
               onAfter: (v) => setState(() {
                 _after = v;
                 _dirty = true;
+                if (_before != null) _painError = null;
               }),
             ),
           ),
+          if (_painError != null) errorText(_painError),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

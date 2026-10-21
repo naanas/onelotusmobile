@@ -293,6 +293,31 @@ class BillingApi {
 
   Future<void> markAllRead() => api.post('/v1/notifications/read-all', null, (_) {});
 
+  // ── booking masuk (KS-07) ───────────────────────────────────────────────
+
+  Future<List<BookingReqV>> bookings({String? status = 'pending', String? branchId}) => api.get(
+    '/v1/bookings',
+    (d) => parseList(d, BookingReqV.fromJson),
+    query: {'status': status, 'branch_id': branchId},
+  );
+
+  /// Terima → backend membuat sesi (terapis pilihan pasien, atau siapa saja yang kosong).
+  Future<BookingReqV> acceptBooking(String id, {String? therapistId}) => api.post(
+    '/v1/bookings/$id/accept',
+    {'therapist_id': ?therapistId},
+    (d) => BookingReqV.fromJson(asMap(d)),
+  );
+
+  /// Usulkan jam lain → pasien memilih terima / jam lain di aplikasinya.
+  Future<BookingReqV> proposeBooking(String id, DateTime start, {String? reason}) => api.post(
+    '/v1/bookings/$id/propose',
+    {'proposed_start': start.toUtc().toIso8601String(), 'reason': reason},
+    (d) => BookingReqV.fromJson(asMap(d)),
+  );
+
+  Future<BookingReqV> rejectBooking(String id, String reason) =>
+      api.post('/v1/bookings/$id/reject', {'reason': reason}, (d) => BookingReqV.fromJson(asMap(d)));
+
   // ── persetujuan (refund, diskon manual, usulan latihan, selisih kas) ────
 
   Future<List<ApprovalV>> approvals(String type) =>

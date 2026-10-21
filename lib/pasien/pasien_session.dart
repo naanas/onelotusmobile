@@ -10,8 +10,9 @@ import '../data/auth/auth_controller.dart';
 import '../data/models/models.dart';
 import '../data/pasien/pasien_api.dart';
 
-/// Tahap masuk bagian pasien (§5.13): perkenalan → layar masuk bersama (nomor HP)
-/// → kode OTP → hubungkan data lama / daftar → persetujuan data → siap.
+/// Tahap masuk bagian pasien (§5.13): perkenalan → layar masuk bersama (nomor HP + password;
+/// daftar = OTP WhatsApp + buat password) → persetujuan data → hubungkan data lama / isi data diri → siap.
+/// `otp` = belum masuk (nama dipertahankan agar sesi tersimpan lama tetap terbaca).
 /// `restoring` = sesi tersimpan sedang dipulihkan saat aplikasi dibuka.
 enum PasienPhase { restoring, onboarding, otp, link, consent, ready }
 
@@ -27,10 +28,6 @@ class PasienSession {
   /// Nomor yang sedang diverifikasi (format tampilan pengguna).
   final String phone;
   final PasienAccount? account;
-
-  /// Tahap OTP dengan nomor terisi = kode sedang dikirim; kosong = belum
-  /// mengisi nomor (pengguna berada di layar masuk bersama).
-  bool get awaitingCode => phase == PasienPhase.otp && phone.isNotEmpty;
 
   bool get promoConsent => account?.consent.promo ?? false;
 
@@ -51,9 +48,12 @@ abstract final class PasienKeys {
   static const refresh = 'pasien.refresh';
   static const account = 'pasien.account';
   static const onboarded = 'pasien.onboarded';
+
+  /// Persetujuan yang diberikan sebelum akun terhubung ke data pasien ('promo' / 'nopromo').
+  static const consentDraft = 'pasien.consent_draft';
 }
 
-/// Klien API pasien: token pasien; 401 → sesi pasien berakhir (masuk lagi dengan OTP).
+/// Klien API pasien: token pasien; 401 → sesi pasien berakhir (masuk lagi).
 final pasienApiProvider = Provider<PasienApi>(
   (ref) => PasienApi(
     ApiClient(
@@ -81,8 +81,14 @@ class PasienSessionNotifier extends Notifier<PasienSession> {
     return const PasienSession(phase: PasienPhase.restoring);
   }
 
-  static PasienPhase _phaseOf(PasienAccount a) => switch (a.nextStep) {
-    PasienNextStep.link => PasienPhase.link,
+  /// Persetujuan yang sudah diberikan tapi belum terkirim (akun belum terhubung ke data pasien).
+  /// null = belum setuju; true/false = setuju, dengan/tanpa info promo.
+  bool? _consentPromo;
+
+  /// Urutan: buat password → persetujuan → hubungkan data / isi data diri → siap.
+  PasienPhase _phaseOf(PasienAccount a) => switch (a.nextStep) {
+    PasienNextStep.link =>
+      _consentPromo == null ? PasienPhase.consent : PasienPhase.link,
     PasienNextStep.consent => PasienPhase.consent,
     PasienNextStep.ready => PasienPhase.ready,
   };
@@ -91,6 +97,8 @@ class PasienSessionNotifier extends Notifier<PasienSession> {
     final store = ref.read(sessionStoreProvider);
     try {
       final onboarded = await store.read(PasienKeys.onboarded) == '1';
+      final draft = await store.read(PasienKeys.consentDraft);
+      _consentPromo = draft == null ? null : draft == 'promo';
       final token = await store.read(PasienKeys.token);
       final cached = await store.read(PasienKeys.account);
       if (token == null || cached == null) {
@@ -129,18 +137,34 @@ class PasienSessionNotifier extends Notifier<PasienSession> {
     await ref.read(sessionStoreProvider).write(PasienKeys.onboarded, '1');
   }
 
-  /// Layar masuk mengenali nomor HP → kirim kode OTP WhatsApp. Melempar `AppError`.
-  Future<int> requestOtp(String phone) async {
-    final resendIn = await _api.requestOtp(phone);
-    state = state.copyWith(phase: PasienPhase.otp, phone: phone);
-    return resendIn;
-  }
+  /// Masuk dengan nomor HP + password. Melempar `AppError`.
+  Future<void> login(String phone, String password) async =>
+      _start(await _api.login(phone, password));
 
-  Future<int> resendOtp() => _api.requestOtp(state.phone);
+  /// Kirim kode OTP WhatsApp untuk daftar (`register`) atau lupa password (`reset_password`).
+  Future<int> requestOtp(String phone, String purpose) =>
+      _api.requestOtp(phone, purpose: purpose);
 
-  /// Verifikasi kode → akun pasien; tahap berikut: hubungkan data / persetujuan / siap.
-  Future<void> verify(String code) async {
-    final (token, refresh, account) = await _api.verifyOtp(state.phone, code);
+  /// Cek kode OTP lebih dulu → token verifikasi untuk langkah buat password.
+  Future<String> verifyCode(String phone, String purpose, String code) =>
+      _api.verifyCode(phone, purpose, code);
+
+  /// Daftar akun: token verifikasi + password → masuk; tahap berikut: hubungkan data / persetujuan / siap.
+  Future<void> register(
+    String phone,
+    String verification,
+    String password,
+  ) async => _start(await _api.register(phone, verification, password));
+
+  /// Lupa password: token verifikasi + password baru (belum masuk; lanjut masuk dengan password baru).
+  Future<void> resetPassword(
+    String phone,
+    String verification,
+    String password,
+  ) => _api.resetPassword(phone, verification, password);
+
+  Future<void> _start((String, String, PasienAccount) r) async {
+    final (token, refresh, account) = r;
     ref.read(pasienTokenProvider.notifier).set(token);
     await ref.read(sessionStoreProvider).write(PasienKeys.refresh, refresh);
     await _save(token, account);
@@ -160,19 +184,49 @@ class PasienSessionNotifier extends Notifier<PasienSession> {
     return true;
   }
 
-  /// "Ubah nomor" / kembali dari layar kode → layar masuk.
-  void backToLogin() => state = const PasienSession(phase: PasienPhase.otp);
-
   Future<LinkCandidates> linkCandidates() => _api.linkCandidates();
 
-  Future<void> link({String? patientId, required DateTime birthDate}) async =>
-      _apply(await _api.link(patientId: patientId, birthDate: birthDate));
+  /// Hubungkan ke data lama → kirim persetujuan yang sudah diberikan sesudah buat password.
+  Future<void> link({String? patientId, required DateTime birthDate}) async {
+    await _api.link(patientId: patientId, birthDate: birthDate);
+    await _flushConsent();
+  }
 
-  Future<void> register(PatientDraft draft) async =>
-      _apply(await _api.register(draft));
+  /// Data diri pasien baru (persetujuan ikut terkirim bersama data diri).
+  Future<void> registerPatient(PatientDraft draft) async {
+    final account = await _api.registerPatient(
+      draft,
+      promo: _consentPromo ?? false,
+    );
+    await _clearConsentDraft();
+    _apply(account);
+  }
 
-  Future<void> consent({required bool promo}) async =>
+  /// Layar Persetujuan: akun sudah terhubung → kirim langsung; belum → simpan dulu, lanjut hubungkan data.
+  Future<void> consent({required bool promo}) async {
+    final account = state.account;
+    if (account?.patient != null) {
       _apply(await _api.consent(promo: promo));
+      await _clearConsentDraft();
+      return;
+    }
+    _consentPromo = promo;
+    await ref
+        .read(sessionStoreProvider)
+        .write(PasienKeys.consentDraft, promo ? 'promo' : 'nopromo');
+    if (account != null) _apply(account);
+  }
+
+  Future<void> _flushConsent() async {
+    final promo = _consentPromo;
+    _apply(promo == null ? await _api.me() : await _api.consent(promo: promo));
+    await _clearConsentDraft();
+  }
+
+  Future<void> _clearConsentDraft() async {
+    _consentPromo = null;
+    await ref.read(sessionStoreProvider).delete(PasienKeys.consentDraft);
+  }
 
   Future<void> refresh() async {
     try {
@@ -204,6 +258,8 @@ class PasienSessionNotifier extends Notifier<PasienSession> {
     await store.delete(PasienKeys.token);
     await store.delete(PasienKeys.refresh);
     await store.delete(PasienKeys.account);
+    await store.delete(PasienKeys.consentDraft);
+    _consentPromo = null;
     state = const PasienSession(phase: PasienPhase.otp);
   }
 }

@@ -46,11 +46,14 @@ void main() {
     await t.pump();
     expect(find.text('Isi nomor HP atau username.'), findsOneWidget);
 
-    // Nomor HP dikenali sebagai pasien: tanpa kolom password.
+    // Nomor HP dikenali sebagai pasien.
     await t.enterText(find.byType(TextFormField).at(0), '0812 3456 7890');
-    await t.pump();
-    expect(find.text('Kirim kode lewat WhatsApp'), findsOneWidget);
-    expect(find.text('Password'), findsNothing);
+    await settle(t);
+    // Pasien juga masuk dengan password; belum punya akun → Daftar.
+    expect(find.text('Kirim kode lewat WhatsApp'), findsNothing);
+    expect(find.text('Password'), findsWidgets);
+    expect(find.text('Pasien belum punya akun? Daftar'), findsOneWidget);
+    expect(find.text('Ingat perangkat ini'), findsNothing);
 
     // Username dikenali sebagai staf: kolom password muncul.
     await t.enterText(find.byType(TextFormField).at(0), 'sinta.kasir');
@@ -85,7 +88,7 @@ void main() {
     }
     expect(find.text('Ringkasan'), findsNothing);
     expect(
-      find.bySemanticsLabel('Pasien baru atau tampilkan QR intake'),
+      find.bySemanticsLabel('Tambah pasien baru'),
       findsOneWidget,
     );
 

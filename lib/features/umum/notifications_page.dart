@@ -73,7 +73,15 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
       setState(() {
         final i = _items.indexOf(n);
         if (i >= 0) {
-          _items[i] = NotificationV(id: n.id, type: n.type, title: n.title, body: n.body, createdAt: n.createdAt, deepLink: n.deepLink, readAt: DateTime.now());
+          _items[i] = NotificationV(
+            id: n.id,
+            type: n.type,
+            title: n.title,
+            body: n.body,
+            createdAt: n.createdAt,
+            deepLink: n.deepLink,
+            readAt: DateTime.now(),
+          );
         }
       });
     }
@@ -87,7 +95,14 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
     final t = context.olText;
     return OlDetailScaffold(
       title: 'Notifikasi',
-      actions: [OlIconButton(icon: OlIcons.check, semanticLabel: 'Tandai semua dibaca', onPressed: _readAll)],
+      onRefresh: () => _load(reset: true),
+      actions: [
+        OlIconButton(
+          icon: OlIcons.check,
+          semanticLabel: 'Tandai semua dibaca',
+          onPressed: _readAll,
+        ),
+      ],
       children: [
         OlSegmented<bool>(
           segments: const {false: 'Semua', true: 'Belum dibaca'},
@@ -98,11 +113,22 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
           },
         ),
         if (_error != null && _items.isEmpty)
-          OlErrorCard(message: _error is AppError ? (_error as AppError).message : 'Notifikasi belum bisa dimuat.', onRetry: () => _load(reset: true))
+          OlErrorCard(
+            message: _error is AppError
+                ? (_error as AppError).message
+                : 'Notifikasi belum bisa dimuat.',
+            onRetry: () => _load(reset: true),
+          )
         else if (_items.isEmpty && _loading)
           const OlLoadingCard()
         else if (_items.isEmpty)
-          const OlCard(child: EmptyState(illustration: OlIllustration.emptyInbox, title: 'Tidak ada notifikasi', message: 'Kabar penting untukmu muncul di sini.'))
+          const OlCard(
+            child: EmptyState(
+              illustration: OlIllustration.emptyInbox,
+              title: 'Tidak ada notifikasi',
+              message: 'Kabar penting untukmu muncul di sini.',
+            ),
+          )
         else
           OlCard(
             padding: const EdgeInsets.symmetric(horizontal: OlSpace.lg),
@@ -113,18 +139,34 @@ class _NotificationsPageState extends ConsumerState<NotificationsPage> {
                     leading: Container(
                       width: 8,
                       height: 8,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: n.unread ? c.brand : Colors.transparent),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: n.unread ? c.brand : Colors.transparent,
+                      ),
                     ),
                     title: n.title,
-                    subtitle: [if (n.body.isNotEmpty) n.body, '${Fmt.dayShort(n.createdAt)} ${Fmt.time(n.createdAt)}'].join(' · '),
+                    subtitle: [
+                      if (n.body.isNotEmpty) n.body,
+                      '${Fmt.dayShort(n.createdAt)} ${Fmt.time(n.createdAt)}',
+                    ].join(' · '),
                     divider: i < _items.length - 1,
                     onTap: () => _open(n),
                   ),
               ],
             ),
           ),
-        if (_more && _items.isNotEmpty) OlButton.text(label: 'Muat lagi', loading: _loading, onPressed: _load, expand: true),
-        if (_items.isNotEmpty) Text('Notifikasi lebih dari 90 hari dihapus otomatis.', style: t.caption.copyWith(color: c.muted)),
+        if (_more && _items.isNotEmpty)
+          OlButton.text(
+            label: 'Muat lagi',
+            loading: _loading,
+            onPressed: _load,
+            expand: true,
+          ),
+        if (_items.isNotEmpty)
+          Text(
+            'Notifikasi lebih dari 90 hari dihapus otomatis.',
+            style: t.caption.copyWith(color: c.muted),
+          ),
       ],
     );
   }
@@ -145,7 +187,9 @@ String? _route(String? link, Role? role) {
     ('invoices', Role.kasir) when id != null => Routes.kasirTagihan(id),
     ('transfers', Role.kasir) => Routes.kasirVerifikasiTransfer,
     ('sessions', Role.terapis) when id != null => Routes.terapisSesi(id),
-    ('patients', Role.terapis) when id != null => Routes.terapisPasienDetail(id),
+    ('patients', Role.terapis) when id != null => Routes.terapisPasienDetail(
+      id,
+    ),
     ('patients', Role.kasir) when id != null => Routes.kasirPasienDetail(id),
     ('commissions', Role.terapis) => Routes.terapisKomisi,
     _ => null,

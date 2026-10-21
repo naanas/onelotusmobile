@@ -112,11 +112,6 @@ class ProfilPage extends ConsumerWidget {
             onTap: () => context.push(PRoutes.alamat),
           ),
           OlListItem(
-            title: 'Persetujuan data',
-            showChevron: true,
-            onTap: () => context.push(PRoutes.kebijakan),
-          ),
-          OlListItem(
             title: 'Bantuan & kontak klinik',
             showChevron: true,
             onTap: () => context.feedback.sheet<void>(

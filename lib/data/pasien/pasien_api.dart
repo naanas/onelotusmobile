@@ -19,9 +19,10 @@ class PasienApi {
   String _phone = '';
 
   /// Kirim kode OTP WhatsApp → detik sampai boleh kirim ulang.
-  Future<int> requestOtp(String phone) async {
+  /// [purpose]: `register` (daftar akun) atau `reset_password` (lupa password).
+  Future<int> requestOtp(String phone, {String purpose = 'register'}) async {
     try {
-      await api.post('/v1/auth/patient/otp', {'phone': phone, 'purpose': 'patient_login'}, (_) {});
+      await api.post('/v1/auth/patient/otp', {'phone': phone, 'purpose': purpose}, (_) {});
       return 60;
     } on AppError catch (e) {
       // Kode masih berlaku: tampilkan sisa waktu kirim ulang.
@@ -32,14 +33,40 @@ class PasienApi {
     }
   }
 
-  /// Verifikasi kode → (access token, refresh token, akun).
-  Future<(String token, String refresh, PasienAccount account)> verifyOtp(String phone, String code) async {
-    final m = await api.post('/v1/auth/patient/verify', {
-      'phone': phone,
-      'code': code,
-      'device_id': await deviceId(),
-      'platform': 'android',
-    }, asMap);
+  /// Cek kode OTP (daftar / lupa password) → token verifikasi (berlaku 15 menit). Kode hangus setelah benar.
+  Future<String> verifyCode(String phone, String purpose, String code) => api.post(
+    '/v1/auth/patient/otp/verify',
+    {'phone': phone, 'purpose': purpose, 'code': code},
+    (d) => asMap(d)['verification_token'] as String,
+  );
+
+  /// Daftar akun: token verifikasi (purpose=register) + password baru → token + akun.
+  Future<(String token, String refresh, PasienAccount account)> register(String phone, String verification, String password) async =>
+      _session(phone, await api.post('/v1/auth/patient/register', {
+        'phone': phone,
+        'verification_token': verification,
+        'password': password,
+        'device_id': await deviceId(),
+        'platform': 'android',
+      }, asMap));
+
+  /// Masuk: nomor HP + password → token + akun.
+  Future<(String token, String refresh, PasienAccount account)> login(String phone, String password) async =>
+      _session(phone, await api.post('/v1/auth/patient/login', {
+        'phone': phone,
+        'password': password,
+        'device_id': await deviceId(),
+        'platform': 'android',
+      }, asMap));
+
+  /// Lupa password: token verifikasi (purpose=reset_password) + password baru. Sesi lain dicabut.
+  Future<void> resetPassword(String phone, String verification, String password) => api.post(
+    '/v1/auth/patient/password/reset',
+    {'phone': phone, 'verification_token': verification, 'password': password},
+    (_) {},
+  );
+
+  Future<(String, String, PasienAccount)> _session(String phone, Map<String, dynamic> m) async {
     final tokens = asMap(m['tokens']);
     final access = tokens['access_token'] as String;
     _phone = phone;
@@ -107,10 +134,16 @@ class PasienApi {
     return me();
   }
 
-  Future<PasienAccount> register(PatientDraft draft) async {
+  /// Data diri pasien baru (akun belum terhubung ke data klinik).
+  Future<PasienAccount> registerPatient(PatientDraft draft, {bool promo = false}) async {
     await api.post('/v1/patient/register', {
       ...V1.patientInput(draft),
-      'consent': {'policy_version': V1.policyVersion.isEmpty ? 'app' : V1.policyVersion, 'health_data': true, 'reminders': true},
+      'consent': {
+        'policy_version': V1.policyVersion.isEmpty ? 'app' : V1.policyVersion,
+        'health_data': true,
+        'reminders': true,
+        'promo': promo,
+      },
     }, (_) {});
     return me();
   }

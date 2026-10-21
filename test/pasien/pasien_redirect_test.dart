@@ -11,14 +11,13 @@ void main() {
       pasienRedirect(PasienPhase.onboarding, PRoutes.beranda),
       PRoutes.onboarding,
     );
-    expect(pasienRedirect(PasienPhase.otp, PRoutes.onboarding), PRoutes.masuk);
-    expect(pasienRedirect(PasienPhase.link, PRoutes.masuk), PRoutes.hubungkan);
+    expect(pasienRedirect(PasienPhase.otp, PRoutes.onboarding), Routes.login);
+    expect(pasienRedirect(PasienPhase.link, PRoutes.daftar), PRoutes.hubungkan);
     expect(
       pasienRedirect(PasienPhase.consent, PRoutes.profil),
       PRoutes.persetujuan,
     );
-    expect(pasienRedirect(PasienPhase.otp, PRoutes.masuk), isNull);
-    expect(pasienRedirect(PasienPhase.ready, PRoutes.masuk), PRoutes.beranda);
+    expect(pasienRedirect(PasienPhase.ready, PRoutes.daftar), PRoutes.beranda);
     expect(pasienRedirect(PasienPhase.ready, PRoutes.poin), isNull);
   });
 
@@ -37,14 +36,14 @@ void main() {
       expect(appRedirect(out, p, Routes.splash), Routes.login);
       expect(appRedirect(out, p, Routes.login), isNull);
       expect(appRedirect(out, p, Routes.forgotPassword), isNull);
-      expect(appRedirect(out, p, PRoutes.masuk), Routes.login);
       expect(appRedirect(out, p, Routes.kasirAntrian), Routes.login);
+      expect(appRedirect(out, p, PRoutes.beranda), Routes.login);
     });
 
-    test('nomor HP dikenali: ke layar kode', () {
-      const p = PasienSession(phase: PasienPhase.otp, phone: '0812 3456 7890');
-      expect(appRedirect(out, p, PRoutes.masuk), isNull);
-      expect(appRedirect(out, p, PRoutes.beranda), PRoutes.masuk);
+    test('daftar & lupa password pasien bisa dibuka sebelum masuk', () {
+      const p = PasienSession(phase: PasienPhase.otp);
+      expect(appRedirect(out, p, PRoutes.daftar), isNull);
+      expect(appRedirect(out, p, PRoutes.lupaPassword), isNull);
     });
 
     test('pasien siap: layar masuk & staf diarahkan ke beranda pasien', () {

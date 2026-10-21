@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../data/api/billing_api.dart';
 import '../../data/api/one_lotus_api.dart';
 import '../../data/auth/auth_controller.dart';
 import '../../data/models/models.dart';
@@ -12,11 +13,11 @@ import '../../ui/ui.dart';
 
 enum _Period { today, week, month }
 
-typedef _Data = ({List<Session> sessions, int approvals});
+typedef _Data = ({List<Session> sessions, int approvals, int bookings});
 
 /// OW-01 Ringkasan (tab Ringkasan owner): angka operasional dari jadwal cabang
-/// (`GET /v1/sessions`): sesi selesai, tidak datang, dibatalkan, booking menunggu, sesi per terapis,
-/// dan persetujuan tertunda. Omzet & retensi menunggu modul pembayaran/laporan.
+/// (`GET /v1/sessions`): sesi selesai, tidak datang, dibatalkan, sesi per terapis; booking menunggu
+/// (`GET /v1/bookings`) dan semua persetujuan tertunda. Omzet & retensi di tab Laporan.
 class RingkasanPage extends ConsumerStatefulWidget {
   const RingkasanPage({super.key});
 
@@ -48,12 +49,29 @@ class _RingkasanPageState extends ConsumerState<RingkasanPage> {
     final api = ref.read(oneLotusApiProvider);
     final branch = ref.read(authProvider).activeBranch!;
     final (from, to) = _range;
+    final billing = ref.read(billingApiProvider);
     final r = await (
       api.sessions(branchId: branch.id, from: from, to: to),
       api.leaves(status: 'pending'),
       api.passwordResets(),
+      billing
+          .bookings(status: 'pending', branchId: branch.id)
+          .then((b) => b.length, onError: (_) => 0),
+      Future.wait([
+        for (final t in const [
+          'refund',
+          'manual_discount',
+          'exercise_proposal',
+          'cash_difference',
+        ])
+          billing.approvals(t),
+      ]).then((l) => l.fold<int>(0, (n, x) => n + x.length), onError: (_) => 0),
     ).wait;
-    return (sessions: r.$1, approvals: r.$2.length + r.$3.length);
+    return (
+      sessions: r.$1,
+      approvals: r.$2.length + r.$3.length + r.$5,
+      bookings: r.$4,
+    );
   }
 
   Future<void> _more() async {
@@ -200,9 +218,7 @@ class _RingkasanPageState extends ConsumerState<RingkasanPage> {
             final cancelled = d.sessions
                 .where((s) => s.status == SessionStatus.cancelled)
                 .length;
-            final waiting = d.sessions
-                .where((s) => s.status == SessionStatus.awaitingConfirmation)
-                .length;
+            final waiting = d.bookings;
             final perTherapist = <String, int>{};
             for (final s in done) {
               perTherapist[s.therapistName] =

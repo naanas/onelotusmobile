@@ -77,7 +77,8 @@ AppError mapDioError(DioException e) {
     401 => ErrorCode.authExpired,
     403 => ErrorCode.forbidden,
     404 => ErrorCode.notFound,
-    409 => ErrorCode.editConflict,
+    // 409 lain (invalid_transition, batas waktu, dll.) bukan bentrok edit: tampilkan pesan server.
+    409 => ErrorCode.unknown,
     422 => ErrorCode.validation,
     429 => ErrorCode.rateLimited,
     >= 500 => ErrorCode.serverError,

@@ -374,7 +374,7 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
     try {
       await ref
           .read(pasienSessionProvider.notifier)
-          .register(
+          .registerPatient(
             PatientDraft(
               name: _name.text.trim(),
               birthDate: _birth!,

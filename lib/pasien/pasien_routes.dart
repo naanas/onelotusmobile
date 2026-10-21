@@ -1,7 +1,9 @@
 /// Rute bagian pasien (ID layar = Lampiran A, PS-*). Semua berawalan `/pasien/`.
 abstract final class PRoutes {
   static const onboarding = '/pasien/onboarding'; // PS-01
-  static const masuk = '/pasien/masuk'; // PS-02
+  static const daftar = '/pasien/daftar'; // PS-02 daftar akun (OTP + password)
+  static const lupaPassword =
+      '/pasien/lupa-password'; // PS-02 lupa password (OTP + password baru)
   static const hubungkan = '/pasien/hubungkan'; // PS-03
   static const persetujuan = '/pasien/persetujuan'; // PS-04
 
@@ -23,11 +25,20 @@ abstract final class PRoutes {
   static const notifikasi = '/pasien/notifikasi'; // PS-17
   static const alamat = '/pasien/alamat'; // PS-19
   static const hapusAkun = '/pasien/hapus-akun'; // PS-20
-  static const kebijakan = '/pasien/persetujuan-data'; // PS-04 dari Profil
 
   static const prefix = '/pasien/';
   static bool isPasien(String location) => location.startsWith(prefix);
 
-  static const _entry = {onboarding, masuk, hubungkan, persetujuan};
+  static const _entry = {
+    onboarding,
+    daftar,
+    lupaPassword,
+    hubungkan,
+    persetujuan,
+  };
+
+  /// Bisa dibuka sebelum masuk (dari layar masuk bersama).
+  static bool isPublic(String location) =>
+      location == daftar || location == lupaPassword;
   static bool isEntry(String location) => _entry.contains(location);
 }

@@ -177,6 +177,7 @@ class _PindahMassalPageState extends ConsumerState<PindahMassalPage> {
     final name = ts?.where((x) => x.id == _therapistId).firstOrNull?.name;
 
     return OlDetailScaffold(
+      onRefresh: _load,
       title: moves == null
           ? 'Pindah sesi massal'
           : 'Pindahkan ${moves.length} sesi',

@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 
 import '../../core/config.dart';
 import '../../core/format.dart';
+import '../../core/http_log.dart';
 import '../../ui/feedback/app_error.dart';
 import 'api_error_mapper.dart';
 
@@ -59,6 +60,7 @@ class ApiClient {
         },
       ),
     );
+    HttpLog.attach(this.dio);
   }
 
   final Dio dio;
@@ -92,7 +94,7 @@ class ApiClient {
       return parse(res.data);
     } on DioException catch (e) {
       var err = mapDioError(e);
-      if (err.type == ErrorCode.authExpired && await _refreshOnce()) {
+      if (_sessionExpired(err) && await _refreshOnce()) {
         try {
           final res = await call();
           return parse(res.data);
@@ -100,10 +102,14 @@ class ApiClient {
           err = mapDioError(e2);
         }
       }
-      if (err.type == ErrorCode.authExpired) onUnauthorized?.call();
+      if (_sessionExpired(err)) onUnauthorized?.call();
       throw err;
     }
   }
+
+  /// 401 karena sesi habis. `auth_invalid` (username/password atau kode salah saat masuk) juga 401,
+  /// tapi bukan sesi habis: jangan refresh / keluarkan pengguna — biarkan layar masuk menampilkan pesannya.
+  static bool _sessionExpired(AppError err) => err.type == ErrorCode.authExpired && err.apiCode != 'auth_invalid';
 
   /// Respons sukses dibungkus `{ data: ... }`.
   static dynamic unwrap(dynamic body) =>

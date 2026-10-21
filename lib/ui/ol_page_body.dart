@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
+import 'ol_refresh.dart';
 
 /// Isi halaman tab: header ikut tergulir bersama konten, latar `bg` yang sama di semua tab.
 /// Dengan [heroOverlap], konten pertama menumpuk 56dp ke dalam header hero (D.5).
@@ -14,11 +15,15 @@ class OlPageBody extends StatefulWidget {
     required this.header,
     required this.children,
     this.heroOverlap = false,
+    this.onRefresh,
   });
 
   final Widget header;
   final List<Widget> children;
   final bool heroOverlap;
+
+  /// Muat ulang tambahan saat layar ditarik (selain [OlAsync] di dalamnya yang otomatis).
+  final Future<void> Function()? onRefresh;
 
   static const overlap = 56.0;
 
@@ -75,6 +80,7 @@ class _OlPageBodyState extends State<OlPageBody> {
 
     final list = ListView(
       controller: _scroll,
+      physics: olRefreshPhysics,
       padding: const EdgeInsets.only(bottom: 24),
       children: [
         KeyedSubtree(key: _headerKey, child: widget.header),
@@ -92,7 +98,7 @@ class _OlPageBodyState extends State<OlPageBody> {
       color: c.bg,
       child: Stack(
         children: [
-          list,
+          OlRefreshable(onRefresh: widget.onRefresh, child: list),
           Positioned(
             top: 0,
             left: 0,

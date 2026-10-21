@@ -6,33 +6,24 @@ import '../../ui/ui.dart';
 import '../pasien_session.dart';
 
 /// PS-04 Persetujuan data (§10): ringkasan kebijakan + persetujuan wajib/opsional.
-/// [review] = dibuka ulang dari Profil (bisa ubah promo, tanpa lanjut ke beranda).
 class PersetujuanPage extends ConsumerStatefulWidget {
-  const PersetujuanPage({super.key, this.review = false});
-
-  final bool review;
+  const PersetujuanPage({super.key});
 
   @override
   ConsumerState<PersetujuanPage> createState() => _PersetujuanPageState();
 }
 
 class _PersetujuanPageState extends ConsumerState<PersetujuanPage> {
-  late bool _health = widget.review;
-  late bool _reminder = widget.review;
-  late bool _promo = widget.review
-      ? ref.read(pasienSessionProvider).promoConsent
-      : false;
+  bool _health = false;
+  bool _reminder = false;
+  bool _promo = false;
   bool _busy = false;
 
   Future<void> _save() async {
     setState(() => _busy = true);
     try {
+      // Router lanjut ke Hubungkan data / isi data diri (atau Beranda bila data sudah terhubung).
       await ref.read(pasienSessionProvider.notifier).consent(promo: _promo);
-      if (!mounted) return;
-      if (widget.review) {
-        context.feedback.success('Persetujuan disimpan.');
-        Navigator.of(context).maybePop();
-      }
     } on AppError catch (e) {
       if (mounted) context.feedback.error(e, retry: _save);
     } finally {
@@ -63,11 +54,11 @@ class _PersetujuanPageState extends ConsumerState<PersetujuanPage> {
 
     return OlDetailScaffold(
       title: 'Data Anda, kendali Anda',
-      showBack: widget.review,
-      background: widget.review ? null : c.surface,
+      showBack: false,
+      background: c.surface,
       foot: [
         OlButton(
-          label: widget.review ? 'Simpan' : 'Setuju & lanjutkan',
+          label: 'Setuju & lanjutkan',
           loading: _busy,
           onPressed: _health && _reminder && !_busy ? _save : null,
         ),
@@ -122,7 +113,6 @@ class _PersetujuanPageState extends ConsumerState<PersetujuanPage> {
           _health,
           (v) => setState(() => _health = v),
           required: true,
-          locked: widget.review,
         ),
         item(
           'Pengingat jadwal via WhatsApp',
@@ -130,19 +120,13 @@ class _PersetujuanPageState extends ConsumerState<PersetujuanPage> {
           _reminder,
           (v) => setState(() => _reminder = v),
           required: true,
-          locked: widget.review,
         ),
         item(
           'Info promo & tips kesehatan',
-          'Opsional · bisa diubah di Profil',
+          'Opsional · bisa diubah di Profil → Notifikasi',
           _promo,
           (v) => setState(() => _promo = v),
         ),
-        if (widget.review)
-          Text(
-            'Untuk mencabut persetujuan data kesehatan, ajukan hapus akun dari Profil.',
-            style: t.body.copyWith(fontSize: 14, color: c.muted),
-          ),
       ],
     );
   }

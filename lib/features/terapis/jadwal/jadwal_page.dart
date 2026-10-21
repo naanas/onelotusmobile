@@ -218,11 +218,12 @@ class _JadwalPageState extends ConsumerState<JadwalPage> {
       },
     ];
 
-    return RefreshIndicator(
-      color: context.ol.brand,
+    return OlPageBody(
+      heroOverlap: true,
+      header: header,
       onRefresh: () =>
           ref.read(therapistScheduleProvider(day).notifier).refresh(),
-      child: OlPageBody(heroOverlap: true, header: header, children: children),
+      children: children,
     );
   }
 

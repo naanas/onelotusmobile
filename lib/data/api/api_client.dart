@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
@@ -184,6 +185,27 @@ class ApiClient {
   }) => _send(
     () =>
         dio.patch<dynamic>(path, data: body, options: Options(headers: headers)),
+    (d) => parse(unwrap(d)),
+  );
+
+  /// Isi file mentah (lampiran). Server mendekripsi setelah cek login & hak akses; tidak ada URL storage.
+  Future<Uint8List> getBytes(String path) => _send(
+    () => dio.get<List<int>>(path, options: Options(responseType: ResponseType.bytes)),
+    (d) => d is Uint8List ? d : Uint8List.fromList(d as List<int>),
+  );
+
+  /// Kirim isi file mentah (server mengenkripsi sebelum menyimpan).
+  Future<T> putBytes<T>(
+    String path,
+    List<int> bytes,
+    String mime,
+    T Function(dynamic data) parse,
+  ) => _send(
+    () => dio.put<dynamic>(
+      path,
+      data: Stream.fromIterable([bytes]),
+      options: Options(headers: {'Content-Type': mime, Headers.contentLengthHeader: bytes.length}),
+    ),
     (d) => parse(unwrap(d)),
   );
 

@@ -23,7 +23,11 @@ abstract final class HttpLog {
           printResponseTime: true,
           hiddenHeaders: const {'authorization'},
           // Isi request masuk/daftar memuat password: tidak dicatat (respons tetap tercatat).
-          requestFilter: (o) => !o.path.startsWith('/v1/auth/'),
+          // Isi file lampiran (rontgen dll.) tidak pernah dicatat.
+          requestFilter: (o) =>
+              !o.path.startsWith('/v1/auth/') && !o.path.endsWith('/content'),
+          responseFilter: (r) =>
+              r.requestOptions.responseType != ResponseType.bytes,
         ),
       ),
     );
@@ -53,7 +57,10 @@ class _HttpLogButtonState extends State<HttpLogButton> {
       child: GestureDetector(
         onPanUpdate: (d) => setState(() {
           final p = pos + d.delta;
-          _pos = Offset(p.dx.clamp(0, size.width - 52), p.dy.clamp(0, size.height - 52));
+          _pos = Offset(
+            p.dx.clamp(0, size.width - 52),
+            p.dy.clamp(0, size.height - 52),
+          );
         }),
         child: Material(
           color: const Color(0xCC111827),
@@ -61,12 +68,24 @@ class _HttpLogButtonState extends State<HttpLogButton> {
           child: InkWell(
             customBorder: const CircleBorder(),
             onTap: () => widget.navigatorKey.currentState?.push(
-              MaterialPageRoute<void>(builder: (_) => TalkerScreen(talker: HttpLog.talker, appBarTitle: 'Log HTTP')),
+              MaterialPageRoute<void>(
+                builder: (_) => TalkerScreen(
+                  talker: HttpLog.talker,
+                  appBarTitle: 'Log HTTP',
+                ),
+              ),
             ),
             child: const SizedBox.square(
               dimension: 52,
               child: Center(
-                child: Text('HTTP', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700)),
+                child: Text(
+                  'HTTP',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
           ),

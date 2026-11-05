@@ -1,6 +1,6 @@
 import 'dart:math';
+import 'dart:typed_data';
 
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/billing.dart';
@@ -72,7 +72,11 @@ class BillingApi {
       api.get('/v1/payments', (d) => parseList(d, PaymentV.fromJson), query: {'status': 'awaiting_verification'});
 
   /// Signed URL foto bukti transfer (5 menit).
-  Future<String> transferProof(String paymentId) => api.get('/v1/payments/$paymentId/proof', (d) => asMap(d)['url'] as String);
+  /// Foto bukti transfer: alamat API isi lampiran → unduh isinya (tanpa URL storage).
+  Future<Uint8List> transferProof(String paymentId) async {
+    final path = await api.get('/v1/payments/$paymentId/proof', (d) => asMap(d)['url'] as String);
+    return api.getBytes(path);
+  }
 
   Future<PaymentResult> verify(String paymentId, {required bool approve, String? reason}) => api.post(
     '/v1/payments/$paymentId/verify',
@@ -89,7 +93,7 @@ class BillingApi {
     query: {'code': code, 'invoice_id': invoiceId},
   );
 
-  /// Unggah file (§12): tiket → PUT ke Storage → complete. Hasil: id lampiran.
+  /// Unggah file (§12): tiket → PUT isi ke API (server mengenkripsi, AES-256-GCM) → complete. Hasil: id lampiran.
   Future<String> upload({required String ownerType, required String ownerId, required String kind, required String mime, required List<int> bytes}) async {
     final t = await api.post('/v1/uploads', {
       'owner_type': ownerType,
@@ -99,14 +103,13 @@ class BillingApi {
       'size_bytes': bytes.length,
     }, asMap, headers: _idem());
     final id = t['attachment_id'].toString();
-    await Dio().put<void>(
-      t['upload_url'] as String,
-      data: Stream.fromIterable([bytes]),
-      options: Options(headers: {'Content-Type': mime, Headers.contentLengthHeader: bytes.length}),
-    );
+    await api.putBytes(t['upload_url'] as String? ?? '/v1/uploads/$id/content', bytes, mime, (_) {});
     await api.post('/v1/uploads/$id/complete', null, (_) {});
     return id;
   }
+
+  /// Isi lampiran (didekripsi server; tiap buka dicatat di audit log).
+  Future<Uint8List> attachment(String id) => api.getBytes('/v1/attachments/$id/content');
 
   // ── struk, refund, piutang ──────────────────────────────────────────────
 

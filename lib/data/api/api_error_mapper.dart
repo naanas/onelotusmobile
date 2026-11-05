@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import '../../ui/feedback/app_error.dart';
@@ -6,9 +8,7 @@ import '../../ui/feedback/app_error.dart';
 /// One Lotus API v1 mengembalikan `{ "error": { code, message, fields: {field: pesan}, details, ref } }`.
 AppError mapDioError(DioException e) {
   final res = e.response;
-  final raw = res?.data is Map
-      ? (res!.data as Map).cast<String, dynamic>()
-      : const <String, dynamic>{};
+  final raw = _body(res?.data);
   final body = raw['error'] is Map
       ? (raw['error'] as Map).cast<String, dynamic>()
       : const <String, dynamic>{};
@@ -94,12 +94,25 @@ AppError mapDioError(DioException e) {
   );
 }
 
-Map<String, Object> _args(String code, Map<String, dynamic> d) => switch (code) {
-  'checkin_out_of_range' => {
-    if (d['distance_m'] != null) 'jarak': '${d['distance_m']} m',
-  },
-  _ => const {},
-};
+/// Respons error berbentuk JSON; untuk permintaan file (ResponseType.bytes) masih berupa byte.
+Map<String, dynamic> _body(Object? data) {
+  if (data is List<int>) {
+    try {
+      data = jsonDecode(utf8.decode(data));
+    } on FormatException {
+      return const {};
+    }
+  }
+  return data is Map ? data.cast<String, dynamic>() : const {};
+}
+
+Map<String, Object> _args(String code, Map<String, dynamic> d) =>
+    switch (code) {
+      'checkin_out_of_range' => {
+        if (d['distance_m'] != null) 'jarak': '${d['distance_m']} m',
+      },
+      _ => const {},
+    };
 
 /// Error yang layak dicoba ulang otomatis oleh outbox (§8.2).
 bool isRetryable(AppError e) => switch (e.type) {

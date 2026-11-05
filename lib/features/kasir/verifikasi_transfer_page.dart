@@ -22,13 +22,13 @@ class _VerifikasiTransferPageState extends ConsumerState<VerifikasiTransferPage>
   BillingApi get _api => ref.read(billingApiProvider);
 
   Future<void> _proof(PaymentV y) async {
-    final url = await runApi(context, () => _api.transferProof(y.id));
-    if (url == null || !mounted) return;
+    final bytes = await runApi(context, () => _api.transferProof(y.id));
+    if (bytes == null || !mounted) return;
     await context.feedback.sheet<void>(
       title: 'Bukti transfer',
       child: ClipRRect(
         borderRadius: BorderRadius.circular(OlRadius.input),
-        child: Image.network(url, fit: BoxFit.contain, errorBuilder: (_, _, _) => const Text('Gambar tidak bisa dimuat.')),
+        child: Image.memory(bytes, fit: BoxFit.contain, gaplessPlayback: true, errorBuilder: (_, _, _) => const Text('Gambar tidak bisa dimuat.')),
       ),
       actions: const [SheetAction('Tutup', null)],
     );

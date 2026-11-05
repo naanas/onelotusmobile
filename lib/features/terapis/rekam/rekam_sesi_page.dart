@@ -15,6 +15,7 @@ import '../../../router/routes.dart';
 import '../../../theme/app_theme.dart';
 import '../../../ui/body_map/body_map.dart';
 import '../../../ui/ui.dart';
+import 'lampiran_section.dart';
 
 /// TR-04 Rekam sesi (layar prioritas §5.2). Data sesi & peringatan medis dari server; isian
 /// dilanjutkan dari draf di HP, rekam yang sudah ada, atau diisi awal dari rekam terakhir pasien.
@@ -564,6 +565,11 @@ class _RekamSesiPageState extends ConsumerState<RekamSesiPage> {
                 onChanged: (_) => _touch(),
               ),
             ],
+          ),
+          LampiranSection(
+            key: ValueKey(_existing?.id),
+            sessionId: session.id,
+            initial: _existing?.attachments ?? const [],
           ),
         ],
       ),

@@ -236,6 +236,13 @@ void main() {
     );
     final saved = await sender.send(item(OutboxKinds.sessionRecordUpsert, record.toJson()));
     expect(saved, isNot(isA<SendError>()), reason: 'simpan rekam: $saved');
+    // Lampiran rontgen: isi dikirim ke API (dienkripsi server), dibuka lagi lewat API → sama persis.
+    final xray = List<int>.generate(4096, (i) => i * 7 % 256)..setRange(0, 8, [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]);
+    final attId = await terapis.billing.upload(ownerType: 'session', ownerId: walkIn.id, kind: 'xray', mime: 'image/png', bytes: xray);
+    expect(await terapis.billing.attachment(attId), xray);
+    expect(await owner.billing.attachment(attId), xray);
+    final rec = await terapis.client.get('/v1/sessions/${walkIn.id}/record', (d) => d as Map);
+    expect([for (final a in rec['attachments'] as List) (a as Map)['id']], contains(attId));
     final done = await sender.send(item(OutboxKinds.sessionStatus, {'status': 'done'}));
     expect(done, isNot(isA<SendError>()), reason: 'selesai sesi: $done');
 

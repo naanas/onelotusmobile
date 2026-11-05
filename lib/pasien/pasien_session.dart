@@ -85,13 +85,19 @@ class PasienSessionNotifier extends Notifier<PasienSession> {
   /// null = belum setuju; true/false = setuju, dengan/tanpa info promo.
   bool? _consentPromo;
 
+  /// Baru daftar: halaman Persetujuan selalu tampil sesudah buat password, walau akun langsung
+  /// terhubung ke data pasien yang pernah setuju.
+  bool _askConsent = false;
+
   /// Urutan: buat password → persetujuan → hubungkan data / isi data diri → siap.
-  PasienPhase _phaseOf(PasienAccount a) => switch (a.nextStep) {
-    PasienNextStep.link =>
-      _consentPromo == null ? PasienPhase.consent : PasienPhase.link,
-    PasienNextStep.consent => PasienPhase.consent,
-    PasienNextStep.ready => PasienPhase.ready,
-  };
+  PasienPhase _phaseOf(PasienAccount a) => _askConsent
+      ? PasienPhase.consent
+      : switch (a.nextStep) {
+          PasienNextStep.link =>
+            _consentPromo == null ? PasienPhase.consent : PasienPhase.link,
+          PasienNextStep.consent => PasienPhase.consent,
+          PasienNextStep.ready => PasienPhase.ready,
+        };
 
   Future<void> _restore() async {
     final store = ref.read(sessionStoreProvider);
@@ -154,7 +160,13 @@ class PasienSessionNotifier extends Notifier<PasienSession> {
     String phone,
     String verification,
     String password,
-  ) async => _start(await _api.register(phone, verification, password));
+  ) async {
+    final r = await _api.register(phone, verification, password);
+    // Draf persetujuan dari akun lain/lama di HP ini tidak berlaku untuk akun baru.
+    await _clearConsentDraft();
+    _askConsent = true;
+    await _start(r);
+  }
 
   /// Lupa password: token verifikasi + password baru (belum masuk; lanjut masuk dengan password baru).
   Future<void> resetPassword(
@@ -204,6 +216,7 @@ class PasienSessionNotifier extends Notifier<PasienSession> {
 
   /// Layar Persetujuan: akun sudah terhubung → kirim langsung; belum → simpan dulu, lanjut hubungkan data.
   Future<void> consent({required bool promo}) async {
+    _askConsent = false;
     final account = state.account;
     if (account?.patient != null) {
       _apply(await _api.consent(promo: promo));
@@ -260,6 +273,7 @@ class PasienSessionNotifier extends Notifier<PasienSession> {
     await store.delete(PasienKeys.account);
     await store.delete(PasienKeys.consentDraft);
     _consentPromo = null;
+    _askConsent = false;
     state = const PasienSession(phase: PasienPhase.otp);
   }
 }

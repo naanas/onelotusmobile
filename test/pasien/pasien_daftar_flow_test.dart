@@ -52,6 +52,8 @@ class _FakeServer implements HttpClientAdapter {
       case ('POST', '/v1/patient/consent'):
         consents.add(body);
         return _json(201, {'data': {}});
+      case ('GET', '/v1/patient/consent'):
+        return _json(200, {'data': _profile['consent']});
     }
     return _json(404, {'error': {'code': 'not_found', 'message': '${o.method} ${o.path}'}});
   }
@@ -97,5 +99,33 @@ void main() {
     expect(consent['health_data'], isTrue);
     expect(consent['promo'], isTrue);
     expect(await store.read(PasienKeys.consentDraft), isNull);
+  });
+
+  test('daftar ulang nomor yang langsung terhubung ke data pasien: persetujuan tetap ditanya', () async {
+    final server = _FakeServer()..linked = true;
+    final dio = Dio(BaseOptions(baseUrl: 'http://uji'))..httpClientAdapter = server;
+    final store = MemorySessionStore();
+    // Sisa draf persetujuan dari akun lain di HP ini.
+    await store.write(PasienKeys.consentDraft, 'promo');
+    final c = ProviderContainer(
+      overrides: [
+        sessionStoreProvider.overrideWithValue(store),
+        pasienApiProvider.overrideWith(
+          (ref) => PasienApi(ApiClient(baseUrl: 'http://uji', token: () => 'a', dio: dio), deviceId: () async => 'hp'),
+        ),
+      ],
+    );
+    addTearDown(c.dispose);
+    c.read(pasienSessionProvider);
+    await Future<void>.delayed(Duration.zero);
+    final session = c.read(pasienSessionProvider.notifier);
+
+    await session.register('081200000000', 'token-verifikasi', 'rahasia123');
+    expect(c.read(pasienSessionProvider).phase, PasienPhase.consent);
+    expect(await store.read(PasienKeys.consentDraft), isNull);
+
+    await session.consent(promo: false);
+    expect(server.consents.single['promo'], isFalse);
+    expect(c.read(pasienSessionProvider).phase, PasienPhase.ready);
   });
 }

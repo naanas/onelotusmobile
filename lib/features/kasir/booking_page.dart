@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/format.dart';
-import '../../data/api/one_lotus_api.dart';
+import '../../data/api/billing_api.dart';
 import '../../data/auth/auth_controller.dart';
 import '../../data/models/models.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import '../shared/slot_sheet.dart';
+import 'billing_common.dart';
 
-/// KS-07 Booking masuk: sesi berstatus Menunggu konfirmasi (31 hari ke depan).
-/// Terima (server memeriksa bentrok) · Usulkan jam lain (slot server) · Tolak (alasan wajib).
+/// KS-07 Booking masuk: booking dari aplikasi pasien / website (`GET /v1/bookings`).
+/// Terima → backend membuat sesi; Jam lain → pasien memilih di aplikasinya; Tolak → wajib alasan.
 class BookingPage extends ConsumerStatefulWidget {
   const BookingPage({super.key});
 
@@ -20,163 +21,193 @@ class BookingPage extends ConsumerStatefulWidget {
 
 class _BookingPageState extends ConsumerState<BookingPage> {
   int _gen = 0;
+  String _status = 'pending';
 
-  OneLotusApi get _api => ref.read(oneLotusApiProvider);
+  BillingApi get _api => ref.read(billingApiProvider);
 
-  Future<List<Session>> _load() async {
-    final branch = ref.read(authProvider).activeBranch!;
-    final day = DateUtils.dateOnly(DateTime.now());
-    final list = await _api.sessions(
-      branchId: branch.id,
-      from: day,
-      to: day.add(const Duration(days: 31)),
-    );
-    return [
-      for (final s in list)
-        if (s.status == SessionStatus.awaitingConfirmation) s,
-    ];
-  }
-
-  void _reload() => setState(() => _gen++);
-
-  Future<void> _run(Future<void> Function() f, String ok) async {
-    try {
-      await f();
-      if (!mounted) return;
-      context.feedback.success(ok);
-      _reload();
-    } on AppError catch (e) {
-      if (!mounted) return;
-      final msg = e.fieldErrors.values.expand((v) => v).firstOrNull;
-      msg != null ? context.feedback.info(msg) : context.feedback.error(e);
-    }
-  }
-
-  Future<void> _accept(Session s) => _run(
-    () => _api.setStatus(s.id, SessionStatus.scheduled),
-    'Booking ${s.patientName} diterima.',
+  Future<List<BookingReqV>> _load() => _api.bookings(
+    status: _status,
+    branchId: ref.read(authProvider).activeBranch?.id,
   );
 
-  Future<void> _reject(Session s) async {
+  Future<void> _done(Future<Object?> Function() action, String ok) async {
+    final r = await runApi(context, action);
+    if (r == null || !mounted) return;
+    context.feedback.success(ok);
+    setState(() => _gen++);
+  }
+
+  Future<void> _accept(BookingReqV b) => _done(
+    () => _api.acceptBooking(b.id),
+    'Booking ${b.displayName} diterima. Sesi masuk jadwal.',
+  );
+
+  Future<void> _reject(BookingReqV b) async {
     final r = await context.feedback.choose(
       ConfirmSpec(
-        title: 'Tolak booking ${s.patientName}?',
-        message: 'Booking dibatalkan dan alasannya tercatat.',
+        title: 'Tolak booking ${b.displayName}?',
+        message: 'Pasien diberi tahu beserta alasannya.',
         confirmLabel: 'Tolak booking',
         reasonLabel: 'Alasan',
       ),
     );
     if (!r.confirmed) return;
-    await _run(
-      () => _api.setStatus(s.id, SessionStatus.cancelled, reason: r.reason),
+    await _done(
+      () => _api.rejectBooking(b.id, r.reason ?? ''),
       'Booking ditolak.',
     );
   }
 
-  Future<void> _propose(Session s) async {
+  Future<void> _propose(BookingReqV b) async {
+    final branchId = b.branchId ?? ref.read(authProvider).activeBranch?.id;
+    if (branchId == null || b.serviceId == null) return;
     final slot = await pickSlot(
       context,
       title: 'Usulkan jam lain',
-      branchId: s.branchId,
-      serviceId: s.serviceId,
-      excludeSessionId: s.id,
+      branchId: branchId,
+      serviceId: b.serviceId!,
     );
     if (slot == null || !mounted) return;
-    await _run(() async {
-      await _api.updateSession(
-        s.id,
-        startAt: slot.startAt,
+    await _done(
+      () => _api.proposeBooking(
+        b.id,
+        slot.startAt,
         reason: 'Usulan jam lain dari front desk',
-      );
-      await _api.setStatus(s.id, SessionStatus.scheduled);
-    }, 'Dijadwalkan ${Fmt.dayShort(slot.startAt)} ${Fmt.time(slot.startAt)}.');
+      ),
+      'Usulan ${Fmt.dayShort(slot.startAt)} ${Fmt.time(slot.startAt)} dikirim ke pasien.',
+    );
   }
 
   @override
   Widget build(BuildContext context) => OlDetailScaffold(
     title: 'Booking masuk',
     children: [
-      OlAsync<List<Session>>(
-        key: ValueKey(_gen),
+      OlSegmented<String>(
+        segments: const {
+          'pending': 'Menunggu',
+          'proposed': 'Diusulkan',
+          'accepted': 'Diterima',
+        },
+        value: _status,
+        onChanged: (v) => setState(() => _status = v),
+      ),
+      OlAsync<List<BookingReqV>>(
+        key: ValueKey((_gen, _status)),
         load: _load,
         builder: (context, items, _) {
           final c = context.ol;
           final t = context.olText;
           if (items.isEmpty) {
-            return const [
+            return [
               OlCard(
                 child: EmptyState(
                   illustration: OlIllustration.emptyInbox,
-                  title: 'Tidak ada booking menunggu',
-                  message: 'Booking yang menunggu konfirmasi muncul di sini.',
+                  title: switch (_status) {
+                    'proposed' => 'Tidak ada usulan jam lain',
+                    'accepted' => 'Belum ada booking diterima',
+                    _ => 'Tidak ada booking menunggu',
+                  },
+                  message:
+                      'Booking dari aplikasi pasien dan website muncul di sini.',
                 ),
               ),
             ];
           }
           return [
-            Text('${items.length} menunggu konfirmasi', style: t.caption),
-            for (final s in items)
+            Text('${items.length} booking', style: t.caption),
+            for (final b in items)
               OlCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
                       children: [
-                        if (s.isNewPatient)
+                        OlTag(
+                          bookingSourceLabels[b.source] ?? b.source,
+                          tone: OlTagTone.muted,
+                        ),
+                        if (b.isNewPatient)
                           const OlTag('Pasien baru', tone: OlTagTone.outline),
-                        if (s.isHomeVisit) ...[
-                          const SizedBox(width: 6),
+                        if (b.homeVisit)
                           const OlTag('Home visit', tone: OlTagTone.warn),
-                        ],
+                        if (!b.slotStillFree)
+                          const OlTag(
+                            'Slot sudah terisi',
+                            tone: OlTagTone.crit,
+                          ),
+                        if (b.dpStatus != null)
+                          OlTag(
+                            'DP: ${invoiceStatusLabels[b.dpStatus] ?? b.dpStatus}',
+                            tone: OlTagTone.outline,
+                          ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      s.patientName,
+                      b.patientNumber == null
+                          ? b.displayName
+                          : '${b.displayName} · ${Fmt.patientNo(b.patientNumber!)}',
                       style: t.heading.copyWith(fontSize: 17),
                     ),
+                    if (b.isNewPatient && b.guestPhone != null)
+                      Text(
+                        b.guestPhone!,
+                        style: t.body.copyWith(color: c.muted),
+                      ),
                     const SizedBox(height: 4),
                     Text.rich(
                       TextSpan(
                         children: [
-                          TextSpan(text: '${s.serviceName} · '),
+                          TextSpan(text: '${b.serviceName} · '),
                           TextSpan(
                             text:
-                                '${Fmt.dayShort(s.startAt)} · ${Fmt.time(s.startAt)}',
+                                '${Fmt.dayShort(b.start.toLocal())} · ${Fmt.time(b.start.toLocal())}',
                             style: t.mono.copyWith(fontWeight: FontWeight.w700),
                           ),
-                          TextSpan(text: ' · ${s.therapistName}'),
+                          if (b.proposedStart != null)
+                            const TextSpan(text: ' (usulan)'),
                         ],
                       ),
                       style: t.body.copyWith(fontSize: 15),
                     ),
-                    if (s.note != null) ...[
+                    if (b.note != null && b.note!.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Text(
-                        '"${s.note}"',
+                        '"${b.note}"',
                         style: t.body.copyWith(color: c.muted),
                       ),
                     ],
-                    const SizedBox(height: 12),
-                    OlFootRow(
-                      children: [
-                        OlButton.secondary(
-                          label: 'Tolak',
-                          small: true,
-                          onPressed: () => _reject(s),
-                        ),
-                        OlButton.secondary(
-                          label: 'Jam lain',
-                          small: true,
-                          onPressed: () => _propose(s),
-                        ),
-                        OlButton(
-                          label: 'Terima',
-                          small: true,
-                          onPressed: () => _accept(s),
-                        ),
-                      ],
-                    ),
+                    if (b.createdAt != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'Masuk ${Fmt.dayShort(b.createdAt!.toLocal())} ${Fmt.time(b.createdAt!.toLocal())}',
+                        style: t.caption.copyWith(color: c.faint),
+                      ),
+                    ],
+                    if (b.status == 'pending') ...[
+                      const SizedBox(height: 12),
+                      OlFootRow(
+                        children: [
+                          OlButton.secondary(
+                            label: 'Tolak',
+                            small: true,
+                            onPressed: () => _reject(b),
+                          ),
+                          OlButton.secondary(
+                            label: 'Jam lain',
+                            small: true,
+                            onPressed: () => _propose(b),
+                          ),
+                          OlButton(
+                            label: 'Terima',
+                            small: true,
+                            onPressed: () => _accept(b),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

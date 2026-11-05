@@ -56,7 +56,9 @@ class _HomeVisitPageState extends ConsumerState<HomeVisitPage> {
       if (!mounted) return;
       HapticFeedback.lightImpact();
       context.feedback.success(ok);
-      setState(() => _future = _load());
+      setState(() {
+        _future = _load();
+      });
     } on AppError catch (e) {
       if (mounted) context.feedback.error(e);
     } finally {
@@ -92,40 +94,75 @@ class _HomeVisitPageState extends ConsumerState<HomeVisitPage> {
     setState(() => _busy = true);
     try {
       var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
-        if (mounted) context.feedback.error(const AppError(ErrorCode.permLocation));
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        if (mounted) {
+          context.feedback.error(const AppError(ErrorCode.permLocation));
+        }
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 20)),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 20),
+        ),
       );
       final api = ref.read(oneLotusApiProvider);
       try {
-        await api.homeVisitCheckIn(s.id, lat: pos.latitude, lng: pos.longitude, accuracy: pos.accuracy);
+        await api.homeVisitCheckIn(
+          s.id,
+          lat: pos.latitude,
+          lng: pos.longitude,
+          accuracy: pos.accuracy,
+        );
       } on AppError catch (e) {
         if (e.apiCode != 'checkin_out_of_range' || !mounted) rethrow;
         final r = await context.feedback.choose(
           ConfirmSpec(
             title: 'Di luar radius alamat',
-            message: 'Kamu ±${e.details['distance_m']} m dari alamat pasien. Tetap check-in? Alasan tercatat.',
+            message:
+                'Kamu ±${e.details['distance_m']} m dari alamat pasien. Tetap check-in? Alasan tercatat.',
             confirmLabel: 'Tetap check-in',
             danger: false,
             reasonLabel: 'Alasan',
           ),
         );
         if (!r.confirmed) return;
-        await api.homeVisitCheckIn(s.id, lat: pos.latitude, lng: pos.longitude, accuracy: pos.accuracy, manualReason: r.reason);
+        await api.homeVisitCheckIn(
+          s.id,
+          lat: pos.latitude,
+          lng: pos.longitude,
+          accuracy: pos.accuracy,
+          manualReason: r.reason,
+        );
       }
       if (!mounted) return;
-      await _status(s, SessionStatus.running, ok: 'Check-in tercatat ${Fmt.time(DateTime.now())}.');
+      await _status(
+        s,
+        SessionStatus.running,
+        ok: 'Check-in tercatat ${Fmt.time(DateTime.now())}.',
+      );
     } on AppError catch (e) {
       if (mounted) context.feedback.error(e);
     } catch (_) {
-      if (mounted) context.feedback.error(const AppError(ErrorCode.permLocation));
+      if (mounted) {
+        context.feedback.error(const AppError(ErrorCode.permLocation));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Tarik-untuk-memuat-ulang: data lama tetap tampil sampai data baru datang.
+  Future<void> _pullRefresh() {
+    final next = _load();
+    setState(() {
+      _future = next;
+    });
+    return next;
   }
 
   @override
@@ -136,13 +173,16 @@ class _HomeVisitPageState extends ConsumerState<HomeVisitPage> {
       if (v != null) return _page(context, v);
       final e = snap.error;
       return OlDetailScaffold(
+        onRefresh: _pullRefresh,
         title: 'Home visit',
         children: [
           if (e != null)
             OlErrorCard(
               message: e is AppError ? e.message : 'Data belum bisa dimuat.',
               refId: e is AppError ? e.refId : null,
-              onRetry: () => setState(() => _future = _load()),
+              onRetry: () => setState(() {
+                _future = _load();
+              }),
             )
           else
             const OlLoadingCard(),
@@ -161,6 +201,7 @@ class _HomeVisitPageState extends ConsumerState<HomeVisitPage> {
         s.status == SessionStatus.scheduled ||
         s.status == SessionStatus.arrived;
     return OlDetailScaffold(
+      onRefresh: _pullRefresh,
       title: s.patientName,
       actions: [
         OlTag('Home visit · ${Fmt.time(s.startAt)}', tone: OlTagTone.warn),

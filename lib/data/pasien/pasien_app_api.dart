@@ -194,6 +194,11 @@ class PasienAppApi {
 
   Future<void> deleteAddress(String id) => api.delete('/v1/patient/addresses/$id', (_) {});
 
+  // ── profil ──
+
+  /// Lengkapi / ubah data diri (dipakai form booking untuk isian yang masih kosong).
+  Future<void> updateProfile(Map<String, dynamic> body) => api.patch('/v1/patient/profile', body, (_) {});
+
   // ── notifikasi & preferensi ──
 
   Future<CursorPage<NotificationV>> notifications({String? cursor}) =>

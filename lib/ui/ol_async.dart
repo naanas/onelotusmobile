@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import 'feedback/app_error.dart';
 import 'ol_button.dart';
 import 'ol_card.dart';
+import 'ol_refresh.dart';
 import 'skeleton.dart';
 
 /// Memuat data dari server untuk satu layar: skeleton saat memuat, pesan error + "Coba lagi"
@@ -21,8 +22,34 @@ class OlAsync<T> extends StatefulWidget {
 
 class _OlAsyncState<T> extends State<OlAsync<T>> {
   late Future<T> _future = widget.load();
+  VoidCallback? _unregister;
 
-  void _reload() => setState(() => _future = widget.load());
+  void _reload() => setState(() {
+    _future = widget.load();
+  });
+
+  /// Tarik-untuk-memuat-ulang. FutureBuilder tetap menampilkan data lama selama menunggu
+  /// (tanpa kedip ke skeleton); indikator tarik berhenti saat future ini selesai.
+  Future<void> _pull() {
+    final next = widget.load();
+    setState(() {
+      _future = next;
+    });
+    return next;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _unregister?.call();
+    _unregister = OlRefreshScope.maybeOf(context)?.register(_pull);
+  }
+
+  @override
+  void dispose() {
+    _unregister?.call();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => FutureBuilder<T>(

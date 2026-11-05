@@ -57,7 +57,6 @@ const _kasir = [
   '/kasir/pasien',
   '/kasir/kasir',
   '/kasir/akun',
-  '/kasir/intake',
   '/kasir/pasien-form',
   '/kasir/pasien/p0412',
   '/kasir/buat-jadwal',

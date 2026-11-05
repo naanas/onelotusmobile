@@ -12,7 +12,7 @@ import 'latihan/detail_latihan_page.dart';
 import 'latihan/latihan_page.dart';
 import 'masuk/hubungkan_page.dart';
 import 'masuk/onboarding_page.dart';
-import 'masuk/otp_page.dart';
+import 'masuk/pasien_auth_page.dart';
 import 'masuk/persetujuan_page.dart';
 import 'pasien_routes.dart';
 import 'pasien_session.dart';
@@ -31,7 +31,7 @@ import 'profil/struk_page.dart';
 String? pasienEntry(PasienPhase phase) => switch (phase) {
   PasienPhase.restoring => Routes.splash,
   PasienPhase.onboarding => PRoutes.onboarding,
-  PasienPhase.otp => PRoutes.masuk,
+  PasienPhase.otp => Routes.login,
   PasienPhase.link => PRoutes.hubungkan,
   PasienPhase.consent => PRoutes.persetujuan,
   PasienPhase.ready => null,
@@ -66,8 +66,24 @@ List<RouteBase> pasienRoutes(GlobalKey<NavigatorState> root) => [
     pageBuilder: (_, s) => olFadePage(s, const OnboardingPage()),
   ),
   GoRoute(
-    path: PRoutes.masuk,
-    pageBuilder: (_, s) => olFadePage(s, const OtpPage()),
+    path: PRoutes.daftar,
+    pageBuilder: (_, s) => olFadePage(
+      s,
+      PasienAuthPage(
+        mode: PasienAuthMode.daftar,
+        phone: s.uri.queryParameters['hp'],
+      ),
+    ),
+  ),
+  GoRoute(
+    path: PRoutes.lupaPassword,
+    pageBuilder: (_, s) => olFadePage(
+      s,
+      PasienAuthPage(
+        mode: PasienAuthMode.lupa,
+        phone: s.uri.queryParameters['hp'],
+      ),
+    ),
   ),
   GoRoute(
     path: PRoutes.hubungkan,
@@ -106,16 +122,27 @@ List<RouteBase> pasienRoutes(GlobalKey<NavigatorState> root) => [
     '/pasien/latihan/:id',
     (s) => DetailLatihanPage(id: s.pathParameters['id']!),
   ),
-  _push(root, PRoutes.bayar, (s) => BayarPage(invoiceId: s.uri.queryParameters['invoice'])),
+  _push(
+    root,
+    PRoutes.bayar,
+    (s) => BayarPage(invoiceId: s.uri.queryParameters['invoice']),
+  ),
   _push(root, PRoutes.jadwal, (_) => const JadwalSayaPage()),
-  _push(root, PRoutes.ubahJadwal, (s) => UbahJadwalPage(bookingId: s.uri.queryParameters['id'] ?? '')),
+  _push(
+    root,
+    PRoutes.ubahJadwal,
+    (s) => UbahJadwalPage(bookingId: s.uri.queryParameters['id'] ?? ''),
+  ),
   _push(root, PRoutes.riwayat, (_) => const RiwayatSesiPage()),
   _push(root, PRoutes.paket, (_) => const PaketPage()),
   _push(root, PRoutes.beliPaket, (_) => const BeliPaketPage()),
-  _push(root, PRoutes.struk, (s) => StrukPasienPage(receiptId: s.uri.queryParameters['id'] ?? '')),
+  _push(
+    root,
+    PRoutes.struk,
+    (s) => StrukPasienPage(receiptId: s.uri.queryParameters['id'] ?? ''),
+  ),
   _push(root, PRoutes.poin, (_) => const PoinPasienPage()),
   _push(root, PRoutes.notifikasi, (_) => const NotifikasiPasienPage()),
   _push(root, PRoutes.alamat, (_) => const AlamatPage()),
   _push(root, PRoutes.hapusAkun, (_) => const HapusAkunPage()),
-  _push(root, PRoutes.kebijakan, (_) => const PersetujuanPage(review: true)),
 ];

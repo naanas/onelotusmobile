@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
 import '../../core/config.dart';
 import '../../core/format.dart';
+import '../../core/http_log.dart';
 import '../../ui/feedback/app_error.dart';
 import 'api_error_mapper.dart';
 
@@ -59,6 +61,7 @@ class ApiClient {
         },
       ),
     );
+    HttpLog.attach(this.dio);
   }
 
   final Dio dio;
@@ -92,7 +95,7 @@ class ApiClient {
       return parse(res.data);
     } on DioException catch (e) {
       var err = mapDioError(e);
-      if (err.type == ErrorCode.authExpired && await _refreshOnce()) {
+      if (_sessionExpired(err) && await _refreshOnce()) {
         try {
           final res = await call();
           return parse(res.data);
@@ -100,10 +103,14 @@ class ApiClient {
           err = mapDioError(e2);
         }
       }
-      if (err.type == ErrorCode.authExpired) onUnauthorized?.call();
+      if (_sessionExpired(err)) onUnauthorized?.call();
       throw err;
     }
   }
+
+  /// 401 karena sesi habis. `auth_invalid` (username/password atau kode salah saat masuk) juga 401,
+  /// tapi bukan sesi habis: jangan refresh / keluarkan pengguna — biarkan layar masuk menampilkan pesannya.
+  static bool _sessionExpired(AppError err) => err.type == ErrorCode.authExpired && err.apiCode != 'auth_invalid';
 
   /// Respons sukses dibungkus `{ data: ... }`.
   static dynamic unwrap(dynamic body) =>
@@ -178,6 +185,27 @@ class ApiClient {
   }) => _send(
     () =>
         dio.patch<dynamic>(path, data: body, options: Options(headers: headers)),
+    (d) => parse(unwrap(d)),
+  );
+
+  /// Isi file mentah (lampiran). Server mendekripsi setelah cek login & hak akses; tidak ada URL storage.
+  Future<Uint8List> getBytes(String path) => _send(
+    () => dio.get<List<int>>(path, options: Options(responseType: ResponseType.bytes)),
+    (d) => d is Uint8List ? d : Uint8List.fromList(d as List<int>),
+  );
+
+  /// Kirim isi file mentah (server mengenkripsi sebelum menyimpan).
+  Future<T> putBytes<T>(
+    String path,
+    List<int> bytes,
+    String mime,
+    T Function(dynamic data) parse,
+  ) => _send(
+    () => dio.put<dynamic>(
+      path,
+      data: Stream.fromIterable([bytes]),
+      options: Options(headers: {'Content-Type': mime, Headers.contentLengthHeader: bytes.length}),
+    ),
     (d) => parse(unwrap(d)),
   );
 

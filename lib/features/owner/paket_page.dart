@@ -24,23 +24,77 @@ class _PaketPageState extends ConsumerState<PaketPage> {
 
   Future<void> _edit([PackageV? p]) async {
     final name = TextEditingController(text: p?.name ?? '');
-    final count = TextEditingController(text: p == null ? '' : '${p.sessionCount}');
+    final count = TextEditingController(
+      text: p == null ? '' : '${p.sessionCount}',
+    );
     final days = TextEditingController(text: p == null ? '' : '${p.validDays}');
     var price = p?.price ?? 0;
     var active = p?.isActive ?? true;
+    // Paket berlaku untuk layanan tertentu (wajib minimal 1). Paket baru: default semua layanan aktif.
+    final services = await runApi(
+      context,
+      () => ref.read(billingApiProvider).catalogServices(),
+    );
+    if (services == null || !mounted) return;
+    final aktif = [
+      for (final s in services)
+        if (s.isActive) s,
+    ];
+    final picked = <String>{...?p?.serviceIds};
+    if (p == null) picked.addAll(aktif.map((s) => s.id));
     final ok = await formSheet(
       context,
       title: p == null ? 'Paket baru' : 'Ubah paket',
       message: 'Paket yang sudah terjual tetap memakai ketentuan lama.',
       fields: (set) => [
         OlTextField(label: 'Nama paket', controller: name, isRequired: true),
-        OlTextField(label: 'Jumlah sesi', controller: count, keyboardType: TextInputType.number, isRequired: true),
-        OlTextField(label: 'Berlaku (hari)', controller: days, keyboardType: TextInputType.number, isRequired: true),
-        OlMoneyField(label: 'Harga', value: price, onChanged: (v) => set(() => price = v)),
-        if (p != null) OwToggleRow(label: 'Aktif dijual', value: active, onChanged: (v) => set(() => active = v)),
+        OlTextField(
+          label: 'Jumlah sesi',
+          controller: count,
+          keyboardType: TextInputType.number,
+          isRequired: true,
+        ),
+        OlTextField(
+          label: 'Berlaku (hari)',
+          controller: days,
+          keyboardType: TextInputType.number,
+          isRequired: true,
+        ),
+        OlMoneyField(
+          label: 'Harga',
+          value: price,
+          onChanged: (v) => set(() => price = v),
+        ),
+        Text('Berlaku untuk layanan *', style: context.olText.fieldLabel),
+        Wrap(
+          spacing: OlSpace.sm,
+          runSpacing: OlSpace.sm,
+          children: [
+            for (final sv in aktif)
+              OlChip(
+                label: sv.name,
+                small: true,
+                selected: picked.contains(sv.id),
+                onTap: () => set(
+                  () => picked.contains(sv.id)
+                      ? picked.remove(sv.id)
+                      : picked.add(sv.id),
+                ),
+              ),
+          ],
+        ),
+        if (p != null)
+          OwToggleRow(
+            label: 'Aktif dijual',
+            value: active,
+            onChanged: (v) => set(() => active = v),
+          ),
       ],
     );
     if (!ok || !mounted) return;
+    if (picked.isEmpty) {
+      return context.feedback.info('Pilih minimal 1 layanan untuk paket ini.');
+    }
     final r = await runApi(
       context,
       () => ref.read(billingApiProvider).savePackage(p?.id, {
@@ -49,7 +103,7 @@ class _PaketPageState extends ConsumerState<PaketPage> {
         'valid_days': parseAmount(days.text),
         'price': price,
         'is_active': active,
-        if (p != null) 'service_ids': p.serviceIds,
+        'service_ids': picked.toList(),
         if (p != null) 'branch_ids': p.branchIds,
       }),
     );
@@ -61,7 +115,9 @@ class _PaketPageState extends ConsumerState<PaketPage> {
   @override
   Widget build(BuildContext context) => OlDetailScaffold(
     title: 'Paket & membership',
-    foot: [OlButton(label: 'Tambah paket', icon: OlIcons.plus, onPressed: _edit)],
+    foot: [
+      OlButton(label: 'Tambah paket', icon: OlIcons.plus, onPressed: _edit),
+    ],
     children: [
       const OwWorkshopNote('kuota & masa berlaku paket'),
       OlAsync<List<PackageV>>(
@@ -69,7 +125,13 @@ class _PaketPageState extends ConsumerState<PaketPage> {
         load: ref.read(billingApiProvider).packages,
         builder: (context, list, _) => [
           if (list.isEmpty)
-            const OlCard(child: EmptyState(illustration: OlIllustration.emptyInbox, title: 'Belum ada paket', message: 'Tambah paket untuk dijual kasir dan dibeli pasien.'))
+            const OlCard(
+              child: EmptyState(
+                illustration: OlIllustration.emptyInbox,
+                title: 'Belum ada paket',
+                message: 'Tambah paket untuk dijual kasir dan dibeli pasien.',
+              ),
+            )
           else
             OwListCard<PackageV>(
               items: list,
@@ -80,7 +142,8 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                 if (p.savings > 0) 'hemat ${Fmt.money(p.savings)}',
                 if (!p.isActive) 'nonaktif',
               ].join(' · '),
-              trailing: (p) => Text(Fmt.money(p.price), style: context.olText.bodyStrong),
+              trailing: (p) =>
+                  Text(Fmt.money(p.price), style: context.olText.bodyStrong),
               onTap: _edit,
             ),
         ],

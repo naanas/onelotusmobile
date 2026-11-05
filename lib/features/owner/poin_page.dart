@@ -20,7 +20,10 @@ class PoinPage extends ConsumerStatefulWidget {
 class _PoinPageState extends ConsumerState<PoinPage> {
   BillingApi get _api => ref.read(billingApiProvider);
   late Future<PointsRulesV> _future = _api.pointsRules();
-  final _c = {for (final k in ['earn', 'value', 'max', 'expiry', 'referrer', 'referee']) k: TextEditingController()};
+  final _c = {
+    for (final k in ['earn', 'value', 'max', 'expiry', 'referrer', 'referee'])
+      k: TextEditingController(),
+  };
   bool _filled = false, _busy = false;
 
   void _fill(PointsRulesV r) {
@@ -56,6 +59,16 @@ class _PoinPageState extends ConsumerState<PoinPage> {
     if (r != null) context.feedback.success('Aturan poin disimpan.');
   }
 
+  /// Tarik-untuk-memuat-ulang: data lama tetap tampil sampai data baru datang.
+  Future<void> _pullRefresh() {
+    final next = _api.pointsRules();
+    setState(() {
+      _filled = false;
+      _future = next;
+    });
+    return next;
+  }
+
   @override
   Widget build(BuildContext context) => FutureBuilder<PointsRulesV>(
     future: _future,
@@ -66,13 +79,21 @@ class _PoinPageState extends ConsumerState<PoinPage> {
       final earn = _filled ? _v('earn') : 0;
       final value = _filled ? _v('value') : 0;
       return OlDetailScaffold(
+        onRefresh: _pullRefresh,
         title: 'Poin & referral',
-        foot: [if (snap.hasData) OlButton(label: 'Simpan', loading: _busy, onPressed: _save)],
+        foot: [
+          if (snap.hasData)
+            OlButton(label: 'Simpan', loading: _busy, onPressed: _save),
+        ],
         children: [
           if (snap.hasError)
             OlErrorCard(
-              message: snap.error is AppError ? (snap.error as AppError).message : 'Aturan poin belum bisa dimuat.',
-              onRetry: () => setState(() => _future = _api.pointsRules()),
+              message: snap.error is AppError
+                  ? (snap.error as AppError).message
+                  : 'Aturan poin belum bisa dimuat.',
+              onRetry: () => setState(() {
+                _future = _api.pointsRules();
+              }),
             )
           else if (!snap.hasData)
             const OlLoadingCard()
@@ -82,13 +103,31 @@ class _PoinPageState extends ConsumerState<PoinPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  OlTextField(label: 'Belanja per 1 poin (Rp)', controller: _c['earn']!, keyboardType: TextInputType.number, helper: '0 = poin tidak diberikan'),
+                  OlTextField(
+                    label: 'Belanja per 1 poin (Rp)',
+                    controller: _c['earn']!,
+                    keyboardType: TextInputType.number,
+                    helper: '0 = poin tidak diberikan',
+                  ),
                   const SizedBox(height: OlSpace.md),
-                  OlTextField(label: 'Nilai 1 poin (Rp)', controller: _c['value']!, keyboardType: TextInputType.number),
+                  OlTextField(
+                    label: 'Nilai 1 poin (Rp)',
+                    controller: _c['value']!,
+                    keyboardType: TextInputType.number,
+                  ),
                   const SizedBox(height: OlSpace.md),
-                  OlTextField(label: 'Maks potongan dengan poin (%)', controller: _c['max']!, keyboardType: TextInputType.number),
+                  OlTextField(
+                    label: 'Maks potongan dengan poin (%)',
+                    controller: _c['max']!,
+                    keyboardType: TextInputType.number,
+                  ),
                   const SizedBox(height: OlSpace.md),
-                  OlTextField(label: 'Poin kedaluwarsa setelah (hari)', controller: _c['expiry']!, keyboardType: TextInputType.number, helper: '0 = tidak kedaluwarsa'),
+                  OlTextField(
+                    label: 'Poin kedaluwarsa setelah (hari)',
+                    controller: _c['expiry']!,
+                    keyboardType: TextInputType.number,
+                    helper: '0 = tidak kedaluwarsa',
+                  ),
                 ],
               ),
             ),
@@ -97,9 +136,17 @@ class _PoinPageState extends ConsumerState<PoinPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  OlTextField(label: 'Poin untuk pengajak', controller: _c['referrer']!, keyboardType: TextInputType.number),
+                  OlTextField(
+                    label: 'Poin untuk pengajak',
+                    controller: _c['referrer']!,
+                    keyboardType: TextInputType.number,
+                  ),
                   const SizedBox(height: OlSpace.md),
-                  OlTextField(label: 'Poin untuk pasien baru', controller: _c['referee']!, keyboardType: TextInputType.number),
+                  OlTextField(
+                    label: 'Poin untuk pasien baru',
+                    controller: _c['referee']!,
+                    keyboardType: TextInputType.number,
+                  ),
                 ],
               ),
             ),

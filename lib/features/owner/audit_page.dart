@@ -48,7 +48,9 @@ class _AuditPageState extends ConsumerState<AuditPage> {
       _error = null;
     });
     try {
-      final p = await ref.read(billingApiProvider).auditLogs(action: _action, cursor: _cursor);
+      final p = await ref
+          .read(billingApiProvider)
+          .auditLogs(action: _action, cursor: _cursor);
       if (!mounted) return;
       setState(() {
         _items.addAll(p.items);
@@ -68,6 +70,7 @@ class _AuditPageState extends ConsumerState<AuditPage> {
     final t = context.olText;
     return OlDetailScaffold(
       title: 'Audit log',
+      onRefresh: () => _load(reset: true),
       children: [
         Wrap(
           spacing: OlSpace.sm,
@@ -86,11 +89,22 @@ class _AuditPageState extends ConsumerState<AuditPage> {
           ],
         ),
         if (_error != null && _items.isEmpty)
-          OlErrorCard(message: _error is AppError ? (_error as AppError).message : 'Audit log belum bisa dimuat.', onRetry: () => _load(reset: true))
+          OlErrorCard(
+            message: _error is AppError
+                ? (_error as AppError).message
+                : 'Audit log belum bisa dimuat.',
+            onRetry: () => _load(reset: true),
+          )
         else if (_items.isEmpty && _loading)
           const OlLoadingCard()
         else if (_items.isEmpty)
-          const OlCard(child: EmptyState(illustration: OlIllustration.emptyInbox, title: 'Belum ada catatan', message: 'Setiap perubahan penting tercatat di sini.'))
+          const OlCard(
+            child: EmptyState(
+              illustration: OlIllustration.emptyInbox,
+              title: 'Belum ada catatan',
+              message: 'Setiap perubahan penting tercatat di sini.',
+            ),
+          )
         else
           OlCard(
             padding: const EdgeInsets.symmetric(horizontal: OlSpace.lg),
@@ -98,19 +112,30 @@ class _AuditPageState extends ConsumerState<AuditPage> {
               children: [
                 for (final (n, a) in _items.indexed)
                   OlListItem(
-                    title: '${a.actorName.isEmpty ? 'Sistem' : a.actorName} · ${a.action}',
+                    title:
+                        '${a.actorName.isEmpty ? 'Sistem' : a.actorName} · ${a.action}',
                     subtitle: [
                       '${Fmt.dayShort(a.at)} ${Fmt.time(a.at)}',
                       if (a.objectType.isNotEmpty) a.objectType,
-                      if (a.deviceId != null) 'perangkat ${a.deviceId!.length > 8 ? a.deviceId!.substring(0, 8) : a.deviceId}',
+                      if (a.deviceId != null)
+                        'perangkat ${a.deviceId!.length > 8 ? a.deviceId!.substring(0, 8) : a.deviceId}',
                     ].join(' · '),
                     divider: n < _items.length - 1,
                   ),
               ],
             ),
           ),
-        if (_more && _items.isNotEmpty) OlButton.text(label: 'Muat lagi', loading: _loading, onPressed: _load, expand: true),
-        Text('Audit log hanya bisa dibaca, tidak bisa diubah atau dihapus.', style: t.caption.copyWith(color: c.muted)),
+        if (_more && _items.isNotEmpty)
+          OlButton.text(
+            label: 'Muat lagi',
+            loading: _loading,
+            onPressed: _load,
+            expand: true,
+          ),
+        Text(
+          'Audit log hanya bisa dibaca, tidak bisa diubah atau dihapus.',
+          style: t.caption.copyWith(color: c.muted),
+        ),
       ],
     );
   }

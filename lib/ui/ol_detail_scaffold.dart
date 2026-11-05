@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import 'ol_foot_bar.dart';
 import 'ol_icon.dart';
 import 'ol_icon_button.dart';
+import 'ol_refresh.dart';
 
 /// Kerangka layar turunan (di atas tab bar): tombol kembali/tutup, judul besar,
 /// konteks kecil, aksi kanan, isi tergulir, dan tombol melekat di bawah (`.foot`).
@@ -23,7 +24,11 @@ class OlDetailScaffold extends StatelessWidget {
     this.background,
     this.top,
     this.gap = OlSpace.gap,
+    this.onRefresh,
   });
+
+  /// Muat ulang tambahan saat layar ditarik (selain [OlAsync] di dalamnya yang otomatis).
+  final Future<void> Function()? onRefresh;
 
   final String title;
 
@@ -70,82 +75,89 @@ class OlDetailScaffold extends StatelessWidget {
           child: Column(
             children: [
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    OlSpace.screen,
-                    12,
-                    OlSpace.screen,
-                    28,
-                  ),
-                  children: [
-                    if (showBack || actions.isNotEmpty)
-                      Row(
-                        children: [
-                          if (!showBack)
-                            const SizedBox(height: OlSize.minTouch)
-                          else
-                            close
-                                ? OlIconButton(
-                                    icon: OlIcons.close,
-                                    semanticLabel: 'Tutup',
-                                    onPressed: () =>
-                                        Navigator.of(context).maybePop(),
-                                  )
-                                : const OlBackButton(),
-                          const SizedBox(width: OlSpace.sm),
-                          Expanded(
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
+                child: OlRefreshable(
+                  onRefresh: onRefresh,
+                  child: ListView(
+                    physics: olRefreshPhysics,
+                    padding: const EdgeInsets.fromLTRB(
+                      OlSpace.screen,
+                      12,
+                      OlSpace.screen,
+                      28,
+                    ),
+                    children: [
+                      if (showBack || actions.isNotEmpty)
+                        Row(
+                          children: [
+                            if (!showBack)
+                              const SizedBox(height: OlSize.minTouch)
+                            else
+                              close
+                                  ? OlIconButton(
+                                      icon: OlIcons.close,
+                                      semanticLabel: 'Tutup',
+                                      onPressed: () =>
+                                          Navigator.of(context).maybePop(),
+                                    )
+                                  : const OlBackButton(),
+                            const SizedBox(width: OlSpace.sm),
+                            Expanded(
+                              child: Align(
                                 alignment: Alignment.centerRight,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: actions,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  alignment: Alignment.centerRight,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: actions,
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    if (top != null) ...[
-                      if (showBack || actions.isNotEmpty)
-                        const SizedBox(height: 12),
-                      top!,
-                      const SizedBox(height: 14),
-                    ] else
-                      const SizedBox(height: 6),
-                    if (context_ != null) ...[
-                      Text(
-                        context_!,
-                        style: t.caption.copyWith(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 3),
-                    ],
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Semantics(
-                            header: true,
-                            child: Text(title, style: t.title),
+                      if (top != null) ...[
+                        if (showBack || actions.isNotEmpty)
+                          const SizedBox(height: 12),
+                        top!,
+                        const SizedBox(height: 14),
+                      ] else
+                        const SizedBox(height: 6),
+                      if (context_ != null) ...[
+                        Text(
+                          context_!,
+                          style: t.caption.copyWith(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                        if (titleTrailing != null) ...[
-                          const SizedBox(width: OlSpace.sm),
-                          titleTrailing!,
-                        ],
+                        const SizedBox(height: 3),
                       ],
-                    ),
-                    if (below != null) ...[const SizedBox(height: 10), below!],
-                    const SizedBox(height: 18),
-                    for (final (i, w) in children.indexed) ...[
-                      if (i > 0) SizedBox(height: gap),
-                      w,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Semantics(
+                              header: true,
+                              child: Text(title, style: t.title),
+                            ),
+                          ),
+                          if (titleTrailing != null) ...[
+                            const SizedBox(width: OlSpace.sm),
+                            titleTrailing!,
+                          ],
+                        ],
+                      ),
+                      if (below != null) ...[
+                        const SizedBox(height: 10),
+                        below!,
+                      ],
+                      const SizedBox(height: 18),
+                      for (final (i, w) in children.indexed) ...[
+                        if (i > 0) SizedBox(height: gap),
+                        w,
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
               if (foot.isNotEmpty && keyboard) OlFootBar(children: foot),

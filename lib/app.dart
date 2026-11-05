@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/http_log.dart';
 import 'data/auth/auth_controller.dart';
 import 'data/providers.dart';
 import 'router/app_router.dart';
@@ -77,6 +78,7 @@ class _OneLotusAppState extends ConsumerState<OneLotusApp> {
                   child: Center(child: OlLogoMark()),
                 ),
               ),
+            if (HttpLog.enabled) HttpLogButton(navigatorKey: rootNavigatorKey),
           ],
         ),
       ),

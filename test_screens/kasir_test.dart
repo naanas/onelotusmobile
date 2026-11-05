@@ -46,7 +46,6 @@ void main() {
     await pumpFor(t);
     await shot(t, 'KS-akun');
     for (final (path, name) in const [
-      ('/kasir/intake', 'KS-02'),
       ('/kasir/pasien-form', 'KS-04'),
       ('/kasir/pasien/p0412', 'KS-05'),
       ('/kasir/buat-jadwal', 'KS-06'),

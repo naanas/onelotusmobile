@@ -15,6 +15,7 @@ import '../../../router/routes.dart';
 import '../../../theme/app_theme.dart';
 import '../../../ui/body_map/body_map.dart';
 import '../../../ui/ui.dart';
+import 'lampiran_section.dart';
 
 /// TR-04 Rekam sesi (layar prioritas §5.2). Data sesi & peringatan medis dari server; isian
 /// dilanjutkan dari draf di HP, rekam yang sudah ada, atau diisi awal dari rekam terakhir pasien.
@@ -47,6 +48,7 @@ class _RekamSesiPageState extends ConsumerState<RekamSesiPage> {
   String? _areaError;
   String? _treatmentError;
   String? _complaintError;
+  String? _painError;
 
   Session? _session;
   Patient? _patient;
@@ -166,9 +168,13 @@ class _RekamSesiPageState extends ConsumerState<RekamSesiPage> {
     });
   }
 
-  /// Validasi lunak §5.2: keluhan, area & minimal 1 treatment.
-  bool _validate() {
+  /// Validasi lunak §5.2: keluhan, area & minimal 1 treatment. Saat menyelesaikan sesi, skala nyeri
+  /// sebelum & sesudah juga wajib (backend menolak `complete` tanpa keduanya).
+  bool _validate({bool finish = false}) {
     setState(() {
+      _painError = finish && (_before == null || _after == null)
+          ? 'Isi skala nyeri sebelum & sesudah sebelum menyelesaikan sesi.'
+          : null;
       _complaintError = _complaint.text.trim().isEmpty
           ? 'Keluhan wajib diisi.'
           : null;
@@ -181,11 +187,12 @@ class _RekamSesiPageState extends ConsumerState<RekamSesiPage> {
     });
     return _complaintError == null &&
         _areaError == null &&
-        _treatmentError == null;
+        _treatmentError == null &&
+        _painError == null;
   }
 
   Future<void> _save({bool finish = false}) async {
-    if (!_validate()) {
+    if (!_validate(finish: finish)) {
       context.feedback.info('Lengkapi isian yang ditandai dulu.');
       return;
     }
@@ -439,13 +446,16 @@ class _RekamSesiPageState extends ConsumerState<RekamSesiPage> {
               onBefore: (v) => setState(() {
                 _before = v;
                 _dirty = true;
+                if (_after != null) _painError = null;
               }),
               onAfter: (v) => setState(() {
                 _after = v;
                 _dirty = true;
+                if (_before != null) _painError = null;
               }),
             ),
           ),
+          if (_painError != null) errorText(_painError),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -555,6 +565,11 @@ class _RekamSesiPageState extends ConsumerState<RekamSesiPage> {
                 onChanged: (_) => _touch(),
               ),
             ],
+          ),
+          LampiranSection(
+            key: ValueKey(_existing?.id),
+            sessionId: session.id,
+            initial: _existing?.attachments ?? const [],
           ),
         ],
       ),

@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../data/auth/auth_controller.dart';
 import '../features/akun/akun_page.dart';
-import '../pasien/intake/intake_form_page.dart';
-import '../pasien/intake/intake_scan_page.dart';
 import '../pasien/pasien_router.dart';
 import '../pasien/pasien_session.dart';
 import '../features/auth/choose_context_page.dart';
@@ -29,7 +27,6 @@ import '../features/kasir/bayar_page.dart';
 import '../features/kasir/booking_page.dart';
 import '../features/kasir/buat_jadwal_page.dart';
 import '../features/kasir/detail_pasien_kasir_page.dart';
-import '../features/kasir/intake_page.dart';
 import '../features/kasir/pasien_form_page.dart';
 import '../features/kasir/pasien_page.dart';
 import '../features/kasir/pindah_massal_page.dart';
@@ -161,19 +158,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.devComponents,
         builder: (_, _) => const ComponentGalleryPage(),
-      ),
-
-      // ── Formulir pasien baru via QR KS-02 (WB-01), tanpa login ───────────
-      GoRoute(
-        path: Routes.intakeScan,
-        builder: (_, _) => const IntakeScanPage(),
-        routes: [
-          GoRoute(
-            path: ':code',
-            builder: (_, state) =>
-                IntakeFormPage(code: state.pathParameters['code']!),
-          ),
-        ],
       ),
 
       // ── Terapis: Jadwal · Pasien · + · Riwayat · Akun ─────────────────────
@@ -316,10 +300,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           state,
           RoleShell(
             shell: shell,
-            fab: const FabSpec(
-              'Pasien baru atau tampilkan QR intake',
-              Routes.kasirIntake,
-            ),
+            fab: const FabSpec('Tambah pasien baru', Routes.kasirPasienForm),
             tabs: const [
               TabSpec('Antrian', OlIcons.queue),
               TabSpec('Pasien', OlIcons.users),
@@ -336,15 +317,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       GoRoute(
-        path: Routes.kasirIntake,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const IntakePage(),
-      ),
-      GoRoute(
         path: Routes.kasirPasienForm,
         parentNavigatorKey: rootNavigatorKey,
         builder: (_, state) => PasienFormPage(
-          intakeId: state.uri.queryParameters['intake'],
           patientId: state.uri.queryParameters['pasien'],
         ),
       ),

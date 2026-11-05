@@ -14,7 +14,7 @@ import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 
 /// UM-04 Masuk — satu pintu untuk staf & pasien (+ UM-04b terkunci setelah gagal 5×).
-/// Isian dikenali otomatis: nomor HP → pasien (kode OTP WhatsApp, PS-02);
+/// Isian dikenali otomatis: nomor HP → pasien (nomor + password; belum punya akun → Daftar);
 /// selain itu → username staf + password.
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -84,15 +84,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   bool get _isStaff => _username.text.trim().isNotEmpty && !_isPhone;
 
-  /// 08xx / 628xx / +628xx → "0812 3456 7890".
-  static String _normalizePhone(String raw) {
-    var d = raw.replaceAll(RegExp(r'\D'), '');
-    if (d.startsWith('62')) d = '0${d.substring(2)}';
-    return [
-      for (var i = 0; i < d.length; i += 4)
-        d.substring(i, (i + 4).clamp(0, d.length)),
-    ].join(' ');
-  }
+  /// Kolom password muncul setelah nomor HP / username diketik.
+  bool get _showPassword => _username.text.trim().isNotEmpty;
+
+  String get _phoneDigits => _username.text.replaceAll(RegExp(r'\D'), '');
 
   Future<void> _submit() async {
     final id = _username.text.trim();
@@ -141,37 +136,46 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     }
   }
 
-  /// Pasien: kirim kode OTP lewat WhatsApp → layar kode (PS-02).
+  /// Pasien: nomor HP + password (PS-02). Kode OTP hanya dipakai saat daftar & lupa password.
   Future<void> _submitPhone(String raw) async {
     final digits = raw.replaceAll(RegExp(r'\D'), '');
-    if (digits.length < 10) {
-      setState(
-        () => _usernameError = 'Nomor HP belum lengkap — minimal 10 digit.',
-      );
-      return;
-    }
+    final password = _password.text;
     setState(() {
-      _usernameError = null;
-      _busy = true;
+      _usernameError = digits.length < 10
+          ? 'Nomor HP belum lengkap — minimal 10 digit.'
+          : null;
+      _passwordError = password.isEmpty ? 'Password wajib diisi.' : null;
+      _formError = null;
     });
+    if (_usernameError != null || _passwordError != null) return;
+    setState(() => _busy = true);
     try {
-      await ref
-          .read(pasienSessionProvider.notifier)
-          .requestOtp(_normalizePhone(raw));
+      await ref.read(pasienSessionProvider.notifier).login(digits, password);
+      // Berhasil → router membawa ke Hubungkan data / Persetujuan / Beranda pasien.
     } on AppError catch (e) {
       if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _usernameError = e.fieldError('phone');
-      });
-      if (e.fieldError('phone') == null) {
+      if (e.apiCode == 'account_locked') {
+        final sec = (e.details['retry_after_sec'] as num?)?.toInt() ?? 300;
+        _password.clear();
+        setState(() => _formError = 'Nomor HP atau password salah.');
+        _startLock(ref.read(clockProvider)().add(Duration(seconds: sec)));
+      } else if (e.apiCode == 'auth_invalid') {
+        _password.clear();
+        setState(
+          () => _formError = e.apiMessage ?? 'Nomor HP atau password salah.',
+        );
+      } else if (e.fieldError('phone') != null ||
+          e.fieldError('password') != null) {
+        setState(() {
+          _usernameError = e.fieldError('phone');
+          _passwordError = e.fieldError('password');
+        });
+      } else {
         context.feedback.error(e, retry: _submit);
       }
-      return;
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
-    if (!mounted) return;
-    setState(() => _busy = false);
-    context.go(PRoutes.masuk);
   }
 
   @override
@@ -226,7 +230,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ],
                 onChanged: (_) => setState(() => _usernameError = null),
                 onSubmitted: (_) {
-                  if (_isPhone && !_busy) _submit();
+                  // Lanjut ke kolom password (muncul setelah isian diketik).
                 },
               ),
               // Kolom staf muncul hanya bila yang diketik username.
@@ -234,7 +238,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 duration: OlMotion.of(context),
                 curve: OlMotion.curve,
                 alignment: Alignment.topCenter,
-                child: _isStaff
+                child: _showPassword
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
@@ -256,49 +260,52 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               }
                             },
                           ),
-                          const SizedBox(height: 12),
-                          OlCheckbox(
-                            label: 'Ingat perangkat ini',
-                            value: _remember,
-                            onChanged: (v) => setState(() => _remember = v),
-                          ),
+                          if (_isStaff) ...[
+                            const SizedBox(height: 12),
+                            OlCheckbox(
+                              label: 'Ingat perangkat ini',
+                              value: _remember,
+                              onChanged: (v) => setState(() => _remember = v),
+                            ),
+                          ],
                         ],
                       )
                     : const SizedBox(width: double.infinity),
               ),
               const SizedBox(height: 20),
               OlButton(
-                label: _isPhone ? 'Kirim kode lewat WhatsApp' : 'Masuk',
+                label: 'Masuk',
                 loading: _busy,
-                onPressed: locked && !_isPhone ? null : _submit,
+                onPressed: locked ? null : _submit,
               ),
-              if (_isPhone) ...[
-                const SizedBox(height: 12),
-                Text(
-                  'Kode masuk dikirim lewat WhatsApp ke nomor ini.',
-                  textAlign: TextAlign.center,
-                  style: t.caption.copyWith(fontSize: 13),
-                ),
-              ],
-              if (!_isPhone) ...[
-                const SizedBox(height: 12),
-                Center(
-                  child: OlButton.text(
-                    label: 'Lupa password?',
-                    onPressed: () => context.push(Routes.forgotPassword),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 24),
-              // Pasien baru yang sedang di klinik: isi formulir intake (WB-01) lewat QR front desk.
+              const SizedBox(height: 12),
               Center(
                 child: OlButton.text(
-                  label: 'Pasien baru di klinik? Isi formulir',
-                  onPressed: () => context.push(Routes.intakeScan),
+                  label: 'Lupa password?',
+                  // Nomor HP → reset lewat kode WhatsApp; username staf → minta reset ke admin.
+                  onPressed: () => _isStaff
+                      ? context.push(Routes.forgotPassword)
+                      : context.push(
+                          _isPhone
+                              ? '${PRoutes.lupaPassword}?hp=$_phoneDigits'
+                              : PRoutes.lupaPassword,
+                        ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Pasien belum punya akun: daftar (kode WhatsApp + buat password).
+              Center(
+                child: OlButton.text(
+                  label: 'Pasien belum punya akun? Daftar',
+                  onPressed: () => context.push(
+                    _isPhone
+                        ? '${PRoutes.daftar}?hp=$_phoneDigits'
+                        : PRoutes.daftar,
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
-              if (_isStaff)
+              if (_showPassword)
                 Text(
                   'Gagal ${AuthRules.maxLoginAttempts} kali akan mengunci login selama ${AuthRules.loginLockout.inMinutes} menit.',
                   textAlign: TextAlign.center,

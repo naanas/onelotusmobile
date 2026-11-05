@@ -152,7 +152,9 @@ String? appRedirect(
     if (PRoutes.isPasien(location) && !PRoutes.isEntry(location)) return null;
     return PRoutes.beranda;
   }
-  if (atLogin && target != PRoutes.onboarding) return null;
+  // Belum masuk: layar masuk/daftar/lupa password boleh tetap terbuka. Sudah daftar/masuk
+  // (tahap hubungkan/persetujuan) → pindah ke layar tahapnya, jangan tertahan di halaman password.
+  if (atLogin && target == Routes.login) return null;
   return location == target ? null : target;
 }
 

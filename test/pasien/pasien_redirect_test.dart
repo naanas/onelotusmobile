@@ -46,6 +46,15 @@ void main() {
       expect(appRedirect(out, p, PRoutes.lupaPassword), isNull);
     });
 
+    test('sesudah buat password: pindah dari halaman daftar ke tahap berikut', () {
+      const consent = PasienSession(phase: PasienPhase.consent);
+      expect(appRedirect(out, consent, PRoutes.daftar), PRoutes.persetujuan);
+      expect(appRedirect(out, consent, Routes.login), PRoutes.persetujuan);
+      const link = PasienSession(phase: PasienPhase.link);
+      expect(appRedirect(out, link, PRoutes.daftar), PRoutes.hubungkan);
+      expect(appRedirect(out, link, PRoutes.lupaPassword), PRoutes.hubungkan);
+    });
+
     test('pasien siap: layar masuk & staf diarahkan ke beranda pasien', () {
       const p = PasienSession(phase: PasienPhase.ready);
       expect(appRedirect(out, p, Routes.splash), PRoutes.beranda);

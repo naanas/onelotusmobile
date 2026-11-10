@@ -19,8 +19,20 @@ const _wallets = {'ovo': 'OVO', 'dana': 'DANA', 'shopeepay': 'ShopeePay'};
 /// PS-09 Pembayaran online (§6.4.2): tagihan belum lunas → pilih metode gateway.
 /// Status lunas hanya dari konfirmasi sistem (webhook) — layar ini hanya memantau.
 class BayarPage extends ConsumerStatefulWidget {
-  const BayarPage({super.key, this.invoiceId});
+  const BayarPage({
+    super.key,
+    this.invoiceId,
+    this.initialMethod,
+    this.initialBank,
+    this.initialWallet,
+    this.autoStart = false,
+  });
+
   final String? invoiceId;
+  final String? initialMethod;
+  final String? initialBank;
+  final String? initialWallet;
+  final bool autoStart;
 
   @override
   ConsumerState<BayarPage> createState() => _BayarPageState();
@@ -33,6 +45,7 @@ class _BayarPageState extends ConsumerState<BayarPage> {
   String _wallet = 'ovo';
   PaymentV? _pending;
   bool _busy = false;
+  bool _autoStarted = false;
   Timer? _poll;
   int _gen = 0;
 
@@ -42,6 +55,17 @@ class _BayarPageState extends ConsumerState<BayarPage> {
   void initState() {
     super.initState();
     _invoiceId = widget.invoiceId;
+    if (widget.initialMethod != null &&
+        const {'qris', 'va', 'ewallet'}.contains(widget.initialMethod)) {
+      _method = widget.initialMethod!;
+    }
+    if (widget.initialBank != null && _banks.containsKey(widget.initialBank)) {
+      _bank = widget.initialBank!;
+    }
+    if (widget.initialWallet != null &&
+        _wallets.containsKey(widget.initialWallet)) {
+      _wallet = widget.initialWallet!;
+    }
   }
 
   @override
@@ -121,6 +145,12 @@ class _BayarPageState extends ConsumerState<BayarPage> {
                   ),
                 ),
             ];
+          }
+          if (widget.autoStart && !_autoStarted && _pending == null && !_busy) {
+            _autoStarted = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _pay(inv);
+            });
           }
           final p = _pending;
           return [

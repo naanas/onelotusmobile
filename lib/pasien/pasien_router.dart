@@ -125,7 +125,13 @@ List<RouteBase> pasienRoutes(GlobalKey<NavigatorState> root) => [
   _push(
     root,
     PRoutes.bayar,
-    (s) => BayarPage(invoiceId: s.uri.queryParameters['invoice']),
+    (s) => BayarPage(
+      invoiceId: s.uri.queryParameters['invoice'],
+      initialMethod: s.uri.queryParameters['method'],
+      initialBank: s.uri.queryParameters['bank'],
+      initialWallet: s.uri.queryParameters['wallet'],
+      autoStart: s.uri.queryParameters['autostart'] == '1',
+    ),
   ),
   _push(root, PRoutes.jadwal, (_) => const JadwalSayaPage()),
   _push(

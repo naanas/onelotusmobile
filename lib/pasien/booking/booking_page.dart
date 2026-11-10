@@ -147,17 +147,31 @@ class _BookingPageState extends ConsumerState<BookingPage> {
     if (!mounted) return;
     setState(() => _busy = false);
     if (b == null) return;
+    final booking = b.$1;
     final dpInvoice = b.$2;
     if (dpInvoice != null) {
       context.feedback.success(
         'Booking terkirim. Bayar DP agar jadwal diproses klinik.',
       );
       await context.push('${PRoutes.bayar}?invoice=$dpInvoice');
+    } else if (booking.status == 'accepted') {
+      final goJadwal = await context.feedback.sheet<bool>(
+        title: 'Jadwal terkonfirmasi',
+        message:
+            'Jadwal terapi Anda sudah terdaftar di klinik. Silakan datang tepat waktu.',
+        actions: const [
+          SheetAction('Lihat jadwal', true),
+          SheetAction('Tutup', false),
+        ],
+      );
+      if (goJadwal == true && mounted) {
+        context.go(PRoutes.jadwal);
+      }
     } else {
       await context.feedback.sheet<void>(
         title: 'Booking terkirim',
         message:
-            'Klinik akan mengonfirmasi jadwal Anda. Anda mendapat notifikasi saat dikonfirmasi.',
+            'Klinik akan mengonfirmasi jadwal home visit Anda. Anda mendapat notifikasi saat dikonfirmasi.',
         actions: const [SheetAction('Oke', null)],
       );
     }

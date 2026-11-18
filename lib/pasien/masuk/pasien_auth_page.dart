@@ -198,6 +198,7 @@ class _PasienAuthPageState extends ConsumerState<PasienAuthPage> {
     final t = context.olText;
     final verified = _verified != null;
     return OlDetailScaffold(
+      pinnedHeader: true,
       title: _daftar ? 'Daftar akun pasien' : 'Lupa password',
       background: c.surface,
       context_: verified

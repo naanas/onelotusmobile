@@ -33,6 +33,7 @@ class _BeliPaketPageState extends ConsumerState<BeliPaketPage> {
 
   @override
   Widget build(BuildContext context) => OlDetailScaffold(
+    pinnedHeader: true,
     title: 'Beli paket',
     foot: [OlButton(label: 'Lanjut bayar', loading: _busy, onPressed: _picked == null ? null : _buy)],
     children: [

@@ -92,6 +92,7 @@ class _AlamatPageState extends ConsumerState<AlamatPage> {
 
   @override
   Widget build(BuildContext context) => OlDetailScaffold(
+    pinnedHeader: true,
     title: 'Alamat tersimpan',
     foot: [OlButton(label: 'Tambah alamat', icon: OlIcons.pin, onPressed: _edit)],
     children: [

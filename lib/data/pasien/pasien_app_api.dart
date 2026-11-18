@@ -98,6 +98,45 @@ class PatientSessionV {
   );
 }
 
+/// Kanal bayar online + logo + biaya admin dari Dupay (GET /v1/patient/payment-channels).
+class PayChannelV {
+  const PayChannelV({
+    required this.method,
+    required this.code,
+    required this.label,
+    this.vaBank,
+    this.ewallet,
+    this.logo,
+    this.fee = 0,
+    this.total = 0,
+    this.available = true,
+  });
+
+  /// qris | va | ewallet
+  final String method, code, label;
+  final String? vaBank, ewallet, logo;
+  final int fee, total;
+  final bool available;
+
+  String get group => switch (method) {
+    'va' => 'Virtual Account',
+    'ewallet' => 'E-Wallet',
+    _ => 'QRIS',
+  };
+
+  factory PayChannelV.fromJson(Map<String, dynamic> j) => PayChannelV(
+    method: j['method'] as String? ?? 'qris',
+    code: j['code']?.toString() ?? '',
+    label: j['label'] as String? ?? '',
+    vaBank: j['va_bank'] as String?,
+    ewallet: j['ewallet'] as String?,
+    logo: (j['logo'] as String?)?.trim().isEmpty ?? true ? null : (j['logo'] as String).trim(),
+    fee: parseInt(j['fee']) ?? 0,
+    total: parseInt(j['total']) ?? 0,
+    available: j['available'] as bool? ?? true,
+  );
+}
+
 /// Slot jadwal kosong (GET /v1/slots).
 typedef SlotV = ({DateTime start, DateTime end, bool available});
 
@@ -157,6 +196,13 @@ class PasienAppApi {
     headers: {'Idempotency-Key': BillingApi.key()},
   );
 
+  /// Kanal bayar aktif + biaya admin untuk nominal [amount]; [code] = hanya satu kanal (hitung ulang biaya).
+  Future<List<PayChannelV>> paymentChannels(int amount, {String? code}) => api.get(
+    '/v1/patient/payment-channels',
+    (d) => parseList(d, PayChannelV.fromJson),
+    query: {'amount': '$amount', 'code': code},
+  );
+
   Future<ReceiptV> receipt(String id) => api.get('/v1/receipts/$id', (d) => ReceiptV.fromJson(asMap(d)));
 
   Future<String?> receiptPdf(String id) => api.get('/v1/receipts/$id/pdf', (d) => asMap(d)['url'] as String?);
@@ -183,6 +229,16 @@ class PasienAppApi {
   // ── riwayat sesi ──
 
   Future<List<PatientSessionV>> sessions() => api.get('/v1/patient/sessions', (d) => parseList(d, PatientSessionV.fromJson));
+
+  /// Area tubuh yang ditandai terapis di satu sesi: `slug:sisi` (left/right/common) → mode (treated/calming).
+  Future<Map<String, String>> sessionAreas(String id) => api.get('/v1/patient/sessions/$id', (d) {
+    const side = {'l': 'left', 'r': 'right', 'c': 'common'};
+    return {
+      for (final a in (asMap(d)['body_areas'] as List? ?? const []))
+        if (a is Map && a['area_code'] != null)
+          '${a['area_code']}:${side[a['side']] ?? 'common'}': (a['mode'] ?? 'treated').toString(),
+    };
+  });
 
   // ── alamat ──
 

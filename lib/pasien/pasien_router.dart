@@ -131,6 +131,7 @@ List<RouteBase> pasienRoutes(GlobalKey<NavigatorState> root) => [
       initialBank: s.uri.queryParameters['bank'],
       initialWallet: s.uri.queryParameters['wallet'],
       autoStart: s.uri.queryParameters['autostart'] == '1',
+      prepare: s.extra is Future<String?> ? s.extra as Future<String?> : null,
     ),
   ),
   _push(root, PRoutes.jadwal, (_) => const JadwalSayaPage()),
@@ -145,7 +146,10 @@ List<RouteBase> pasienRoutes(GlobalKey<NavigatorState> root) => [
   _push(
     root,
     PRoutes.struk,
-    (s) => StrukPasienPage(receiptId: s.uri.queryParameters['id'] ?? ''),
+    (s) => StrukPasienPage(
+      receiptId: s.uri.queryParameters['id'] ?? '',
+      afterPayment: s.uri.queryParameters['done'] == '1',
+    ),
   ),
   _push(root, PRoutes.poin, (_) => const PoinPasienPage()),
   _push(root, PRoutes.notifikasi, (_) => const NotifikasiPasienPage()),

@@ -9,8 +9,17 @@ import 'skeleton.dart';
 
 /// Memuat data dari server untuk satu layar: skeleton saat memuat, pesan error + "Coba lagi"
 /// (ST-03), lalu [builder]. [reload] memuat ulang (mis. setelah aksi berhasil).
+///
+/// Data selalu segar tanpa tarik manual (stale-while-revalidate): saat layar terlihat lagi —
+/// pindah tab, kembali dari layar lain, atau aplikasi dibuka lagi dari latar belakang —
+/// data dimuat ulang diam-diam. Data lama tetap tampil selama menunggu; gagal → data lama dipakai.
 class OlAsync<T> extends StatefulWidget {
   const OlAsync({super.key, required this.load, required this.builder});
+
+  /// Jeda minimum antar-refresh otomatis (hindari dobel saat beberapa pemicu datang bersamaan).
+  /// Diukur dengan jam nyata; tes boleh menurunkannya.
+  @visibleForTesting
+  static Duration minRefreshGap = const Duration(seconds: 2);
 
   final Future<T> Function() load;
   final List<Widget> Function(BuildContext context, T data, VoidCallback reload)
@@ -21,17 +30,60 @@ class OlAsync<T> extends StatefulWidget {
 }
 
 class _OlAsyncState<T> extends State<OlAsync<T>> {
-  late Future<T> _future = widget.load();
+  late Future<T> _future = _track(widget.load());
   VoidCallback? _unregister;
+  late final AppLifecycleListener _life;
+
+  /// Data terakhir yang berhasil dimuat (cadangan saat refresh diam-diam gagal).
+  T? _last;
+  bool _hasLast = false;
+  DateTime _loadedAt = DateTime.now();
+  bool _visible = true;
+
+
+  Future<T> _track(Future<T> f) {
+    _loadedAt = DateTime.now();
+    return f.then((v) {
+      _last = v;
+      _hasLast = true;
+      return v;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _life = AppLifecycleListener(onResume: () {
+      if (_visible) _refreshSilently();
+    });
+  }
+
+  /// Muat ulang tanpa skeleton/error bila sudah ada data.
+  /// [inBuild]: dipanggil dari didChangeDependencies — widget memang akan dibangun ulang, tanpa setState.
+  void _refreshSilently({bool inBuild = false}) {
+    if (!mounted || DateTime.now().difference(_loadedAt) < OlAsync.minRefreshGap) return;
+    var next = _track(widget.load());
+    if (_hasLast) {
+      final prev = _last as T;
+      next = next.catchError((Object _) => prev);
+    }
+    if (inBuild) {
+      _future = next;
+    } else {
+      setState(() {
+        _future = next;
+      });
+    }
+  }
 
   void _reload() => setState(() {
-    _future = widget.load();
+    _future = _track(widget.load());
   });
 
   /// Tarik-untuk-memuat-ulang. FutureBuilder tetap menampilkan data lama selama menunggu
   /// (tanpa kedip ke skeleton); indikator tarik berhenti saat future ini selesai.
   Future<void> _pull() {
-    final next = widget.load();
+    final next = _track(widget.load());
     setState(() {
       _future = next;
     });
@@ -43,10 +95,15 @@ class _OlAsyncState<T> extends State<OlAsync<T>> {
     super.didChangeDependencies();
     _unregister?.call();
     _unregister = OlRefreshScope.maybeOf(context)?.register(_pull);
+    // Tab tak aktif & layar yang tertutup layar lain berjalan dengan TickerMode mati.
+    final visible = TickerMode.of(context);
+    if (visible && !_visible) _refreshSilently(inBuild: true);
+    _visible = visible;
   }
 
   @override
   void dispose() {
+    _life.dispose();
     _unregister?.call();
     super.dispose();
   }

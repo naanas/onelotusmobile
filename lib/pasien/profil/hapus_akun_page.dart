@@ -92,6 +92,7 @@ class _HapusAkunPageState extends ConsumerState<HapusAkunPage> {
     );
 
     return OlDetailScaffold(
+      pinnedHeader: true,
       title: 'Hapus akun aplikasi',
       foot: [
         OlButton.danger(

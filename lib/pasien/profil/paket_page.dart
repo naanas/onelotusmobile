@@ -29,6 +29,7 @@ class _PaketPageState extends ConsumerState<PaketPage> {
   Widget build(BuildContext context) {
     final api = ref.read(pasienAppApiProvider);
     return OlDetailScaffold(
+      pinnedHeader: true,
       title: 'Paket & pembayaran',
       foot: [OlButton.secondary(label: 'Beli paket', icon: OlIcons.package, onPressed: () => _go(PRoutes.beliPaket))],
       children: [

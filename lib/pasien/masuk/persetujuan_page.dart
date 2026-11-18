@@ -53,6 +53,7 @@ class _PersetujuanPageState extends ConsumerState<PersetujuanPage> {
     );
 
     return OlDetailScaffold(
+      pinnedHeader: true,
       title: 'Data Anda, kendali Anda',
       showBack: false,
       background: c.surface,

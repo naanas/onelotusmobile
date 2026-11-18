@@ -44,6 +44,7 @@ class ProfilPage extends ConsumerWidget {
     }
 
     return OlPageBody(
+      pinnedHeader: true,
       header: const OlAppHeader(title: 'Profil'),
       children: [
         OlCard(

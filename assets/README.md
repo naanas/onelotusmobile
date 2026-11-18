@@ -8,6 +8,8 @@ Sesuai Lampiran D di `onelotus-mobile-ui-enhancement.md`. Semua aset dari pustak
 | `illustrations/` | 20 ilustrasi, sudah diwarnai palet One Lotus | unDraw | Lisensi unDraw (bebas komersial, tanpa atribusi) |
 | `lottie/an_*.json` | 12 animasi khusus One Lotus | Dibuat untuk proyek ini | Milik proyek |
 | `lottie/an_ua_*.json` | 16 ikon animasi, sudah diwarnai token status | useAnimations | CC BY 4.0 — wajib atribusi |
+| `lottie/an_payment_processing.json` | Animasi memuat pembayaran (HP "Processing") | [LottieFiles — payment processing](https://lottiefiles.com/free-animation/payment-processing-DugZVnwrAu) | Lottie Simple License (bebas komersial) |
+| `payment/` | Logo kanal bayar (QRIS, bank, e-wallet) | Wikimedia Commons — lihat `payment/README.md` | Merek milik pemiliknya; hanya penanda metode bayar |
 | `body/` | Peta tubuh depan/belakang (kosong + contoh TR-04) | react-native-body-highlighter | MIT |
 | `preview.html` | Katalog semua aset (animasi bisa diputar, butuh internet untuk lottie-web) | — | — |
 

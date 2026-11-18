@@ -80,6 +80,7 @@ flutter:
     - assets/illustrations/
     - assets/lottie/
     - assets/body/
+    - assets/payment/
 
   fonts:
     - family: PlusJakartaSans

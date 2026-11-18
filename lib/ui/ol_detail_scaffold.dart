@@ -25,7 +25,16 @@ class OlDetailScaffold extends StatelessWidget {
     this.top,
     this.gap = OlSpace.gap,
     this.onRefresh,
+    this.pinnedHeader = false,
+    this.onBack,
   });
+
+  /// Aksi tombol kembali (default: tutup layar). Mis. pembayaran → ke daftar booking.
+  final VoidCallback? onBack;
+
+  /// Bagian pasien: baris kembali/aksi melekat di atas; judul besar tergulir,
+  /// lalu judul ringkas muncul di baris itu (gaya judul besar iOS).
+  final bool pinnedHeader;
 
   /// Muat ulang tambahan saat layar ditarik (selain [OlAsync] di dalamnya yang otomatis).
   final Future<void> Function()? onRefresh;
@@ -59,6 +68,7 @@ class OlDetailScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (pinnedHeader) return _PinnedDetail(this);
     final t = context.olText;
     final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -99,7 +109,7 @@ class OlDetailScaffold extends StatelessWidget {
                                       onPressed: () =>
                                           Navigator.of(context).maybePop(),
                                     )
-                                  : const OlBackButton(),
+                                  : OlBackButton(onPressed: onBack),
                             const SizedBox(width: OlSpace.sm),
                             Expanded(
                               child: Align(
@@ -183,4 +193,183 @@ class OlFootRow extends StatelessWidget {
       ],
     ],
   );
+}
+
+/// [OlDetailScaffold] dengan header melekat.
+class _PinnedDetail extends StatefulWidget {
+  const _PinnedDetail(this.w);
+  final OlDetailScaffold w;
+
+  @override
+  State<_PinnedDetail> createState() => _PinnedDetailState();
+}
+
+class _PinnedDetailState extends State<_PinnedDetail> {
+  final _scroll = ScrollController();
+  final _titleKey = GlobalKey();
+  bool _scrolled = false;
+  bool _titleGone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final box = _titleKey.currentContext?.findRenderObject() as RenderBox?;
+    // Judul besar dianggap hilang saat bagian bawahnya lewat di bawah bar.
+    final titleBottom = box == null ? 0.0 : box.size.height;
+    final scrolled = _scroll.offset > 0;
+    final gone = box != null && _scroll.offset > titleBottom - 8;
+    if (scrolled != _scrolled || gone != _titleGone) {
+      setState(() {
+        _scrolled = scrolled;
+        _titleGone = gone;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final w = widget.w;
+    final c = context.ol;
+    final t = context.olText;
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final fast = OlMotion.of(context, OlMotion.fast);
+
+    final bar = AnimatedContainer(
+      duration: fast,
+      height: OlSize.minTouch + 8,
+      padding: const EdgeInsets.symmetric(horizontal: OlSpace.screen - 4),
+      decoration: BoxDecoration(
+        color: w.background ?? c.bg,
+        border: Border(
+          bottom: BorderSide(
+            color: c.line.withValues(alpha: _scrolled ? 0.8 : 0),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (w.showBack)
+            w.close
+                ? OlIconButton(
+                    icon: OlIcons.close,
+                    semanticLabel: 'Tutup',
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  )
+                : OlBackButton(onPressed: w.onBack)
+          else
+            const SizedBox(width: 4),
+          const SizedBox(width: OlSpace.xs),
+          Expanded(
+            child: AnimatedOpacity(
+              opacity: _titleGone ? 1 : 0,
+              duration: fast,
+              child: AnimatedSlide(
+                offset: _titleGone ? Offset.zero : const Offset(0, .3),
+                duration: fast,
+                child: Text(
+                  w.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.heading,
+                ),
+              ),
+            ),
+          ),
+          if (w.actions.isNotEmpty)
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(mainAxisSize: MainAxisSize.min, children: w.actions),
+            ),
+        ],
+      ),
+    );
+
+    final heading = Column(
+      key: _titleKey,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (w.top != null) ...[w.top!, const SizedBox(height: 14)],
+        if (w.context_ != null) ...[
+          Text(
+            w.context_!,
+            style: t.caption.copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 3),
+        ],
+        Row(
+          children: [
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Text(w.title, style: t.title),
+              ),
+            ),
+            if (w.titleTrailing != null) ...[
+              const SizedBox(width: OlSpace.sm),
+              w.titleTrailing!,
+            ],
+          ],
+        ),
+      ],
+    );
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: OlStatusBar.dark,
+      child: Scaffold(
+        backgroundColor: w.background,
+        bottomNavigationBar: w.foot.isEmpty || keyboard
+            ? null
+            : OlFootBar(children: w.foot),
+        body: SafeArea(
+          bottom: w.foot.isEmpty,
+          child: Column(
+            children: [
+              bar,
+              Expanded(
+                child: OlRefreshable(
+                  onRefresh: w.onRefresh,
+                  child: ListView(
+                    controller: _scroll,
+                    physics: olRefreshPhysics,
+                    padding: const EdgeInsets.fromLTRB(
+                      OlSpace.screen,
+                      4,
+                      OlSpace.screen,
+                      28,
+                    ),
+                    children: [
+                      heading,
+                      if (w.below != null) ...[
+                        const SizedBox(height: 10),
+                        w.below!,
+                      ],
+                      const SizedBox(height: 18),
+                      for (final (i, child) in w.children.indexed) ...[
+                        if (i > 0) SizedBox(height: w.gap),
+                        child,
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              if (w.foot.isNotEmpty && keyboard) OlFootBar(children: w.foot),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

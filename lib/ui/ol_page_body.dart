@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
+import 'ol_app_header.dart';
 import 'ol_refresh.dart';
 
 /// Isi halaman tab: header ikut tergulir bersama konten, latar `bg` yang sama di semua tab.
@@ -9,6 +10,10 @@ import 'ol_refresh.dart';
 ///
 /// Saat digulir, area status bar ditutup latar opak agar konten tidak tampak
 /// menembus jam/ikon sistem; warna ikon status bar ikut menyesuaikan.
+///
+/// [pinnedHeader] (bagian pasien): header tidak ikut tergulir. Header biasa diam di atas
+/// (garis tipis muncul saat konten lewat di bawahnya). Header hero tetap tergulir agar
+/// tidak memakan layar, lalu diganti bar ringkas biru berisi judul + aksi yang melekat.
 class OlPageBody extends StatefulWidget {
   const OlPageBody({
     super.key,
@@ -16,9 +21,21 @@ class OlPageBody extends StatefulWidget {
     required this.children,
     this.heroOverlap = false,
     this.onRefresh,
+    this.pinnedHeader = false,
+    this.foot,
+    this.controller,
   });
 
+  /// Area tombol melekat di bawah (mis. [OlFootBar] wizard booking); tidak ikut tergulir.
+  final Widget? foot;
+
+  /// Pengendali gulir dari luar (mis. kembali ke atas saat ganti langkah).
+  final ScrollController? controller;
+
   final Widget header;
+
+  /// Header melekat di atas saat digulir (lihat dokumentasi kelas).
+  final bool pinnedHeader;
   final List<Widget> children;
   final bool heroOverlap;
 
@@ -32,9 +49,14 @@ class OlPageBody extends StatefulWidget {
 }
 
 class _OlPageBodyState extends State<OlPageBody> {
-  final _scroll = ScrollController();
+  late final ScrollController _scroll = widget.controller ?? ScrollController();
   final _headerKey = GlobalKey();
   bool _scrolled = false;
+
+  /// 0..1: seberapa jauh bar ringkas hero sudah muncul.
+  double _compact = 0;
+
+  static const _barHeight = 56.0;
 
   @override
   void initState() {
@@ -44,12 +66,27 @@ class _OlPageBodyState extends State<OlPageBody> {
 
   @override
   void dispose() {
-    _scroll.dispose();
+    _scroll.removeListener(_onScroll);
+    if (widget.controller == null) _scroll.dispose();
     super.dispose();
   }
 
   void _onScroll() {
     final top = MediaQuery.paddingOf(context).top;
+    if (widget.pinnedHeader && widget.heroOverlap) {
+      final box = _headerKey.currentContext?.findRenderObject() as RenderBox?;
+      final h = box?.size.height ?? 0;
+      // Bar muncul saat sisa hero yang terlihat setinggi bar; selesai 24dp kemudian.
+      final start = h - OlPageBody.overlap - top - _barHeight;
+      final v = ((_scroll.offset - start) / 24).clamp(0.0, 1.0);
+      if (v != _compact) setState(() => _compact = v);
+      return;
+    }
+    if (widget.pinnedHeader) {
+      final scrolled = _scroll.offset > 0;
+      if (scrolled != _scrolled) setState(() => _scrolled = scrolled);
+      return;
+    }
     var threshold = 1.0;
     if (widget.heroOverlap) {
       // Hero biru menutupi status bar sampai kartu yang menumpuk naik ke sana.
@@ -63,8 +100,19 @@ class _OlPageBodyState extends State<OlPageBody> {
 
   @override
   Widget build(BuildContext context) {
+    // Struktur selalu sama (ada/tidaknya foot) agar state isi halaman tidak hilang
+    // saat tombol bawah muncul, mis. setelah data dimuat.
+    final foot = widget.foot;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [Expanded(child: _page(context)), ?foot],
+    );
+  }
+
+  Widget _page(BuildContext context) {
     final c = context.ol;
     final top = MediaQuery.paddingOf(context).top;
+    final pinnedPlain = widget.pinnedHeader && !widget.heroOverlap;
     final content = Padding(
       padding: const EdgeInsets.symmetric(horizontal: OlSpace.screen),
       child: Column(
@@ -83,7 +131,8 @@ class _OlPageBodyState extends State<OlPageBody> {
       physics: olRefreshPhysics,
       padding: const EdgeInsets.only(bottom: 24),
       children: [
-        KeyedSubtree(key: _headerKey, child: widget.header),
+        if (!pinnedPlain) KeyedSubtree(key: _headerKey, child: widget.header),
+        if (pinnedPlain) const SizedBox(height: OlSpace.xs),
         if (widget.heroOverlap)
           Transform.translate(
             offset: const Offset(0, -OlPageBody.overlap),
@@ -93,6 +142,68 @@ class _OlPageBodyState extends State<OlPageBody> {
           content,
       ],
     );
+
+    if (pinnedPlain) {
+      return ColoredBox(
+        color: c.bg,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AnimatedContainer(
+              duration: OlMotion.of(context, OlMotion.fast),
+              decoration: BoxDecoration(
+                color: c.bg,
+                border: Border(
+                  bottom: BorderSide(
+                    color: _scrolled
+                        ? c.line.withValues(alpha: 0.8)
+                        : c.line.withValues(alpha: 0),
+                  ),
+                ),
+              ),
+              child: widget.header,
+            ),
+            Expanded(
+              child: OlRefreshable(onRefresh: widget.onRefresh, child: list),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (widget.pinnedHeader) {
+      final h = widget.header;
+      final title = h is OlAppHeader ? h.title : null;
+      final actions = h is OlAppHeader ? h.actions : const <Widget>[];
+      return ColoredBox(
+        color: c.bg,
+        child: Stack(
+          children: [
+            OlRefreshable(onRefresh: widget.onRefresh, child: list),
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                ignoring: _compact < 1,
+                child: AnnotatedRegion<SystemUiOverlayStyle>(
+                  value: OlStatusBar.light,
+                  child: Opacity(
+                    opacity: _compact,
+                    child: _CompactHeroBar(
+                      height: top + _barHeight,
+                      topInset: top,
+                      title: title,
+                      actions: actions,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     final body = ColoredBox(
       color: c.bg,
@@ -134,4 +245,45 @@ class _OlPageBodyState extends State<OlPageBody> {
 
   SystemUiOverlayStyle get _headerStyle =>
       widget.heroOverlap ? OlStatusBar.light : OlStatusBar.dark;
+}
+
+/// Bar ringkas biru yang menggantikan hero setelah hero tergulir keluar.
+class _CompactHeroBar extends StatelessWidget {
+  const _CompactHeroBar({
+    required this.height,
+    required this.topInset,
+    required this.title,
+    required this.actions,
+  });
+
+  final double height, topInset;
+  final String? title;
+  final List<Widget> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ol;
+    final t = context.olText;
+    return Container(
+      height: height,
+      padding: EdgeInsets.fromLTRB(OlSpace.screen, topInset, OlSpace.sm, 0),
+      decoration: BoxDecoration(
+        color: c.brandDeep,
+        boxShadow: OlShadow.sh1,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title ?? '',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.heading.copyWith(color: Colors.white),
+            ),
+          ),
+          ...actions,
+        ],
+      ),
+    );
+  }
 }

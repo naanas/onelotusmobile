@@ -181,6 +181,7 @@ class _LinkFormState extends ConsumerState<_LinkForm> {
         );
     final now = DateTime.now().year;
     return OlDetailScaffold(
+      pinnedHeader: true,
       title: 'Kami menemukan data Anda',
       showBack: false,
       background: c.surface,
@@ -409,6 +410,7 @@ class _RegisterFormState extends ConsumerState<_RegisterForm> {
     final t = context.olText;
     void touch(String _) => setState(() {});
     return OlDetailScaffold(
+      pinnedHeader: true,
       title: 'Daftar pasien baru',
       showBack: false,
       background: c.surface,

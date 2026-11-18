@@ -8,9 +8,10 @@ import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import '../pasien_routes.dart';
 import '../pasien_session.dart';
+import 'recovery_journey.dart';
 
 /// PS-05 Beranda pasien (§5.8): sapaan, sesi berikutnya (`GET /v1/pasien/sessions`), paket aktif.
-/// Progres pemulihan, latihan, tagihan, dan poin menunggu layanannya di server.
+/// Progres pemulihan: [RecoveryJourneyCard]. Latihan, tagihan, dan poin menunggu layanannya di server.
 class BerandaPage extends ConsumerWidget {
   const BerandaPage({super.key});
 
@@ -34,6 +35,7 @@ class BerandaPage extends ConsumerWidget {
     final first = patient?.name.split(' ').first;
     final pkg = patient?.activePackage;
     return OlPageBody(
+      pinnedHeader: true,
       heroOverlap: true,
       header: OlAppHeader(
         hero: true,
@@ -44,6 +46,7 @@ class BerandaPage extends ConsumerWidget {
       ),
       children: [
         const FeedbackBannerHost(),
+        const RecoveryJourneyCard(),
         const OlSectionHeader(title: 'Jadwal berikutnya'),
         OlAsync<List<PasienSessionItem>>(
           load: () => ref.read(pasienApiProvider).sessions(),
@@ -54,8 +57,7 @@ class BerandaPage extends ConsumerWidget {
                   child: EmptyState(
                     illustration: OlIllustration.emptySchedule,
                     title: 'Belum ada jadwal',
-                    message:
-                        'Buat jadwal terapi di tab Booking.',
+                    message: 'Buat jadwal terapi di tab Booking.',
                   ),
                 ),
               ];

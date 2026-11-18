@@ -8,6 +8,7 @@ export 'ol_chip.dart';
 export 'ol_icon.dart';
 export 'ol_list_item.dart';
 export 'ol_segmented.dart';
+export 'ol_slide_to_confirm.dart';
 export 'ol_tag.dart';
 export 'ol_text_field.dart';
 export 'skeleton.dart';

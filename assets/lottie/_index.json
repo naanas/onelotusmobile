@@ -282,5 +282,20 @@
    "op": 30,
    "w": 32
   }
- ]
+ ],
+ "lottieFiles": {
+  "an_payment_processing": {
+   "duration_s": 2.07,
+   "loop": true,
+   "frames": 62,
+   "size": [
+    900,
+    900
+   ],
+   "use": "Layar memuat pembayaran (PS-09): membuat booking, memuat tagihan, menerbitkan kode bayar",
+   "source": "https://lottiefiles.com/free-animation/payment-processing-DugZVnwrAu",
+   "license": "Lottie Simple License (LottieFiles) — bebas dipakai, termasuk komersial",
+   "note": "Gambar PNG dari paket .lottie ditanam sebagai base64 di JSON"
+  }
+ }
 }

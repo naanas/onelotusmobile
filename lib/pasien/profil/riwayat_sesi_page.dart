@@ -13,6 +13,7 @@ class RiwayatSesiPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => OlDetailScaffold(
+    pinnedHeader: true,
     title: 'Riwayat sesi',
     children: [
       OlAsync<List<PatientSessionV>>(

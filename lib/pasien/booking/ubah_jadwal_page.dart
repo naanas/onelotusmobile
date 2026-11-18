@@ -59,6 +59,7 @@ class _UbahJadwalPageState extends ConsumerState<UbahJadwalPage> {
 
   @override
   Widget build(BuildContext context) => OlDetailScaffold(
+    pinnedHeader: true,
     title: 'Ubah jadwal',
     foot: [
       OlButton(label: 'Minta jadwal baru', loading: _busy, onPressed: _start == null ? null : _reschedule),

@@ -14,6 +14,7 @@ class PoinPasienPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => OlDetailScaffold(
+    pinnedHeader: true,
     title: 'Poin & referral',
     children: [
       OlAsync<PointsSummaryV>(

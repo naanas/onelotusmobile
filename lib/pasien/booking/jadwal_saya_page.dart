@@ -34,6 +34,7 @@ class _JadwalSayaPageState extends ConsumerState<JadwalSayaPage> {
 
   @override
   Widget build(BuildContext context) => OlDetailScaffold(
+    pinnedHeader: true,
     title: 'Jadwal saya',
     children: [
       OlSegmented<bool>(

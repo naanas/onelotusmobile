@@ -36,6 +36,7 @@ class _LatihanPageState extends ConsumerState<LatihanPage> {
 
   @override
   Widget build(BuildContext context) => OlPageBody(
+    pinnedHeader: true,
     header: const OlAppHeader(title: 'Latihan'),
     children: [
       OlAsync<List<ProgramV>>(

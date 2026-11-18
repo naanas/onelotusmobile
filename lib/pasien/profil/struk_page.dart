@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
 import '../../data/models/json.dart';
@@ -9,17 +10,32 @@ import '../../data/pasien/pasien_app_api.dart';
 import '../../features/kasir/billing_common.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
+import '../pasien_routes.dart';
 
 /// PS-15 Struk digital pasien: rincian, salin tautan PDF.
 class StrukPasienPage extends ConsumerWidget {
-  const StrukPasienPage({super.key, required this.receiptId});
+  const StrukPasienPage({super.key, required this.receiptId, this.afterPayment = false});
   final String receiptId;
+
+  /// Dibuka tepat setelah pembayaran lunas: tombol "Selesai" & kembali → Beranda.
+  final bool afterPayment;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final api = ref.read(pasienAppApiProvider);
-    return OlDetailScaffold(
+    final scaffold = OlDetailScaffold(
+      pinnedHeader: true,
       title: 'Struk',
+      onBack: afterPayment ? () => context.go(PRoutes.beranda) : null,
+      foot: afterPayment
+          ? [
+              OlButton(
+                label: 'Selesai',
+                icon: OlIcons.check,
+                onPressed: () => context.go(PRoutes.beranda),
+              ),
+            ]
+          : const [],
       children: [
         OlAsync<ReceiptV>(
           load: () => api.receipt(receiptId),
@@ -61,6 +77,14 @@ class StrukPasienPage extends ConsumerWidget {
           },
         ),
       ],
+    );
+    if (!afterPayment) return scaffold;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go(PRoutes.beranda);
+      },
+      child: scaffold,
     );
   }
 }

@@ -50,6 +50,7 @@ class _NotifikasiPasienPageState extends ConsumerState<NotifikasiPasienPage> {
   Widget build(BuildContext context) {
     final p = _prefs;
     return OlDetailScaffold(
+      pinnedHeader: true,
       title: 'Notifikasi',
       children: [
         if (p != null)

@@ -101,6 +101,43 @@ const invoiceStatusLabels = {
   'refunded': 'Refund penuh',
 };
 
+/// Status pembayaran versi pasien (lihat [InvoiceV.payState]).
+enum InvoicePayState {
+  unpaid('Belum dibayar'),
+  waiting('Menunggu pembayaran'),
+  verifying('Sedang diverifikasi'),
+  failed('Pembayaran gagal'),
+  expired('Kedaluwarsa'),
+  cancelled('Dibatalkan'),
+  rejected('Ditolak'),
+  paid('Lunas'),
+  refunded('Dikembalikan'),
+  voided('Tagihan dibatalkan');
+
+  const InvoicePayState(this.label);
+  final String label;
+
+  /// Percobaan terakhir berakhir tanpa uang masuk → pasien perlu bayar lagi.
+  bool get ended => this == failed || this == expired || this == cancelled || this == rejected;
+}
+
+const paymentStatusLabels = {
+  'pending': 'Menunggu',
+  'awaiting_verification': 'Diverifikasi',
+  'succeeded': 'Berhasil',
+  'failed': 'Gagal',
+  'expired': 'Kedaluwarsa',
+  'cancelled': 'Dibatalkan',
+  'rejected': 'Ditolak',
+};
+
+const invoiceKindLabels = {
+  'session': 'Sesi terapi',
+  'package': 'Paket terapi',
+  'booking_dp': 'DP booking',
+  'manual': 'Tagihan',
+};
+
 class InvoiceV {
   const InvoiceV({
     required this.id,
@@ -158,6 +195,35 @@ class InvoiceV {
   bool get payable => const {'draft', 'unpaid', 'partially_paid', 'awaiting_payment'}.contains(status) && balance > 0;
   bool get refundable => const {'paid', 'partially_paid', 'partially_refunded'}.contains(status) && paid > refunded;
   PaymentV? get pendingPayment => payments.where((p) => p.pending).firstOrNull;
+
+  /// Percobaan bayar terakhir lewat gateway/transfer (bukan potongan paket/poin). Server mengurutkan lama → baru.
+  PaymentV? get lastAttempt => payments.where((p) => p.method != 'package' && p.method != 'points').lastOrNull;
+
+  /// Status yang dilihat pasien: gabungan status tagihan + percobaan bayar terakhir
+  /// (hasil callback Dupay/PG: gagal, kedaluwarsa, dibatalkan, ditolak).
+  InvoicePayState get payState {
+    switch (status) {
+      case 'paid':
+        return InvoicePayState.paid;
+      case 'refunded' || 'partially_refunded':
+        return InvoicePayState.refunded;
+      case 'cancelled':
+        return InvoicePayState.voided;
+    }
+    final p = pendingPayment;
+    if (p != null) {
+      if (p.status == 'awaiting_verification') return InvoicePayState.verifying;
+      final exp = p.expiresAt;
+      return exp != null && exp.isBefore(DateTime.now()) ? InvoicePayState.expired : InvoicePayState.waiting;
+    }
+    return switch (lastAttempt?.status) {
+      'failed' => InvoicePayState.failed,
+      'expired' => InvoicePayState.expired,
+      'cancelled' => InvoicePayState.cancelled,
+      'rejected' => InvoicePayState.rejected,
+      _ => InvoicePayState.unpaid,
+    };
+  }
 
   factory InvoiceV.fromJson(Map<String, dynamic> j) {
     final b = _m(j['breakdown']);

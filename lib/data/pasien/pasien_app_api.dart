@@ -145,6 +145,18 @@ class PasienAppApi {
   PasienAppApi(this.api);
   final ApiClient api;
 
+  /// Hasil terakhir per endpoint (memori, satu sesi login — provider dibuat ulang saat ganti akun).
+  /// Layar menampilkannya langsung, lalu memuat ulang di belakang (stale-while-revalidate).
+  final _memo = <String, Object>{};
+
+  /// Data terakhir dari [packages]/[invoices] (null bila belum pernah dimuat).
+  T? cached<T>(String key) => _memo[key] as T?;
+
+  Future<T> _remember<T extends Object>(String key, Future<T> f) => f.then((v) {
+    _memo[key] = v;
+    return v;
+  });
+
   static String _day(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   // ── katalog & booking ──
@@ -186,8 +198,10 @@ class PasienAppApi {
 
   // ── tagihan & bayar ──
 
-  Future<List<InvoiceV>> invoices({String? status}) =>
-      api.get('/v1/patient/invoices', (d) => parseList(d, InvoiceV.fromJson), query: {'status': status});
+  Future<List<InvoiceV>> invoices({String? status}) {
+    final f = api.get('/v1/patient/invoices', (d) => parseList(d, InvoiceV.fromJson), query: {'status': status});
+    return status == null ? _remember('invoices', f) : f;
+  }
 
   Future<PaymentResult> pay(String invoiceId, {required String method, String? vaBank, String? ewallet, int? usePoints}) => api.post(
     '/v1/patient/invoices/$invoiceId/pay',
@@ -209,7 +223,8 @@ class PasienAppApi {
 
   // ── paket & poin ──
 
-  Future<List<OwnershipV>> packages() => api.get('/v1/patient/packages', (d) => parseList(d, OwnershipV.fromJson));
+  Future<List<OwnershipV>> packages() =>
+      _remember('packages', api.get('/v1/patient/packages', (d) => parseList(d, OwnershipV.fromJson)));
 
   Future<InvoiceV> buyPackage(String packageId) =>
       api.post('/v1/patient/packages/purchase', {'package_id': packageId}, (d) => InvoiceV.fromJson(asMap(d)));

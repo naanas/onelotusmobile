@@ -14,7 +14,11 @@ import 'skeleton.dart';
 /// pindah tab, kembali dari layar lain, atau aplikasi dibuka lagi dari latar belakang —
 /// data dimuat ulang diam-diam. Data lama tetap tampil selama menunggu; gagal → data lama dipakai.
 class OlAsync<T> extends StatefulWidget {
-  const OlAsync({super.key, required this.load, required this.builder});
+  const OlAsync({super.key, required this.load, required this.builder, this.initialData});
+
+  /// Data tersimpan (cache) yang langsung ditampilkan tanpa skeleton selama [load] berjalan.
+  /// Gagal memuat ulang → data ini tetap tampil.
+  final T? initialData;
 
   /// Jeda minimum antar-refresh otomatis (hindari dobel saat beberapa pemicu datang bersamaan).
   /// Diukur dengan jam nyata; tes boleh menurunkannya.
@@ -30,7 +34,15 @@ class OlAsync<T> extends StatefulWidget {
 }
 
 class _OlAsyncState<T> extends State<OlAsync<T>> {
-  late Future<T> _future = _track(widget.load());
+  late Future<T> _future = _first();
+
+  Future<T> _first() {
+    final seed = widget.initialData;
+    if (seed == null) return _track(widget.load());
+    _last = seed;
+    _hasLast = true;
+    return _track(widget.load()).catchError((Object _) => seed);
+  }
   VoidCallback? _unregister;
   late final AppLifecycleListener _life;
 
@@ -111,6 +123,7 @@ class _OlAsyncState<T> extends State<OlAsync<T>> {
   @override
   Widget build(BuildContext context) => FutureBuilder<T>(
     future: _future,
+    initialData: widget.initialData,
     builder: (context, snap) {
       final Widget child;
       if (snap.hasError) {

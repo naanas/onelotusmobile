@@ -164,18 +164,35 @@ class _BayarPageState extends ConsumerState<BayarPage> {
     _watch(inv.id);
   }
 
+  /// Pantau hasil dari Dupay/PG (callback diproses server): lunas → struk; gagal/kedaluwarsa/dibatalkan →
+  /// instruksi ditutup, status gagal ditampilkan, pasien bisa memilih metode lagi.
   void _watch(String id) {
     _poll?.cancel();
     _poll = Timer.periodic(const Duration(seconds: 5), (_) async {
       try {
-        final inv = (await _api.invoices())
-            .where((i) => i.id == id)
-            .firstOrNull;
+        final all = await _api.invoices();
+        final inv = all.where((i) => i.id == id).firstOrNull;
         if (!mounted || inv == null) return;
-        if (inv.status == 'paid') _done(inv);
+        if (inv.status == 'paid') return _done(inv);
+        final mine = _pending == null ? null : inv.payments.where((p) => p.id == _pending!.id).firstOrNull;
+        if (mine != null && !mine.pending) {
+          _poll?.cancel();
+          setState(() {
+            _pending = null;
+            _invoices = Future.value(all);
+          });
+          HapticFeedback.heavyImpact();
+          context.feedback.info(
+            'Pembayaran ${_methodName(mine)} ${paymentStatusLabels[mine.status]?.toLowerCase() ?? mine.status}. '
+            'Tidak ada dana yang terpotong — silakan coba lagi.',
+          );
+        }
       } catch (_) {}
     });
   }
+
+  static String _methodName(PaymentV p) =>
+      p.method == 'va' && p.vaBank != null ? '${p.vaBank!.toUpperCase()} VA' : paymentMethodLabels[p.method] ?? p.method;
 
   void _done(InvoiceV inv) {
     _poll?.cancel();
@@ -410,6 +427,13 @@ class _BayarPageState extends ConsumerState<BayarPage> {
         ),
       ],
       children: [
+        if (inv.payState.ended && inv.lastAttempt != null)
+          OlBanner(
+            tone: OlBannerTone.crit,
+            message: 'Pembayaran ${_methodName(inv.lastAttempt!)} sebelumnya '
+                '${inv.payState == InvoicePayState.failed ? 'gagal' : inv.payState.label.toLowerCase()}. '
+                'Tidak ada dana yang terpotong. Pilih metode untuk membayar lagi.',
+          ),
         PaperReceipt(invoice: inv, fee: fee, feeLabel: _channel?.label),
         const OlSectionHeader(title: 'Metode pembayaran'),
         PaymentChannelPicker(

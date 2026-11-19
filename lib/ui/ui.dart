@@ -36,6 +36,7 @@ export 'pain_scale.dart';
 export 'ol_message_screen.dart';
 export 'ol_slot_picker.dart';
 export 'ol_step_progress.dart';
+export 'ol_stepper.dart';
 export 'pseudo_qr.dart';
 export 'ol_money_field.dart';
 export 'ol_bar_chart.dart';

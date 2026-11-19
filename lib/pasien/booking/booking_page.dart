@@ -614,33 +614,16 @@ class _BookingPageState extends ConsumerState<BookingPage> {
             ],
           ),
           const SizedBox(height: OlSpace.md),
-          OlStepProgress(count: _steps, current: _step),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              for (final (i, label) in _stepTitles.indexed)
-                Expanded(
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: i != _step && i <= maxStep ? () => _goTo(i) : null,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Text(
-                        label,
-                        style: t.caption.copyWith(
-                          color: i == _step
-                              ? c.brandDeep
-                              : i < _step
-                              ? c.brand
-                              : c.faint,
-                          fontWeight: i == _step
-                              ? FontWeight.w800
-                              : FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
+          OlStepper(
+            current: _step,
+            maxReachable: maxStep,
+            onTap: _goTo,
+            steps: [
+              OlStep('Tipe', _homeVisit ? OlIcons.homeVisit : OlIcons.branch),
+              const OlStep('Layanan', OlIcons.hands),
+              const OlStep('Keluhan', OlIcons.pain),
+              const OlStep('Jadwal', OlIcons.calendar),
+              OlStep(_stepTitles[4], _homeVisit ? OlIcons.send : OlIcons.cash),
             ],
           ),
           if (_step == 0 && d.branches.length > 1) ...[

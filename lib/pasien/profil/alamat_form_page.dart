@@ -137,20 +137,8 @@ class _AlamatFormPageState extends ConsumerState<AlamatFormPage> {
     FocusScope.of(context).unfocus();
     setState(() => _locating = true);
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) {
-        if (mounted) context.feedback.info('GPS mati. Aktifkan lokasi di HP lalu coba lagi.');
-        return;
-      }
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
-        if (mounted) context.feedback.error(const AppError(ErrorCode.permLocation));
-        return;
-      }
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 20)),
-      );
-      if (!mounted) return;
+      final pos = await _position();
+      if (pos == null || !mounted) return;
       setState(() {
         _lat = pos.latitude;
         _lng = pos.longitude;
@@ -171,10 +159,55 @@ class _AlamatFormPageState extends ConsumerState<AlamatFormPage> {
       } catch (_) {
         if (mounted) context.feedback.info('Titik lokasi tersimpan. Ketik alamat lengkapnya di bawah.');
       }
-    } catch (_) {
-      if (mounted) context.feedback.info('Lokasi belum didapat. Pastikan GPS aktif lalu coba lagi.');
     } finally {
       if (mounted) setState(() => _locating = false);
+    }
+  }
+
+  /// Posisi sekarang dengan pesan yang sesuai penyebabnya (GPS mati, izin ditolak, sinyal lemah).
+  Future<Position?> _position() async {
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        if (!mounted) return null;
+        final open = await context.feedback.sheet<bool>(
+          title: 'Lokasi HP mati',
+          message: 'Aktifkan Lokasi/GPS di HP untuk mengisi alamat otomatis.',
+          actions: const [SheetAction('Buka pengaturan lokasi', true), SheetAction('Nanti', false, variant: OlButtonVariant.text)],
+        );
+        if (open == true) await Geolocator.openLocationSettings();
+        return null;
+      }
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
+      if (perm == LocationPermission.deniedForever) {
+        if (!mounted) return null;
+        final open = await context.feedback.sheet<bool>(
+          title: 'Izin lokasi ditolak',
+          message: 'Izinkan akses lokasi untuk One Lotus di pengaturan aplikasi, lalu coba lagi.',
+          actions: const [SheetAction('Buka pengaturan aplikasi', true), SheetAction('Nanti', false, variant: OlButtonVariant.text)],
+        );
+        if (open == true) await Geolocator.openAppSettings();
+        return null;
+      }
+      if (perm == LocationPermission.denied) {
+        if (mounted) context.feedback.info('Izin lokasi belum diberikan. Anda tetap bisa mencari alamat secara manual.');
+        return null;
+      }
+      try {
+        return await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 15)),
+        );
+      } on TimeoutException {
+        // Sinyal GPS lemah (di dalam ruangan): pakai posisi terakhir yang diketahui HP bila ada.
+        final last = await Geolocator.getLastKnownPosition();
+        if (last != null) return last;
+        if (mounted) context.feedback.info('Sinyal GPS lemah. Coba di dekat jendela/teras, atau cari alamat secara manual.');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('[lokasi] gagal: $e');
+      if (mounted) context.feedback.info('Lokasi belum bisa diambil. Coba lagi atau cari alamat secara manual.');
+      return null;
     }
   }
 

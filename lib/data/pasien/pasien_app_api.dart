@@ -277,6 +277,10 @@ class PasienAppApi {
 
   Future<void> markAllRead() => api.post('/v1/notifications/read-all', null, (_) {});
 
+  /// Daftarkan token push FCM perangkat ini ke sesi login (server mengirim push ke token ini).
+  Future<void> registerDevice(String token, {required String platform}) =>
+      api.post('/v1/me/devices', {'push_token': token, 'platform': platform}, (_) {});
+
   /// Jumlah notifikasi belum dibaca untuk badge lonceng (maks. 50 dihitung; lebih dari itu → 50+).
   Future<int> unreadCount() => api
       .getPage('/v1/notifications', NotificationV.fromJson, query: {'unread_only': 'true', 'limit': '50'})

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "713509368509",
+    "project_id": "onelotusmobile",
+    "storage_bucket": "onelotusmobile.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:713509368509:android:75fca8705782d605aa3dd4",
+        "android_client_info": {
+          "package_name": "com.onelotus.onelotus_staff"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlMpHDlX1JCrDudcH7oLfYTe9zrF6KxtQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,3 +1,5 @@
+import 'package:go_router/go_router.dart';
+
 /// Rute bagian pasien (ID layar = Lampiran A, PS-*). Semua berawalan `/pasien/`.
 abstract final class PRoutes {
   static const onboarding = '/pasien/onboarding'; // PS-01
@@ -41,4 +43,36 @@ abstract final class PRoutes {
   static bool isPublic(String location) =>
       location == daftar || location == lupaPassword;
   static bool isEntry(String location) => _entry.contains(location);
+}
+
+/// `onelotus://pasien/struk?id=…` → `/pasien/struk?id=…`. Hanya layar pasien yang dikenal; lainnya → null.
+String? pasienRouteForLink(String? link) {
+  final u = link == null ? null : Uri.tryParse(link);
+  if (u == null || u.scheme != 'onelotus' || u.host != 'pasien') return null;
+  final path = '/pasien${u.path}';
+  const known = {
+    PRoutes.beranda,
+    PRoutes.latihan,
+    PRoutes.booking,
+    PRoutes.profil,
+    PRoutes.jadwal,
+    PRoutes.riwayat,
+    PRoutes.paket,
+    PRoutes.struk,
+    PRoutes.poin,
+  };
+  if (!known.contains(path)) return null;
+  return u.hasQuery ? '$path?${u.query}' : path;
+}
+
+/// Buka tautan notifikasi (lonceng / push). Tab → `go`, layar lain → `push`. Tautan tak dikenal → diabaikan.
+void openPasienLink(GoRouter router, String? link) {
+  final route = pasienRouteForLink(link);
+  if (route == null) return;
+  const tabs = {PRoutes.beranda, PRoutes.latihan, PRoutes.booking, PRoutes.profil};
+  if (tabs.contains(Uri.parse(route).path)) {
+    router.go(route);
+  } else {
+    router.push(route);
+  }
 }

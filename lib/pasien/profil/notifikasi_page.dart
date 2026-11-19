@@ -102,16 +102,7 @@ class _NotifikasiPasienPageState extends ConsumerState<NotifikasiPasienPage> {
     if (ok == null && mounted) setState(() => _prefs = before);
   }
 
-  void _open(NotificationV n) {
-    final route = pasienRouteForLink(n.deepLink);
-    if (route == null) return;
-    const tabs = {PRoutes.beranda, PRoutes.latihan, PRoutes.booking, PRoutes.profil};
-    if (tabs.contains(Uri.parse(route).path)) {
-      context.go(route);
-    } else {
-      context.push(route);
-    }
-  }
+  void _open(NotificationV n) => openPasienLink(GoRouter.of(context), n.deepLink);
 
   @override
   Widget build(BuildContext context) {
@@ -177,26 +168,6 @@ class _NotifikasiPasienPageState extends ConsumerState<NotifikasiPasienPage> {
       ],
     );
   }
-}
-
-/// `onelotus://pasien/struk?id=…` → `/pasien/struk?id=…`. Hanya layar pasien yang dikenal; lainnya → null.
-String? pasienRouteForLink(String? link) {
-  final u = link == null ? null : Uri.tryParse(link);
-  if (u == null || u.scheme != 'onelotus' || u.host != 'pasien') return null;
-  final path = '/pasien${u.path}';
-  const known = {
-    PRoutes.beranda,
-    PRoutes.latihan,
-    PRoutes.booking,
-    PRoutes.profil,
-    PRoutes.jadwal,
-    PRoutes.riwayat,
-    PRoutes.paket,
-    PRoutes.struk,
-    PRoutes.poin,
-  };
-  if (!known.contains(path)) return null;
-  return u.hasQuery ? '$path?${u.query}' : path;
 }
 
 /// Ikon & warna per jenis notifikasi (sumber: backend `notify.PatientTypes`).

@@ -8,6 +8,7 @@ import 'app.dart';
 import 'core/config.dart';
 import 'data/local/local_db.dart';
 import 'data/providers.dart';
+import 'pasien/push/pasien_push.dart';
 import 'theme/app_theme.dart';
 import 'ui/body_map/body_map_data.dart';
 
@@ -18,6 +19,7 @@ Future<void> main() async {
     return;
   }
   await initializeDateFormatting('id_ID');
+  await PasienPush.initFirebase(); // push FCM (gagal → aplikasi tetap jalan tanpa push)
   final db = await LocalDb.open();
   // Pramuat peta tubuh (TR-04) agar siluet langsung tampil saat rekam sesi dibuka.
   unawaited(BodyMapData.load());

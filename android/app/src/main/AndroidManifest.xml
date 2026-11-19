@@ -8,6 +8,10 @@
         android:label="One Lotus"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Push FCM saat aplikasi tertutup: kanal & warna default (kanal dibuat di lib/pasien/push/pasien_push.dart). -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="onelotus_default"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

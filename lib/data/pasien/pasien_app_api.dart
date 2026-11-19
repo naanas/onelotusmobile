@@ -277,6 +277,11 @@ class PasienAppApi {
 
   Future<void> markAllRead() => api.post('/v1/notifications/read-all', null, (_) {});
 
+  /// Jumlah notifikasi belum dibaca untuk badge lonceng (maks. 50 dihitung; lebih dari itu → 50+).
+  Future<int> unreadCount() => api
+      .getPage('/v1/notifications', NotificationV.fromJson, query: {'unread_only': 'true', 'limit': '50'})
+      .then((p) => p.items.length + (p.hasMore ? 1 : 0));
+
   Future<({bool reminders, bool promo})> consent() => api.get('/v1/patient/consent', (d) {
     final m = asMap(d);
     return (reminders: m['reminders'] as bool? ?? true, promo: m['promo'] as bool? ?? false);
@@ -290,3 +295,6 @@ class PasienAppApi {
 }
 
 final pasienAppApiProvider = Provider<PasienAppApi>((ref) => PasienAppApi(ref.watch(pasienApiProvider).api));
+
+/// Badge lonceng Beranda. Dimuat ulang saat Beranda tampil lagi, aplikasi kembali dibuka, dan tiap menit.
+final pasienUnreadProvider = FutureProvider.autoDispose<int>((ref) => ref.watch(pasienAppApiProvider).unreadCount());

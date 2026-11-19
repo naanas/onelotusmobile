@@ -8,6 +8,7 @@ import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import '../pasien_routes.dart';
 import '../pasien_session.dart';
+import 'notif_bell.dart';
 import 'recovery_journey.dart';
 
 /// PS-05 Beranda pasien (§5.8): sapaan, sesi berikutnya (`GET /v1/pasien/sessions`), paket aktif.
@@ -43,6 +44,7 @@ class BerandaPage extends ConsumerWidget {
         context_: patient == null
             ? 'One Lotus'
             : 'One Lotus · ${Fmt.patientNo(patient.number)}',
+        actions: const [PasienNotifBell()],
       ),
       children: [
         const FeedbackBannerHost(),

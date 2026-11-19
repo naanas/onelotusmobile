@@ -56,6 +56,9 @@ class _OlPageBodyState extends State<OlPageBody> {
   /// 0..1: seberapa jauh bar ringkas hero sudah muncul.
   double _compact = 0;
 
+  /// Posisi gulir untuk efek header hero (lihat [OlHeroScroll]).
+  final _offset = ValueNotifier<double>(0);
+
   static const _barHeight = 56.0;
 
   @override
@@ -67,18 +70,20 @@ class _OlPageBodyState extends State<OlPageBody> {
   @override
   void dispose() {
     _scroll.removeListener(_onScroll);
+    _offset.dispose();
     if (widget.controller == null) _scroll.dispose();
     super.dispose();
   }
 
   void _onScroll() {
+    if (widget.heroOverlap && _scroll.hasClients) _offset.value = _scroll.offset;
     final top = MediaQuery.paddingOf(context).top;
     if (widget.pinnedHeader && widget.heroOverlap) {
       final box = _headerKey.currentContext?.findRenderObject() as RenderBox?;
       final h = box?.size.height ?? 0;
-      // Bar muncul saat sisa hero yang terlihat setinggi bar; selesai 24dp kemudian.
-      final start = h - OlPageBody.overlap - top - _barHeight;
-      final v = ((_scroll.offset - start) / 24).clamp(0.0, 1.0);
+      // Bar mulai muncul sedikit sebelum sisa hero setinggi bar; selesai 48dp kemudian (lebih halus).
+      final start = h - OlPageBody.overlap - top - _barHeight - 24;
+      final v = ((_scroll.offset - start) / 48).clamp(0.0, 1.0);
       if (v != _compact) setState(() => _compact = v);
       return;
     }
@@ -131,7 +136,11 @@ class _OlPageBodyState extends State<OlPageBody> {
       physics: olRefreshPhysics,
       padding: const EdgeInsets.only(bottom: 24),
       children: [
-        if (!pinnedPlain) KeyedSubtree(key: _headerKey, child: widget.header),
+        if (!pinnedPlain)
+          KeyedSubtree(
+            key: _headerKey,
+            child: widget.heroOverlap ? OlHeroScroll(offset: _offset, child: widget.header) : widget.header,
+          ),
         if (pinnedPlain) const SizedBox(height: OlSpace.xs),
         if (widget.heroOverlap)
           Transform.translate(
@@ -188,13 +197,18 @@ class _OlPageBodyState extends State<OlPageBody> {
                 ignoring: _compact < 1,
                 child: AnnotatedRegion<SystemUiOverlayStyle>(
                   value: OlStatusBar.light,
+                  // Turun dari atas sambil muncul; judul menyusul naik (lihat _CompactHeroBar).
                   child: Opacity(
-                    opacity: _compact,
-                    child: _CompactHeroBar(
-                      height: top + _barHeight,
-                      topInset: top,
-                      title: title,
-                      actions: actions,
+                    opacity: Curves.easeOut.transform(_compact),
+                    child: Transform.translate(
+                      offset: Offset(0, -(1 - Curves.easeOutCubic.transform(_compact)) * (top + _barHeight) * .35),
+                      child: _CompactHeroBar(
+                        height: top + _barHeight,
+                        topInset: top,
+                        title: title,
+                        actions: actions,
+                        progress: OlMotion.reduced(context) ? 1 : _compact,
+                      ),
                     ),
                   ),
                 ),
@@ -248,15 +262,17 @@ class _OlPageBodyState extends State<OlPageBody> {
 }
 
 /// Bar ringkas biru yang menggantikan hero setelah hero tergulir keluar.
+/// [progress] 0..1: judul naik & muncul sedikit setelah bar, bayangan menebal.
 class _CompactHeroBar extends StatelessWidget {
   const _CompactHeroBar({
     required this.height,
     required this.topInset,
     required this.title,
     required this.actions,
+    this.progress = 1,
   });
 
-  final double height, topInset;
+  final double height, topInset, progress;
   final String? title;
   final List<Widget> actions;
 
@@ -264,21 +280,35 @@ class _CompactHeroBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.ol;
     final t = context.olText;
+    final tp = const Interval(.35, 1, curve: Curves.easeOutCubic).transform(progress);
     return Container(
       height: height,
       padding: EdgeInsets.fromLTRB(OlSpace.screen, topInset, OlSpace.sm, 0),
       decoration: BoxDecoration(
         gradient: OlHeroBackdrop.gradient(c),
-        boxShadow: OlShadow.sh1,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(18 * (1 - progress))),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0B1F2E).withValues(alpha: .22 * progress),
+            blurRadius: 18 * progress,
+            offset: Offset(0, 6 * progress),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              title ?? '',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: t.heading.copyWith(color: Colors.white),
+            child: Opacity(
+              opacity: tp,
+              child: Transform.translate(
+                offset: Offset(0, (1 - tp) * 14),
+                child: Text(
+                  title ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.heading.copyWith(color: Colors.white),
+                ),
+              ),
             ),
           ),
           ...actions,

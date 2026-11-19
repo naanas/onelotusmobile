@@ -1,7 +1,23 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
+
+/// Posisi gulir halaman untuk efek header hero (parallax, judul memudar, lotus menguncup).
+/// Dipasang oleh [OlPageBody]; tanpa ini header hero diam.
+class OlHeroScroll extends InheritedWidget {
+  const OlHeroScroll({super.key, required this.offset, required super.child});
+
+  final ValueListenable<double> offset;
+
+  /// Tanpa dependensi: header tidak dibangun ulang tiap gulir, cukup [AnimatedBuilder] di dalamnya.
+  static ValueListenable<double>? maybeOf(BuildContext context) =>
+      (context.getElementForInheritedWidgetOfExactType<OlHeroScroll>()?.widget as OlHeroScroll?)?.offset;
+
+  @override
+  bool updateShouldNotify(OlHeroScroll old) => old.offset != offset;
+}
 
 /// AppHeader (§4): konteks kecil (tanggal · cabang) + judul, aksi di kanan.
 /// [hero] = header biru tua beranda (D.5) — kartu pertama menumpuk ke dalamnya.
@@ -105,13 +121,54 @@ class OlAppHeader extends StatelessWidget {
         borderRadius: const BorderRadius.vertical(
           bottom: Radius.circular(OlRadius.heroBottom),
         ),
-        child: Stack(
-          children: [
-            const Positioned.fill(child: OlHeroBackdrop()),
-            content,
-          ],
-        ),
+        child: _HeroScrollLayers(content: content),
       ),
+    );
+  }
+}
+
+/// Lapisan hero yang bereaksi pada gulir: latar bergerak setengah kecepatan (kartu tampak meluncur
+/// menutupinya), lotus menguncup, judul memudar + mengecil + naik lebih lambat dari isi.
+class _HeroScrollLayers extends StatelessWidget {
+  const _HeroScrollLayers({required this.content});
+  final Widget content;
+
+  /// Jarak gulir sampai judul hilang penuh.
+  static const _fadeRange = 110.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final scroll = OlMotion.reduced(context) ? null : OlHeroScroll.maybeOf(context);
+    if (scroll == null) {
+      return Stack(children: [const Positioned.fill(child: OlHeroBackdrop()), content]);
+    }
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: ValueListenableBuilder<double>(
+            valueListenable: scroll,
+            builder: (_, o, child) {
+              final off = o.clamp(0.0, 600.0);
+              return Transform.translate(offset: Offset(0, off * .5), child: OlHeroBackdrop(scroll: off));
+            },
+          ),
+        ),
+        ValueListenableBuilder<double>(
+          valueListenable: scroll,
+          child: content,
+          builder: (_, o, child) {
+            final p = (o / _fadeRange).clamp(0.0, 1.0);
+            final eased = Curves.easeOut.transform(p);
+            return Opacity(
+              opacity: 1 - eased,
+              child: Transform.translate(
+                offset: Offset(0, o.clamp(0.0, 300.0) * .35),
+                child: Transform.scale(scale: 1 - .06 * eased, alignment: Alignment.topLeft, child: child),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }
@@ -120,9 +177,12 @@ class OlAppHeader extends StatelessWidget {
 /// Sisi kiri (tempat judul) paling gelap agar teks putih tetap kontras. Kelopak mekar sekali saat tampil
 /// (tanpa animasi bila pengguna mematikan animasi). Dipakai juga (tanpa motif) oleh bar ringkas.
 class OlHeroBackdrop extends StatelessWidget {
-  const OlHeroBackdrop({super.key, this.motif = true});
+  const OlHeroBackdrop({super.key, this.motif = true, this.scroll = 0});
 
   final bool motif;
+
+  /// Jarak gulir (dp): lotus menguncup & sedikit berputar.
+  final double scroll;
 
   static LinearGradient gradient(OlColors c) => LinearGradient(
     begin: Alignment.topLeft,
@@ -149,7 +209,7 @@ class OlHeroBackdrop extends StatelessWidget {
             tween: Tween(begin: OlMotion.reduced(context) ? 1 : 0, end: 1),
             duration: const Duration(milliseconds: 1100),
             curve: Curves.easeOutCubic,
-            builder: (_, v, _) => CustomPaint(painter: _LotusPainter(bloom: v)),
+            builder: (_, v, _) => CustomPaint(painter: _LotusPainter(bloom: v, scroll: scroll)),
           ),
         ],
       ),
@@ -158,10 +218,15 @@ class OlHeroBackdrop extends StatelessWidget {
 }
 
 class _LotusPainter extends CustomPainter {
-  _LotusPainter({required this.bloom});
+  _LotusPainter({required double bloom, this.scroll = 0})
+    // Digulir → kelopak menutup sampai 45%.
+    : bloom = bloom * (1 - .45 * (scroll / 160).clamp(0.0, 1.0)),
+      _open = bloom;
 
-  /// 0 = kuncup, 1 = mekar penuh.
+  /// 0 = kuncup, 1 = mekar penuh (sudah dikurangi efek gulir).
   final double bloom;
+  final double _open;
+  final double scroll;
 
   static const _sky = Color(0xFF38BDF8);
 
@@ -185,13 +250,14 @@ class _LotusPainter extends CustomPainter {
     // Lotus: pusat di kanan, sedikit di bawah tengah; sebagian keluar bingkai.
     final base = Offset(w - 100, h * .64);
     final len = (h * .58).clamp(80.0, 140.0);
+    final spin = (scroll / 400).clamp(0.0, 1.0) * .35; // putaran halus saat digulir (rad)
 
     // Riak air di bawah bunga.
     final ripple = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.1;
     for (var i = 0; i < 3; i++) {
-      ripple.color = Colors.white.withValues(alpha: (.10 - i * .028) * bloom);
+      ripple.color = Colors.white.withValues(alpha: (.10 - i * .028) * _open);
       final rw = len * (1.1 + i * .55), rh = len * (.16 + i * .08);
       canvas.drawOval(Rect.fromCenter(center: base.translate(0, len * .06), width: rw * 2, height: rh * 2), ripple);
     }
@@ -208,7 +274,7 @@ class _LotusPainter extends CustomPainter {
       final a = angleDeg * bloom * 3.14159265 / 180;
       canvas.save();
       canvas.translate(base.dx, base.dy);
-      canvas.rotate(a);
+      canvas.rotate(a + spin);
       final l = length * (.55 + .45 * bloom);
       final path = Path()
         ..moveTo(0, 0)
@@ -232,12 +298,12 @@ class _LotusPainter extends CustomPainter {
     petal(0, len, len * .32);
 
     // Titik cahaya kecil.
-    final dot = Paint()..color = Colors.white.withValues(alpha: .22 * bloom);
+    final dot = Paint()..color = Colors.white.withValues(alpha: .22 * _open);
     for (final (dx, dy, r) in const [(.58, .22, 1.6), (.70, .12, 1.1), (.50, .55, 1.0), (.78, .40, 1.3)]) {
       canvas.drawCircle(Offset(w * dx, h * dy), r, dot);
     }
   }
 
   @override
-  bool shouldRepaint(_LotusPainter old) => old.bloom != bloom;
+  bool shouldRepaint(_LotusPainter old) => old.bloom != bloom || old.scroll != scroll;
 }

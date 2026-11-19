@@ -271,9 +271,22 @@ class BranchDetail {
     required this.openingHours,
     required this.rooms,
     this.waNumber,
+    this.lat,
+    this.lng,
+    this.transportRatePerKm = 0,
+    this.checkinRadiusM,
   });
 
   final Branch branch;
+
+  /// Titik lokasi cabang (jarak home visit dihitung dari sini); null/0 = belum diisi.
+  final double? lat, lng;
+
+  /// Tarif transport home visit per km (Rupiah).
+  final int transportRatePerKm;
+
+  /// Radius check-in GPS terapis di lokasi pasien (meter).
+  final int? checkinRadiusM;
 
   /// "1" (Senin) … "7" (Minggu) → [buka, tutup]; hari tanpa kunci = tutup.
   final Map<String, List<String>> openingHours;

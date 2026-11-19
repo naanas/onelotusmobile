@@ -112,6 +112,10 @@ abstract final class V1 {
           Room.fromJson(asMap(r)),
       ],
       waNumber: j['phone_wa'] as String?,
+      lat: parseDouble(j['lat']),
+      lng: parseDouble(j['lng']),
+      transportRatePerKm: parseInt(j['transport_rate_per_km']) ?? 0,
+      checkinRadiusM: parseInt(j['checkin_radius_m']),
     );
   }
 

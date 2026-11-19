@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:geolocator/geolocator.dart';
 
 import '../../data/pasien/pasien_app_api.dart';
 import '../../features/kasir/billing_common.dart';
-import '../../features/owner/owner_widgets.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
+import 'alamat_form_page.dart';
 
-/// PS-19 Alamat home visit tersimpan + tambah alamat (titik lokasi wajib, diambil dari GPS saat berada di alamat).
+/// PS-19 Alamat home visit tersimpan. Tambah/ubah → [AlamatFormPage] (GPS, saran alamat dari peta, ketik manual).
 /// Jangkauan home visit dihitung server dari radius cabang (OW-17).
 class AlamatPage extends ConsumerStatefulWidget {
   const AlamatPage({super.key});
@@ -22,60 +21,10 @@ class _AlamatPageState extends ConsumerState<AlamatPage> {
 
   PasienAppApi get _api => ref.read(pasienAppApiProvider);
 
-  Future<Position?> _locate() async {
-    try {
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
-        if (mounted) context.feedback.error(const AppError(ErrorCode.permLocation));
-        return null;
-      }
-      return await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 20)),
-      );
-    } catch (_) {
-      if (mounted) context.feedback.info('Lokasi belum didapat. Pastikan GPS aktif lalu coba lagi.');
-      return null;
-    }
-  }
-
+  /// Form alamat (GPS + saran alamat dari peta + ketik manual) → daftar dimuat ulang.
   Future<void> _edit([AddressV? a]) async {
-    final label = TextEditingController(text: a?.label ?? 'Rumah');
-    final address = TextEditingController(text: a?.address ?? '');
-    final landmark = TextEditingController(text: a?.landmark ?? '');
-    var isDefault = a?.isDefault ?? false;
-    var useGps = a == null;
-    final ok = await formSheet(
-      context,
-      title: a == null ? 'Tambah alamat' : 'Ubah alamat',
-      message: a == null ? 'Simpan saat Anda berada di alamat ini agar titik lokasinya tepat.' : null,
-      fields: (set) => [
-        OlTextField(label: 'Nama alamat', controller: label, isRequired: true),
-        OlTextField(label: 'Alamat lengkap', controller: address, maxLines: 3, isRequired: true),
-        OlTextField(label: 'Patokan', controller: landmark),
-        if (a != null) OwToggleRow(label: 'Perbarui titik lokasi dari posisi saya', value: useGps, onChanged: (v) => set(() => useGps = v)),
-        OwToggleRow(label: 'Jadikan alamat utama', value: isDefault, onChanged: (v) => set(() => isDefault = v)),
-      ],
-    );
-    if (!ok || !mounted) return;
-    double? lat = a?.lat, lng = a?.lng;
-    if (useGps) {
-      final pos = await _locate();
-      if (pos == null) return;
-      lat = pos.latitude;
-      lng = pos.longitude;
-    }
-    if (!mounted) return;
-    final r = await runApi(
-      context,
-      () => _api.saveAddress(a?.id, {
-        'label': label.text.trim(),
-        'address': address.text.trim(),
-        'landmark': landmark.text.trim().isEmpty ? null : landmark.text.trim(),
-        'lat': lat,
-        'lng': lng,
-        'is_default': isDefault,
-      }),
+    final r = await Navigator.of(context).push<AddressV>(
+      MaterialPageRoute(builder: (_) => AlamatFormPage(initial: a)),
     );
     if (r == null || !mounted) return;
     context.feedback.success(r.inArea ? 'Alamat disimpan.' : 'Alamat disimpan, tetapi di luar jangkauan home visit.');

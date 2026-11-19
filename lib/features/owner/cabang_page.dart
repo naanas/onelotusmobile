@@ -34,6 +34,10 @@ class _CabangPageState extends ConsumerState<CabangPage> {
   final _name = TextEditingController();
   final _address = TextEditingController();
   final _wa = TextEditingController();
+  // Home visit
+  final _coord = TextEditingController();
+  final _rate = TextEditingController();
+  final _radius = TextEditingController();
   Map<String, List<String>> _hours = {};
   Map<String, List<String>> _errors = const {};
   bool _busy = false;
@@ -51,6 +55,9 @@ class _CabangPageState extends ConsumerState<CabangPage> {
     _name.dispose();
     _address.dispose();
     _wa.dispose();
+    _coord.dispose();
+    _rate.dispose();
+    _radius.dispose();
     super.dispose();
   }
 
@@ -67,6 +74,10 @@ class _CabangPageState extends ConsumerState<CabangPage> {
         _name.text = d.branch.name;
         _address.text = d.branch.address;
         _wa.text = d.waNumber ?? '';
+        final hasCoord = (d.lat ?? 0) != 0 || (d.lng ?? 0) != 0;
+        _coord.text = hasCoord ? '${d.lat}, ${d.lng}' : '';
+        _rate.text = d.transportRatePerKm > 0 ? '${d.transportRatePerKm}' : '';
+        _radius.text = d.checkinRadiusM == null ? '' : '${d.checkinRadiusM}';
         _hours = {
           for (final e in d.openingHours.entries) e.key: [...e.value],
         };
@@ -121,6 +132,22 @@ class _CabangPageState extends ConsumerState<CabangPage> {
   }
 
   Future<void> _save() async {
+    // "-7.9666, 112.6326" (salin dari Google Maps) → lat, lng.
+    double? lat, lng;
+    final coord = _coord.text.trim();
+    if (coord.isNotEmpty) {
+      final parts = coord.split(RegExp(r'[,\s]+')).where((x) => x.isNotEmpty).toList();
+      lat = parts.isNotEmpty ? double.tryParse(parts[0]) : null;
+      lng = parts.length > 1 ? double.tryParse(parts[1]) : null;
+      if (lat == null || lng == null || lat.abs() > 90 || lng.abs() > 180) {
+        setState(() => _errors = const {
+          'lat': ['Format: -7.96660, 112.63260 (salin dari Google Maps).'],
+        });
+        return;
+      }
+    }
+    final rate = int.tryParse(_rate.text.replaceAll(RegExp(r'[^0-9]'), ''));
+    final radius = int.tryParse(_radius.text.replaceAll(RegExp(r'[^0-9]'), ''));
     setState(() {
       _busy = true;
       _errors = const {};
@@ -132,6 +159,10 @@ class _CabangPageState extends ConsumerState<CabangPage> {
         address: _address.text.trim(),
         openingHours: _hours,
         waNumber: _wa.text.trim().isEmpty ? null : _wa.text.trim(),
+        lat: lat,
+        lng: lng,
+        transportRatePerKm: _rate.text.trim().isEmpty ? 0 : rate,
+        checkinRadiusM: radius,
       );
       if (!mounted) return;
       setState(() => _detail = d);
@@ -291,6 +322,38 @@ class _CabangPageState extends ConsumerState<CabangPage> {
                   ),
               ],
             ),
+          ),
+          const OlOverline('Home visit'),
+          OlTextField(
+            label: 'Titik lokasi cabang (lat, lng)',
+            controller: _coord,
+            hint: '-7.96660, 112.63260',
+            keyboardType: const TextInputType.numberWithOptions(signed: true, decimal: true),
+            error: err('lat') ?? err('lng'),
+          ),
+          Text(
+            'Buka Google Maps, tekan lama titik klinik, lalu salin angka koordinatnya ke sini. '
+            'Jarak & biaya transport home visit dihitung dari titik ini.',
+            style: t.caption.copyWith(color: c.muted),
+          ),
+          OlTextField(
+            label: 'Tarif transport per km (Rp)',
+            controller: _rate,
+            hint: 'Kosong = gratis',
+            keyboardType: TextInputType.number,
+            error: err('transport_rate_per_km'),
+          ),
+          OlTextField(
+            label: 'Radius check-in terapis (meter)',
+            controller: _radius,
+            hint: '200',
+            keyboardType: TextInputType.number,
+            error: err('checkin_radius_m'),
+          ),
+          Text(
+            'Biaya transport = jarak (km, dibulatkan ke atas) × tarif. Layanan yang bisa home visit '
+            'diatur di Layanan & harga › "Bisa home visit".',
+            style: t.caption.copyWith(color: c.muted),
           ),
           Row(
             children: [

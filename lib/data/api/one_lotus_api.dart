@@ -231,6 +231,10 @@ class OneLotusApi {
     required String address,
     required Map<String, List<String>> openingHours,
     String? waNumber,
+    double? lat,
+    double? lng,
+    int? transportRatePerKm,
+    int? checkinRadiusM,
   }) async {
     final cur = await _branchRaw(id);
     return api.patch('/v1/branches/$id', {
@@ -239,6 +243,11 @@ class OneLotusApi {
       'address': address,
       'opening_hours': V1.openingHours(openingHours),
       'phone_wa': waNumber,
+      // Home visit: kolom yang tidak diisi tetap memakai nilai sekarang (dari `cur`).
+      'lat': ?lat,
+      'lng': ?lng,
+      'transport_rate_per_km': ?transportRatePerKm,
+      'checkin_radius_m': ?checkinRadiusM,
     }, (d) => V1.branch(asMap(d)));
   }
 

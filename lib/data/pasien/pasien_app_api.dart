@@ -116,6 +116,21 @@ class BookingRequestV {
   );
 }
 
+/// Saran alamat dari peta (GET /v1/geo/search, /v1/geo/reverse — data OpenStreetMap lewat backend).
+class GeoPlaceV {
+  const GeoPlaceV({required this.title, required this.subtitle, required this.address, required this.lat, required this.lng});
+  final String title, subtitle, address;
+  final double lat, lng;
+
+  factory GeoPlaceV.fromJson(Map<String, dynamic> j) => GeoPlaceV(
+    title: j['title'] as String? ?? '',
+    subtitle: j['subtitle'] as String? ?? '',
+    address: j['address'] as String? ?? '',
+    lat: parseDouble(j['lat']) ?? 0,
+    lng: parseDouble(j['lng']) ?? 0,
+  );
+}
+
 /// Alamat home visit tersimpan (PS-19).
 class AddressV {
   const AddressV({required this.id, required this.label, required this.address, required this.lat, required this.lng, this.landmark, this.isDefault = false, this.inArea = true});
@@ -345,6 +360,20 @@ class PasienAppApi {
       : api.patch('/v1/patient/addresses/$id', body, (d) => AddressV.fromJson(asMap(d)));
 
   Future<void> deleteAddress(String id) => api.delete('/v1/patient/addresses/$id', (_) {});
+
+  /// Saran alamat saat mengetik; [lat]/[lng] = utamakan yang dekat posisi ini.
+  Future<List<GeoPlaceV>> geoSearch(String q, {double? lat, double? lng}) => api.get(
+    '/v1/geo/search',
+    (d) => parseList(d, GeoPlaceV.fromJson),
+    query: {'q': q, if (lat != null) 'lat': '$lat', if (lng != null) 'lng': '$lng'},
+  );
+
+  /// Alamat terdekat dari titik GPS (null bila tidak ditemukan).
+  Future<GeoPlaceV?> geoReverse(double lat, double lng) => api.get(
+    '/v1/geo/reverse',
+    (d) => d is Map ? GeoPlaceV.fromJson(asMap(d)) : null,
+    query: {'lat': '$lat', 'lng': '$lng'},
+  );
 
   // ── profil ──
 

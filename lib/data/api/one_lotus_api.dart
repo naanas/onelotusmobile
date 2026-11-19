@@ -186,6 +186,7 @@ class OneLotusApi {
     String? room,
     String? excludeSessionId,
     int step = 60,
+    bool homeVisit = false,
   }) async {
     final all = await api.get(
       '/v1/slots',
@@ -195,6 +196,8 @@ class OneLotusApi {
         'date': formatDay(date),
         'service_id': serviceId,
         'therapist_id': therapistId,
+        // Home visit: tanpa ruang & jam buka klinik.
+        if (homeVisit) 'location_type': 'home_visit',
       },
     );
     // Server melangkah 15 menit; layar meminta langkah [step].

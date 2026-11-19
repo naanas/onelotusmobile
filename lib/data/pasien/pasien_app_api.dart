@@ -52,6 +52,70 @@ const bookingStatusLabels = {
   'expired': 'Kedaluwarsa',
 };
 
+/// Perkiraan biaya home visit (GET /v1/patient/home-visit/estimate): transport = km (dibulatkan ke atas) × tarif cabang.
+class HomeVisitEstimateV {
+  const HomeVisitEstimateV({
+    required this.distanceKm,
+    required this.transportFee,
+    required this.ratePerKm,
+    required this.servicePrice,
+    required this.total,
+    required this.inArea,
+    this.maxKm,
+  });
+  final double distanceKm;
+  final int transportFee, ratePerKm, servicePrice, total;
+  final bool inArea;
+  final double? maxKm;
+
+  factory HomeVisitEstimateV.fromJson(Map<String, dynamic> j) => HomeVisitEstimateV(
+    distanceKm: parseDouble(j['distance_km']) ?? 0,
+    transportFee: parseInt(j['transport_fee']) ?? 0,
+    ratePerKm: parseInt(j['rate_per_km']) ?? 0,
+    servicePrice: parseInt(j['service_price']) ?? 0,
+    total: parseInt(j['total']) ?? 0,
+    inArea: j['in_area'] as bool? ?? true,
+    maxKm: parseDouble(j['max_km']),
+  );
+}
+
+/// Permintaan booking yang belum jadi sesi (GET /v1/patient/booking-requests): menunggu, diusulkan jam lain,
+/// ditolak, atau kedaluwarsa. Yang sudah diterima tampil sebagai sesi di Jadwal saya.
+class BookingRequestV {
+  const BookingRequestV({
+    required this.id,
+    required this.status,
+    required this.serviceName,
+    required this.requestedStart,
+    this.homeVisit = false,
+    this.durationMin = 60,
+    this.proposedStart,
+    this.address,
+    this.rejectReason,
+    this.estimate,
+  });
+  final String id, status, serviceName;
+  final bool homeVisit;
+  final int durationMin;
+  final DateTime requestedStart;
+  final DateTime? proposedStart;
+  final String? address, rejectReason;
+  final HomeVisitEstimateV? estimate;
+
+  factory BookingRequestV.fromJson(Map<String, dynamic> j) => BookingRequestV(
+    id: j['id'].toString(),
+    status: j['status'] as String? ?? 'pending',
+    serviceName: j['service_name'] as String? ?? '',
+    homeVisit: j['location_type'] == 'home_visit',
+    durationMin: parseInt(j['duration_min']) ?? 60,
+    requestedStart: parseDate(j['requested_start']) ?? DateTime.now(),
+    proposedStart: parseDate(j['proposed_start']),
+    address: (j['address'] as String?)?.trim().isEmpty ?? true ? null : j['address'] as String,
+    rejectReason: j['reject_reason'] as String?,
+    estimate: j['estimate'] is Map ? HomeVisitEstimateV.fromJson(asMap(j['estimate'])) : null,
+  );
+}
+
 /// Alamat home visit tersimpan (PS-19).
 class AddressV {
   const AddressV({required this.id, required this.label, required this.address, required this.lat, required this.lng, this.landmark, this.isDefault = false, this.inArea = true});
@@ -189,6 +253,23 @@ class PasienAppApi {
     final dp = m['dp_invoice'];
     return (BookingV.fromJson(asMap(m['booking'])), dp is Map ? dp['id']?.toString() : null);
   });
+
+  /// Booking yang belum jadi sesi (menunggu / usulan jam lain / ditolak).
+  Future<List<BookingRequestV>> bookingRequests() =>
+      api.get('/v1/patient/booking-requests', (d) => parseList(d, BookingRequestV.fromJson));
+
+  /// Setujui jam usulan klinik → langsung terkonfirmasi jadi sesi.
+  Future<void> acceptProposal(String id) => api.post('/v1/patient/bookings/$id/accept-proposal', null, (_) {});
+
+  Future<HomeVisitEstimateV> homeVisitEstimate({
+    required String branchId,
+    required String serviceId,
+    required String addressId,
+  }) => api.get(
+    '/v1/patient/home-visit/estimate',
+    (d) => HomeVisitEstimateV.fromJson(asMap(d)),
+    query: {'branch_id': branchId, 'service_id': serviceId, 'address_id': addressId},
+  );
 
   Future<BookingV> reschedule(String id, DateTime start) =>
       api.post('/v1/patient/bookings/$id/reschedule', {'start': start.toUtc().toIso8601String()}, (d) => BookingV.fromJson(asMap(d)));

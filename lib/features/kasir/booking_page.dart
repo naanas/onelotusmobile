@@ -66,6 +66,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       title: 'Usulkan jam lain',
       branchId: branchId,
       serviceId: b.serviceId!,
+      homeVisit: b.homeVisit,
     );
     if (slot == null || !mounted) return;
     await _done(
@@ -172,6 +173,10 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                       ),
                       style: t.body.copyWith(fontSize: 15),
                     ),
+                    if (b.homeVisit) ...[
+                      const SizedBox(height: OlSpace.sm),
+                      _HomeVisitInfo(bookingId: b.id),
+                    ],
                     if (b.note != null && b.note!.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Text(
@@ -216,4 +221,76 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       ),
     ],
   );
+}
+
+/// Alamat, jarak, & estimasi transport booking home visit — bahan front desk sebelum menerima.
+class _HomeVisitInfo extends ConsumerStatefulWidget {
+  const _HomeVisitInfo({required this.bookingId});
+  final String bookingId;
+
+  @override
+  ConsumerState<_HomeVisitInfo> createState() => _HomeVisitInfoState();
+}
+
+class _HomeVisitInfoState extends ConsumerState<_HomeVisitInfo> {
+  late final Future<BookingHomeVisitV> _info = ref.read(billingApiProvider).bookingHomeVisit(widget.bookingId);
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ol;
+    final t = context.olText;
+    return FutureBuilder<BookingHomeVisitV>(
+      future: _info,
+      builder: (context, snap) {
+        final h = snap.data;
+        if (h == null) {
+          return snap.hasError
+              ? Text('Info alamat belum bisa dimuat.', style: t.caption.copyWith(color: c.muted))
+              : const Skeleton(height: 54);
+        }
+        final km = h.distanceKm?.toStringAsFixed(1).replaceAll('.', ',');
+        return Container(
+          padding: const EdgeInsets.all(OlSpace.md),
+          decoration: BoxDecoration(
+            color: h.inArea ? c.surfaceAlt : c.critSoft,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: OlIcon(OlIcons.pin, size: 16, color: h.inArea ? c.brandDeep : c.crit),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      [h.address, if (h.landmark?.isNotEmpty ?? false) h.landmark!].join(' · '),
+                      style: t.body.copyWith(fontSize: 14.5),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                [
+                  if (km != null) '$km km dari cabang',
+                  h.transportFee > 0 ? 'transport ${Fmt.money(h.transportFee)}' : 'transport gratis',
+                ].join(' · '),
+                style: t.caption.copyWith(color: c.muted, fontWeight: FontWeight.w600),
+              ),
+              if (!h.inArea)
+                Text(
+                  'Di luar jangkauan home visit${h.maxKm != null ? ' (maks. ${h.maxKm!.toStringAsFixed(0)} km)' : ''}.',
+                  style: t.caption.copyWith(color: c.crit, fontWeight: FontWeight.w700),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }

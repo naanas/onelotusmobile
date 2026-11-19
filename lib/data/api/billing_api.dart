@@ -305,6 +305,10 @@ class BillingApi {
   );
 
   /// Terima → backend membuat sesi (terapis pilihan pasien, atau siapa saja yang kosong).
+  /// Alamat, jarak & estimasi transport booking home visit (di luar spec: GET /v1/bookings/{id}/home-visit).
+  Future<BookingHomeVisitV> bookingHomeVisit(String id) =>
+      api.get('/v1/bookings/$id/home-visit', (d) => BookingHomeVisitV.fromJson(asMap(d)));
+
   Future<BookingReqV> acceptBooking(String id, {String? therapistId}) => api.post(
     '/v1/bookings/$id/accept',
     {'therapist_id': ?therapistId},

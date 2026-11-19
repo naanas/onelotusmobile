@@ -25,14 +25,23 @@ class _UbahJadwalPageState extends ConsumerState<UbahJadwalPage> {
 
   PasienAppApi get _api => ref.read(pasienAppApiProvider);
 
-  Future<BookingV> _load() async {
+  /// Booking yang sedang diubah (id dari [UbahJadwalPage.bookingId], bisa id booking atau id sesinya).
+  BookingV? _booking;
+
+  /// Jadwal saya mengirim id sesi; permintaan booking mengirim id booking — keduanya dicocokkan di sini.
+  /// Null = jadwal dibuat langsung oleh klinik (tanpa booking) → hanya bisa diubah lewat klinik.
+  Future<BookingV?> _load() async {
     final list = await _api.bookings();
-    return list.firstWhere((b) => b.id == widget.bookingId, orElse: () => throw StateError('not found'));
+    final b = list.where((b) => b.id == widget.bookingId || b.sessionId == widget.bookingId).firstOrNull;
+    if (mounted) setState(() => _booking = b);
+    return b;
   }
+
+  String get _id => _booking?.id ?? widget.bookingId;
 
   Future<void> _reschedule() async {
     setState(() => _busy = true);
-    final b = await runApi(context, () => _api.reschedule(widget.bookingId, _start!));
+    final b = await runApi(context, () => _api.reschedule(_id, _start!));
     if (!mounted) return;
     setState(() => _busy = false);
     if (b == null) return;
@@ -51,7 +60,7 @@ class _UbahJadwalPageState extends ConsumerState<UbahJadwalPage> {
       ),
     );
     if (!r.confirmed || !mounted) return;
-    final b = await runApi(context, () => _api.cancelBooking(widget.bookingId, r.reason ?? ''));
+    final b = await runApi(context, () => _api.cancelBooking(_id, r.reason ?? ''));
     if (b == null || !mounted) return;
     context.feedback.success('Jadwal dibatalkan.');
     context.pop();
@@ -62,15 +71,25 @@ class _UbahJadwalPageState extends ConsumerState<UbahJadwalPage> {
     pinnedHeader: true,
     title: 'Ubah jadwal',
     foot: [
-      OlButton(label: 'Minta jadwal baru', loading: _busy, onPressed: _start == null ? null : _reschedule),
-      OlButton.text(label: 'Batalkan jadwal', onPressed: _busy ? null : _cancel),
+      if (_booking != null) ...[
+        OlButton(label: 'Minta jadwal baru', loading: _busy, onPressed: _start == null ? null : _reschedule),
+        OlButton.text(label: 'Batalkan jadwal', onPressed: _busy ? null : _cancel),
+      ],
     ],
     children: [
-      OlAsync<BookingV>(
+      OlAsync<BookingV?>(
         load: _load,
         builder: (context, b, _) {
           final t = context.olText;
           final c = context.ol;
+          if (b == null) {
+            return const [
+              OlBanner(
+                message: 'Jadwal ini dibuat langsung oleh klinik. Untuk mengubah atau membatalkan, '
+                    'hubungi klinik lewat WhatsApp.',
+              ),
+            ];
+          }
           return [
             OlCard(
               child: Column(

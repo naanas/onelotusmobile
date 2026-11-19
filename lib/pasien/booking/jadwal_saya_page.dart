@@ -8,6 +8,9 @@ import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import '../pasien_routes.dart';
 import '../pasien_session.dart';
+import '../../data/pasien/pasien_app_api.dart';
+import '../../features/kasir/billing_common.dart';
+import 'booking_request_card.dart';
 
 /// PS-10 Jadwal saya: booking mendatang & riwayat sesi. Ubah/batal → PS-11 (batas waktu dari server, TODO(workshop) §16 no. 8).
 class JadwalSayaPage extends ConsumerStatefulWidget {
@@ -19,6 +22,31 @@ class JadwalSayaPage extends ConsumerStatefulWidget {
 
 class _JadwalSayaPageState extends ConsumerState<JadwalSayaPage> {
   bool _history = false;
+  int _gen = 0;
+  String? _accepting;
+
+  PasienAppApi get _app => ref.read(pasienAppApiProvider);
+
+  Future<void> _change(String bookingId) async {
+    await context.push('${PRoutes.ubahJadwal}?id=$bookingId');
+    if (mounted) setState(() => _gen++);
+  }
+
+  /// Setujui jam usulan klinik → langsung terkonfirmasi (tidak perlu menunggu klinik lagi).
+  Future<void> _accept(BookingRequestV r) async {
+    setState(() => _accepting = r.id);
+    final ok = await runApi(context, () => _app.acceptProposal(r.id).then((_) => true));
+    if (!mounted) return;
+    setState(() {
+      _accepting = null;
+      if (ok == true) _gen++;
+    });
+    if (ok == true) {
+      context.feedback.success(
+        'Jadwal ${Fmt.dayShort(r.proposedStart!.toLocal())} ${Fmt.time(r.proposedStart!.toLocal())} terkonfirmasi.',
+      );
+    }
+  }
 
   String _relative(DateTime at) {
     final days = DateUtils.dateOnly(
@@ -42,8 +70,26 @@ class _JadwalSayaPageState extends ConsumerState<JadwalSayaPage> {
         value: _history,
         onChanged: (v) => setState(() => _history = v),
       ),
+      // Permintaan yang belum jadi sesi: menunggu konfirmasi, usulan jam dari klinik, atau ditolak.
+      if (!_history)
+        OlAsync<List<BookingRequestV>>(
+          key: ValueKey(('req', _gen)),
+          load: _app.bookingRequests,
+          builder: (context, list, _) => [
+            if (list.isNotEmpty) const OlSectionHeader(title: 'Permintaan booking'),
+            for (final r in list)
+              BookingRequestCard(
+                request: r,
+                busy: _accepting == r.id,
+                onAccept: () => _accept(r),
+                onChange: () => _change(r.id),
+                onRebook: () => context.go(PRoutes.booking),
+              ),
+            if (list.isNotEmpty) const OlSectionHeader(title: 'Jadwal terkonfirmasi'),
+          ],
+        ),
       OlAsync<List<PasienSessionItem>>(
-        key: ValueKey(_history),
+        key: ValueKey((_history, _gen)),
         load: () => ref.read(pasienApiProvider).sessions(past: _history),
         builder: (context, list, _) {
           final c = context.ol;
@@ -56,7 +102,7 @@ class _JadwalSayaPageState extends ConsumerState<JadwalSayaPage> {
                   title: _history ? 'Belum ada riwayat' : 'Belum ada jadwal',
                   message: _history
                       ? 'Sesi yang sudah lewat muncul di sini.'
-                      : 'Hubungi klinik lewat WhatsApp untuk membuat jadwal.',
+                      : 'Buat jadwal terapi di tab Booking.',
                 ),
               ),
             ];
@@ -126,7 +172,7 @@ class _JadwalSayaPageState extends ConsumerState<JadwalSayaPage> {
                         child: OlButton.text(
                           label: 'Ubah / batalkan',
                           small: true,
-                          onPressed: () => context.push('${PRoutes.ubahJadwal}?id=${s.id}'),
+                          onPressed: () => _change(s.id),
                         ),
                       ),
                     ],

@@ -854,6 +854,38 @@ class ServiceV {
 
 /// Booking dari aplikasi pasien / website / staf, menunggu keputusan front desk.
 /// Sesi baru dibuat backend saat booking diterima.
+/// Info home visit untuk front desk: alamat, jarak dari cabang, estimasi transport, dalam jangkauan atau tidak.
+class BookingHomeVisitV {
+  const BookingHomeVisitV({
+    required this.address,
+    this.landmark,
+    this.lat,
+    this.lng,
+    this.distanceKm,
+    this.transportFee = 0,
+    this.ratePerKm = 0,
+    this.inArea = true,
+    this.maxKm,
+  });
+  final String address;
+  final String? landmark;
+  final double? lat, lng, distanceKm, maxKm;
+  final int transportFee, ratePerKm;
+  final bool inArea;
+
+  factory BookingHomeVisitV.fromJson(Map<String, dynamic> j) => BookingHomeVisitV(
+    address: j['address'] as String? ?? '',
+    landmark: j['landmark'] as String?,
+    lat: parseDouble(j['lat']),
+    lng: parseDouble(j['lng']),
+    distanceKm: parseDouble(j['distance_km']),
+    transportFee: parseInt(j['transport_fee']) ?? 0,
+    ratePerKm: parseInt(j['rate_per_km']) ?? 0,
+    inArea: j['in_area'] as bool? ?? true,
+    maxKm: parseDouble(j['max_km']),
+  );
+}
+
 class BookingReqV {
   const BookingReqV({
     required this.id,

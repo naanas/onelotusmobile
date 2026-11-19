@@ -17,6 +17,7 @@ Future<Slot?> pickSlot(
   required String serviceId,
   String? therapistId,
   String? excludeSessionId,
+  bool homeVisit = false,
 }) => context.feedback.formSheet<Slot>(
   title: title,
   builder: (ctx, close) => _SlotSheet(
@@ -24,6 +25,7 @@ Future<Slot?> pickSlot(
     serviceId: serviceId,
     therapistId: therapistId,
     excludeSessionId: excludeSessionId,
+    homeVisit: homeVisit,
     onPick: close,
   ),
 );
@@ -35,12 +37,14 @@ class _SlotSheet extends ConsumerStatefulWidget {
     required this.onPick,
     this.therapistId,
     this.excludeSessionId,
+    this.homeVisit = false,
   });
 
   final String branchId;
   final String serviceId;
   final String? therapistId;
   final String? excludeSessionId;
+  final bool homeVisit;
   final ValueChanged<Slot> onPick;
 
   @override
@@ -86,6 +90,7 @@ class _SlotSheetState extends ConsumerState<_SlotSheet> {
                   serviceId: widget.serviceId,
                   therapistId: widget.therapistId,
                   excludeSessionId: widget.excludeSessionId,
+                  homeVisit: widget.homeVisit,
                 ),
             builder: (context, slots, _) => [
               if (slots.isEmpty)

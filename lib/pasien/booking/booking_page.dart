@@ -13,6 +13,7 @@ import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import '../pasien_routes.dart';
 import '../pasien_session.dart';
+import 'booking_request_card.dart';
 import 'payment_channel_picker.dart';
 import 'slot_picker.dart';
 
@@ -43,6 +44,33 @@ class _BookingPageState extends ConsumerState<BookingPage> {
 
   // Kanal bayar (Dupay) untuk Booking Klinik; biaya admin dihitung ulang tiap ganti kanal.
   PayChannelV? _channel;
+
+  /// Perkiraan biaya home visit (layanan + transport menurut jarak), dimuat ulang bila cabang/layanan/alamat berubah.
+  Future<HomeVisitEstimateV>? _estimate;
+
+  /// Alamat tersimpan pasien (dari data katalog) — untuk ringkasan pengajuan.
+  List<AddressV> _addresses = const [];
+  String? get _addressText {
+    final a = _addresses.where((a) => a.id == _addressId).firstOrNull;
+    return a == null ? null : [a.address, if (a.landmark?.isNotEmpty ?? false) a.landmark!].join(' · ');
+  }
+  String? _estimateKey;
+  HomeVisitEstimateV? _estimateValue;
+
+  Future<HomeVisitEstimateV>? _estimateFor(String branchId, String serviceId) {
+    final addr = _addressId;
+    if (!_homeVisit || addr == null) return null;
+    final key = '$branchId|$serviceId|$addr';
+    if (key != _estimateKey) {
+      _estimateKey = key;
+      _estimateValue = null;
+      _estimate = _api.homeVisitEstimate(branchId: branchId, serviceId: serviceId, addressId: addr)
+        ..then((e) {
+          if (mounted && _estimateKey == key) setState(() => _estimateValue = e);
+        }, onError: (_) {}).ignore();
+    }
+    return _estimate;
+  }
   bool _feeBusy = false;
 
   final _note = TextEditingController();
@@ -493,7 +521,8 @@ class _BookingPageState extends ConsumerState<BookingPage> {
         label: 'Ajukan Home Visit',
         icon: OlIcons.calendarPlus,
         loading: _busy,
-        onPressed: () => _submit(x.branch!.id),
+        // Di luar jangkauan cabang → tidak bisa diajukan (klinik pasti menolak).
+        onPressed: _estimateValue?.inArea == false ? null : () => _submit(x.branch!.id),
       ),
       // Aksi uang: geser untuk bayar (bukan ketuk) agar tidak terbayar tanpa sengaja.
       4 => OlSlideToConfirm(
@@ -655,6 +684,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
   ) {
     final c = context.ol;
     final t = context.olText;
+    _addresses = d.addresses; // untuk ringkasan pengajuan (alamat terpilih)
     return [
       const _BookingStepHeader(title: 'Mau terapi di mana?'),
       _VisitTypeCard(
@@ -691,6 +721,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                 if (service != null && !service.homeVisit) _serviceId = null;
                 // Satu alamat tersimpan → langsung dipakai.
                 if (_addressId == null && d.addresses.length == 1) _addressId = d.addresses.first.id;
+                _addresses = d.addresses;
               })
             : null,
       ),
@@ -745,7 +776,10 @@ class _BookingPageState extends ConsumerState<BookingPage> {
               null: 'Pilih alamat...',
               for (final a in d.addresses) a.id: '${a.label} · ${a.address}',
             },
-            onChanged: (v) => setState(() => _addressId = v),
+            onChanged: (v) => setState(() {
+              _addressId = v;
+              _addresses = d.addresses;
+            }),
           ),
       ],
       if (!canHomeVisit)
@@ -968,6 +1002,10 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                     label: 'Keluhan',
                     value: _complaint.text.trim(),
                   ),
+                  if (_homeVisit && _addressText != null) ...[
+                    const SizedBox(height: 8),
+                    _SummaryRow(icon: OlIcons.pin, label: 'Alamat', value: _addressText!),
+                  ],
                   if (!_homeVisit) ...[
                     const SizedBox(height: 8),
                     _SummaryRow(
@@ -990,9 +1028,29 @@ class _BookingPageState extends ConsumerState<BookingPage> {
               OlMoneyRow(label: 'Harga Member', amount: service.memberPrice!),
             ],
             if (_homeVisit)
-              OlMoneyTotal(
-                label: 'Estimasi Biaya Layanan',
-                amount: service.memberPrice ?? service.price,
+              FutureBuilder<HomeVisitEstimateV>(
+                future: _estimateFor(branch.id, service.id),
+                builder: (context, snap) {
+                  final e = snap.data;
+                  if (e == null) {
+                    return snap.hasError
+                        ? OlMoneyTotal(label: 'Estimasi Biaya Layanan', amount: service.memberPrice ?? service.price)
+                        : const SizedBox(height: 120, child: Center(child: CircularProgressIndicator(strokeWidth: 2.4)));
+                  }
+                  // Harga layanan mengikuti harga member bila ada (sama dengan ringkasan di atas).
+                  final svc = service.memberPrice ?? service.price;
+                  return HomeVisitEstimateBox(
+                    estimate: HomeVisitEstimateV(
+                      distanceKm: e.distanceKm,
+                      transportFee: e.transportFee,
+                      ratePerKm: e.ratePerKm,
+                      servicePrice: svc,
+                      total: svc + e.transportFee,
+                      inArea: e.inArea,
+                      maxKm: e.maxKm,
+                    ),
+                  );
+                },
               )
             else ...[
               OlMoneyRow(
@@ -1046,7 +1104,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
           Flexible(
             child: Text(
               _homeVisit
-                  ? 'Biaya transport akan diinformasikan setelah jadwal dikonfirmasi.'
+                  ? 'Klinik mengonfirmasi terapis & jadwal dulu. Biaya dibayar setelah sesi selesai.'
                   : 'Pembayaran diproses otomatis & aman.',
               style: t.caption.copyWith(color: c.muted),
               textAlign: TextAlign.center,

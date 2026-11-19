@@ -128,11 +128,17 @@ void main() {
 
     expect(find.text('Paket aktif'), findsOneWidget);
     expect(find.text('dari 5 sesi tersisa'), findsOneWidget);
-    expect(find.text('Status pembayaran'), findsOneWidget);
+    // Tab status tampil lebih dulu (ada tagihan terbuka); riwayat di tab sebelahnya.
+    expect(find.text('Status pembayaran (2)'), findsOneWidget);
     expect(find.text('Pembayaran gagal'), findsOneWidget);
     expect(find.text('Menunggu pembayaran'), findsOneWidget);
-    expect(find.text('Riwayat pembelian'), findsOneWidget);
+    expect(find.text('Lunas'), findsNothing);
+    await tester.tap(find.text('Riwayat pembelian'));
+    await settle();
     expect(find.text('Lunas'), findsOneWidget);
+    expect(find.text('Pembayaran gagal'), findsNothing);
+    await tester.tap(find.text('Status pembayaran (2)'));
+    await settle();
 
     // Ketuk tagihan gagal → rincian menyebut gagal, aksinya "Bayar lagi".
     await tester.tap(find.text('Pembayaran gagal'));

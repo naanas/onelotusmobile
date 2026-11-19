@@ -26,6 +26,10 @@ typedef _Data = (List<OwnershipV>, List<InvoiceV>);
 class _PaketPageState extends ConsumerState<PaketPage> {
   int _gen = 0;
 
+  /// Tab bawah: 0 status pembayaran, 1 riwayat pembelian. Null = otomatis (status bila ada tagihan terbuka).
+  int? _tab;
+  int _tabFor(List<InvoiceV> open) => _tab ?? (open.isEmpty ? 1 : 0);
+
   PasienAppApi get _api => ref.read(pasienAppApiProvider);
 
   Future<void> _go(String route) async {
@@ -69,32 +73,72 @@ class _PaketPageState extends ConsumerState<PaketPage> {
                     for (final p in active) _ActivePackageCard(p),
                 ],
               ),
-              if (open.isNotEmpty)
-                _section('Status pembayaran', [for (final i in open) _OpenInvoiceCard(i, onTap: () => _detail(i))]),
-              _section(
-                'Riwayat pembelian',
-                [
-                  if (history.isEmpty && ended.isEmpty)
-                    Text('Belum ada pembelian.', style: context.olText.body.copyWith(color: context.ol.muted))
-                  else ...[
-                    if (history.isNotEmpty)
-                      OlCard(
-                        padding: EdgeInsets.zero,
-                        child: Column(
-                          children: [
-                            for (final (n, i) in history.indexed)
-                              _HistoryRow(i, divider: n < history.length - 1, onTap: () => _detail(i)),
-                          ],
-                        ),
+              // Status & riwayat berdampingan (tab), bukan ditumpuk ke bawah.
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  OlSegmented<int>(
+                    segments: {
+                      0: open.isEmpty ? 'Status pembayaran' : 'Status pembayaran (${open.length})',
+                      1: 'Riwayat pembelian',
+                    },
+                    value: _tabFor(open),
+                    onChanged: (v) => setState(() => _tab = v),
+                  ),
+                  const SizedBox(height: OlSpace.md),
+                  AnimatedSwitcher(
+                    duration: OlMotion.of(context),
+                    switchInCurve: OlMotion.curve,
+                    transitionBuilder: (child, a) => FadeTransition(
+                      opacity: a,
+                      child: SlideTransition(
+                        position: Tween(begin: const Offset(0, .03), end: Offset.zero).animate(a),
+                        child: child,
                       ),
-                    if (ended.isNotEmpty) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4, top: 4),
-                        child: Text('PAKET SELESAI', style: context.olText.overline.copyWith(color: context.ol.muted)),
-                      ),
-                      for (final p in ended) _EndedPackageRow(p),
-                    ],
-                  ],
+                    ),
+                    layoutBuilder: (cur, prev) => Stack(
+                      alignment: Alignment.topCenter,
+                      children: [...prev, ?cur],
+                    ),
+                    child: _tabFor(open) == 0
+                        ? KeyedSubtree(
+                            key: const ValueKey('status'),
+                            child: open.isEmpty
+                                ? const _EmptyTab(
+                                    icon: OlIcons.checkCircle,
+                                    title: 'Semua tagihan lunas',
+                                    message: 'Tidak ada pembayaran yang perlu diselesaikan.',
+                                  )
+                                : _RowGroup([for (final i in open) _OpenInvoiceRow(i, onTap: () => _detail(i))]),
+                          )
+                        : KeyedSubtree(
+                            key: const ValueKey('riwayat'),
+                            child: history.isEmpty && ended.isEmpty
+                                ? const _EmptyTab(
+                                    icon: OlIcons.receipt,
+                                    title: 'Belum ada pembelian',
+                                    message: 'Pembelian paket & sesi yang lunas akan tampil di sini.',
+                                  )
+                                : Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      if (history.isNotEmpty)
+                                        _RowGroup([for (final i in history) _HistoryRow(i, onTap: () => _detail(i))]),
+                                      if (ended.isNotEmpty) ...[
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(4, OlSpace.lg, 0, 6),
+                                          child: Text('PAKET SELESAI',
+                                              style: context.olText.overline.copyWith(color: context.ol.muted)),
+                                        ),
+                                        for (final (n, p) in ended.indexed) ...[
+                                          if (n > 0) const SizedBox(height: OlSpace.sm),
+                                          _EndedPackageRow(p),
+                                        ],
+                                      ],
+                                    ],
+                                  ),
+                          ),
+                  ),
                 ],
               ),
             ];
@@ -367,8 +411,72 @@ String _invoiceTitle(InvoiceV i) {
   return pkg ?? invoiceKindLabels[i.kind] ?? 'Tagihan';
 }
 
-class _OpenInvoiceCard extends StatelessWidget {
-  const _OpenInvoiceCard(this.inv, {required this.onTap});
+/// Kartu putih berisi baris-baris dengan garis pemisah (gaya daftar OneLotus).
+class _RowGroup extends StatelessWidget {
+  const _RowGroup(this.rows);
+  final List<Widget> rows;
+
+  @override
+  Widget build(BuildContext context) => OlCard(
+    padding: EdgeInsets.zero,
+    child: Column(
+      children: [
+        for (final (n, r) in rows.indexed) ...[
+          if (n > 0) Divider(height: 1, thickness: 1, indent: 66, color: context.ol.line),
+          r,
+        ],
+      ],
+    ),
+  );
+}
+
+class _EmptyTab extends StatelessWidget {
+  const _EmptyTab({required this.icon, required this.title, required this.message});
+  final OlIconData icon;
+  final String title, message;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ol;
+    final t = context.olText;
+    return OlCard(
+      child: Row(
+        children: [
+          _IconTile(icon: icon, fg: c.brandDeep, bg: c.brandSoft),
+          const SizedBox(width: OlSpace.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: t.bodyStrong),
+                Text(message, style: t.caption.copyWith(color: c.muted)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Ikon dalam kotak bulat lembut (dipakai semua baris tagihan).
+class _IconTile extends StatelessWidget {
+  const _IconTile({required this.icon, required this.fg, required this.bg});
+  final OlIconData icon;
+  final Color fg, bg;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 40,
+    height: 40,
+    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+    alignment: Alignment.center,
+    child: OlIcon(icon, size: 20, color: fg, weight: OlIconWeight.duotone),
+  );
+}
+
+class _OpenInvoiceRow extends StatelessWidget {
+  const _OpenInvoiceRow(this.inv, {required this.onTap});
   final InvoiceV inv;
   final VoidCallback onTap;
 
@@ -379,62 +487,44 @@ class _OpenInvoiceCard extends StatelessWidget {
     final st = inv.payState;
     final last = inv.pendingPayment ?? inv.lastAttempt;
     final note = switch (st) {
-      InvoicePayState.waiting when last?.expiresAt != null =>
-        '${_methodLabel(last!)} · bayar sebelum ${_when(last.expiresAt!)}',
-      InvoicePayState.waiting => '${_methodLabel(last!)} · menunggu pembayaran',
-      InvoicePayState.verifying => 'Bukti transfer sedang dicek klinik',
+      InvoicePayState.waiting when last?.expiresAt != null => '${_methodLabel(last!)} · s.d. ${_when(last.expiresAt!)}',
+      InvoicePayState.waiting => _methodLabel(last!),
+      InvoicePayState.verifying => 'Bukti transfer sedang dicek',
       _ when st.ended && last != null =>
-        '${_methodLabel(last)} ${st == InvoicePayState.failed ? 'gagal' : st.label.toLowerCase()}'
-            '${last.createdAt != null ? ' · ${_when(last.createdAt!)}' : ''}. Silakan bayar lagi.',
-      _ => inv.sessionDate != null ? 'Sesi ${Fmt.dayShort(inv.sessionDate!)}' : 'Belum ada pembayaran',
+        '${_methodLabel(last)}${last.createdAt != null ? ' · ${_when(last.createdAt!)}' : ''}',
+      _ => inv.sessionDate != null ? 'Sesi ${Fmt.dayShort(inv.sessionDate!)}' : (inv.number ?? 'Belum ada pembayaran'),
     };
-    final (Color accent, OlIconData icon) = switch (st) {
-      InvoicePayState.waiting || InvoicePayState.verifying => (c.warn, OlIcons.clock),
-      _ when st.ended => (c.crit, OlIcons.alert),
-      _ => (c.brand, OlIcons.receipt),
+    final (Color fg, Color bg, OlIconData icon) = switch (st) {
+      InvoicePayState.waiting || InvoicePayState.verifying => (c.warn, c.warnSoft, OlIcons.clock),
+      _ when st.ended => (c.crit, c.critSoft, OlIcons.alert),
+      _ => (c.brandDeep, c.brandSoft, inv.kind == 'package' ? OlIcons.package : OlIcons.receipt),
     };
-    return OlCard(
+    return InkWell(
       onTap: onTap,
-      padding: EdgeInsets.zero,
-      child: IntrinsicHeight(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: OlSpace.lg, vertical: 14),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: 4,
-              decoration: BoxDecoration(
-                color: accent,
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(OlRadius.card)),
+            _IconTile(icon: icon, fg: fg, bg: bg),
+            const SizedBox(width: OlSpace.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_invoiceTitle(inv), style: t.bodyStrong, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
+                  Text(note, style: t.caption.copyWith(color: c.muted), maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
               ),
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(OlSpace.lg),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        OlIcon(icon, size: 18, color: accent),
-                        const SizedBox(width: 8),
-                        Expanded(child: Text(_invoiceTitle(inv), style: t.bodyStrong, maxLines: 1, overflow: TextOverflow.ellipsis)),
-                        OlTag(st.label, tone: _tone(st)),
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(note, style: t.caption.copyWith(color: st.ended ? c.crit : c.muted)),
-                    const SizedBox(height: OlSpace.sm),
-                    Row(
-                      children: [
-                        Expanded(child: Text(inv.number ?? '', style: t.mono.copyWith(color: c.faint, fontSize: 12))),
-                        Text(Fmt.money(inv.balance), style: t.heading),
-                        const SizedBox(width: 4),
-                        OlIcon(OlIcons.chevronRight, color: c.faint, size: 18),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+            const SizedBox(width: OlSpace.sm),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(Fmt.money(inv.balance), style: t.bodyStrong),
+                const SizedBox(height: 4),
+                OlTag(st.label, tone: _tone(st)),
+              ],
             ),
           ],
         ),
@@ -444,9 +534,8 @@ class _OpenInvoiceCard extends StatelessWidget {
 }
 
 class _HistoryRow extends StatelessWidget {
-  const _HistoryRow(this.inv, {required this.divider, required this.onTap});
+  const _HistoryRow(this.inv, {required this.onTap});
   final InvoiceV inv;
-  final bool divider;
   final VoidCallback onTap;
 
   @override
@@ -457,24 +546,14 @@ class _HistoryRow extends StatelessWidget {
     final at = inv.paidAt ?? inv.issuedAt;
     return InkWell(
       onTap: onTap,
-      child: Container(
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: OlSpace.lg, vertical: 14),
-        decoration: BoxDecoration(border: divider ? Border(bottom: BorderSide(color: c.line)) : null),
         child: Row(
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: st == InvoicePayState.paid ? c.okSoft : c.surfaceAlt,
-                shape: BoxShape.circle,
-              ),
-              alignment: Alignment.center,
-              child: OlIcon(
-                inv.kind == 'package' ? OlIcons.package : OlIcons.receipt,
-                size: 18,
-                color: st == InvoicePayState.paid ? c.ok : c.faint,
-              ),
+            _IconTile(
+              icon: inv.kind == 'package' ? OlIcons.package : OlIcons.receipt,
+              fg: st == InvoicePayState.paid ? c.ok : c.faint,
+              bg: st == InvoicePayState.paid ? c.okSoft : c.surfaceAlt,
             ),
             const SizedBox(width: OlSpace.md),
             Expanded(
@@ -482,9 +561,12 @@ class _HistoryRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(_invoiceTitle(inv), style: t.bodyStrong, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
                   Text(
                     [if (at != null) Fmt.dayShort(at.toLocal()), ?inv.number].join(' · '),
                     style: t.caption.copyWith(color: c.muted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -500,7 +582,7 @@ class _HistoryRow extends StatelessWidget {
                     color: st == InvoicePayState.voided ? c.faint : null,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 OlTag(st.label, tone: _tone(st)),
               ],
             ),

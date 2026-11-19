@@ -268,7 +268,7 @@ class _CompactHeroBar extends StatelessWidget {
       height: height,
       padding: EdgeInsets.fromLTRB(OlSpace.screen, topInset, OlSpace.sm, 0),
       decoration: BoxDecoration(
-        color: c.brandDeep,
+        gradient: OlHeroBackdrop.gradient(c),
         boxShadow: OlShadow.sh1,
       ),
       child: Row(

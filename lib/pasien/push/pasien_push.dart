@@ -35,8 +35,9 @@ class PasienPush {
     try {
       await Firebase.initializeApp();
       firebaseReady = true;
+      debugPrint('[push] Firebase siap');
     } catch (e) {
-      debugPrint('Firebase tidak aktif: $e');
+      debugPrint('[push] Firebase tidak aktif: $e');
     }
   }
 
@@ -45,12 +46,14 @@ class PasienPush {
   bool _started = false, _localReady = false;
 
   Future<void> start() async {
+    if (!firebaseReady) debugPrint('[push] dilewati: Firebase belum siap (jalankan ulang dengan flutter run, bukan hot restart)');
     if (_started || !firebaseReady) return;
     _started = true;
     try {
       final m = FirebaseMessaging.instance;
       await _setupLocal();
       final perm = await m.requestPermission();
+      debugPrint('[push] izin notifikasi: ${perm.authorizationStatus.name}');
       if (perm.authorizationStatus == AuthorizationStatus.denied) return;
       // Token FCM klasik (target `token` di FCM HTTP v1, yang dipakai backend). API baru `register()` memberi
       // Firebase Installation ID dengan cara kirim berbeda — pindah bila backend ikut diubah.
@@ -70,7 +73,7 @@ class PasienPush {
       final initial = await m.getInitialMessage();
       if (initial != null) _open(initial.data['deep_link'] as String?);
     } catch (e) {
-      debugPrint('Push belum aktif: $e');
+      debugPrint('[push] belum aktif: $e');
     }
   }
 
@@ -109,8 +112,9 @@ class PasienPush {
       await _ref
           .read(pasienAppApiProvider)
           .registerDevice(token, platform: Platform.isIOS ? 'ios' : 'android');
+      debugPrint('[push] token terdaftar di server (…${token.substring(token.length - 8)})');
     } catch (e) {
-      debugPrint('Token push gagal dikirim: $e');
+      debugPrint('[push] token gagal dikirim ke server: $e');
     }
   }
 

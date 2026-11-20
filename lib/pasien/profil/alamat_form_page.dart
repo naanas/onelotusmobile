@@ -3,15 +3,17 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../data/pasien/pasien_app_api.dart';
 import '../../features/kasir/billing_common.dart';
 import '../../features/owner/owner_widgets.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
+import 'peta_titik_page.dart';
 
 /// Sumber titik lokasi alamat.
-enum _PointSource { none, gps, search, saved }
+enum _PointSource { none, gps, search, map, saved }
 
 /// PS-19 Tambah / ubah alamat home visit:
 /// - "Gunakan lokasi saya" → GPS + alamat otomatis dari peta,
@@ -31,6 +33,9 @@ class _AlamatFormPageState extends ConsumerState<AlamatFormPage> {
   late final _label = TextEditingController(text: widget.initial?.label ?? 'Rumah');
   late final _address = TextEditingController(text: widget.initial?.address ?? '');
   late final _landmark = TextEditingController(text: widget.initial?.landmark ?? '');
+
+  /// Nomor rumah / blok / RT-RW — data peta jarang sampai nomor rumah, jadi diisi pasien; digabung ke depan alamat.
+  final _detail = TextEditingController();
   late bool _isDefault = widget.initial?.isDefault ?? false;
 
   double? _lat, _lng;
@@ -43,6 +48,45 @@ class _AlamatFormPageState extends ConsumerState<AlamatFormPage> {
   String? _searchError, _formError;
   Timer? _debounce;
   int _searchSeq = 0;
+
+  /// Teks alamat terakhir yang diisi otomatis (GPS/saran/peta). Bila pasien sudah mengubahnya sendiri,
+  /// memindah titik di peta tidak menimpa ketikannya.
+  String _autoText = '';
+
+  void _fillAddress(String text) {
+    _address.text = text;
+    _autoText = text;
+  }
+
+  /// Atur titik langsung di peta (pin di tengah, geser peta).
+  Future<void> _pickOnMap() async {
+    FocusScope.of(context).unfocus();
+    final start = _lat != null && _lng != null
+        ? LatLng(_lat!, _lng!)
+        : (_bias == null ? null : LatLng(_bias!.latitude, _bias!.longitude));
+    final p = await Navigator.of(context).push<GeoPlaceV>(
+      MaterialPageRoute(builder: (_) => PetaTitikPage(initial: start)),
+    );
+    if (p == null || !mounted) return;
+    final typed = _address.text.trim();
+    final replace = p.address.isNotEmpty && (typed.isEmpty || typed == _autoText.trim());
+    setState(() {
+      _lat = p.lat;
+      _lng = p.lng;
+      _accuracy = null;
+      _source = _PointSource.map;
+      _results = const [];
+      _formError = null;
+      if (replace) _fillAddress(p.address);
+    });
+    context.feedback.info(
+      replace
+          ? 'Titik & alamat diperbarui. Tambahkan nomor rumah / RT-RW.'
+          : typed.isEmpty
+          ? 'Titik tersimpan. Ketik alamat lengkapnya di bawah.'
+          : 'Titik lokasi diperbarui. Alamat yang Anda ketik tidak diubah.',
+    );
+  }
 
   /// Posisi terakhir perangkat (tanpa meminta izin) — saran alamat diutamakan yang dekat.
   Position? _bias;
@@ -76,6 +120,7 @@ class _AlamatFormPageState extends ConsumerState<AlamatFormPage> {
     _label.dispose();
     _address.dispose();
     _landmark.dispose();
+    _detail.dispose();
     super.dispose();
   }
 
@@ -120,7 +165,7 @@ class _AlamatFormPageState extends ConsumerState<AlamatFormPage> {
   void _pick(GeoPlaceV p) {
     FocusScope.of(context).unfocus();
     setState(() {
-      _address.text = p.address;
+      _fillAddress(p.address);
       _lat = p.lat;
       _lng = p.lng;
       _accuracy = null;
@@ -151,7 +196,7 @@ class _AlamatFormPageState extends ConsumerState<AlamatFormPage> {
         final p = await _api.geoReverse(pos.latitude, pos.longitude);
         if (!mounted) return;
         if (p != null && p.address.isNotEmpty) {
-          setState(() => _address.text = p.address);
+          setState(() => _fillAddress(p.address));
           context.feedback.info('Lokasi ditemukan. Periksa & lengkapi alamatnya.');
         } else {
           context.feedback.info('Titik lokasi tersimpan. Ketik alamat lengkapnya di bawah.');
@@ -214,7 +259,11 @@ class _AlamatFormPageState extends ConsumerState<AlamatFormPage> {
   // ── simpan ──
 
   Future<void> _save() async {
-    final label = _label.text.trim(), address = _address.text.trim();
+    final label = _label.text.trim();
+    final detail = _detail.text.trim();
+    final base = _address.text.trim();
+    // "No. 25, RT 02/RW 03" + "Jalan Ijen, Oro-Oro Dowo, …" → satu alamat lengkap.
+    final address = detail.isEmpty || base.toLowerCase().contains(detail.toLowerCase()) ? base : '$detail, $base';
     if (label.isEmpty || address.isEmpty) {
       setState(() => _formError = 'Isi nama dan alamat lengkap.');
       return;
@@ -257,6 +306,12 @@ class _AlamatFormPageState extends ConsumerState<AlamatFormPage> {
           busy: _locating,
           onTap: _locating ? null : _useMyLocation,
         ),
+        _ActionCard(
+          icon: OlIcons.pin,
+          title: 'Atur titik di peta',
+          subtitle: 'Geser peta sampai pin tepat di rumah Anda.',
+          onTap: _pickOnMap,
+        ),
         // 2) Cari
         Row(
           children: [
@@ -281,7 +336,13 @@ class _AlamatFormPageState extends ConsumerState<AlamatFormPage> {
         else if (_query.length >= 3)
           Text('Alamat tidak ditemukan. Coba kata lain atau ketik manual di bawah.', style: t.caption.copyWith(color: c.muted)),
         // 3) Titik lokasi terpilih
-        _PointStatus(source: _source, lat: _lat, lng: _lng, accuracy: _accuracy),
+        _PointStatus(
+          source: _source,
+          lat: _lat,
+          lng: _lng,
+          accuracy: _accuracy,
+          onAdjust: _lat == null ? null : _pickOnMap,
+        ),
         // 4) Detail
         const OlSectionHeader(title: 'Detail alamat'),
         OlTextField(label: 'Nama alamat', controller: _label, isRequired: true, hint: 'Rumah, Kantor, Kos…'),
@@ -298,6 +359,15 @@ class _AlamatFormPageState extends ConsumerState<AlamatFormPage> {
           maxLines: 3,
           isRequired: true,
           hint: 'Jalan, nomor rumah, RT/RW, kelurahan',
+        ),
+        OlTextField(
+          label: 'No. rumah, blok, RT/RW',
+          controller: _detail,
+          hint: 'Mis. No. 25, Blok C2, RT 02/RW 05',
+        ),
+        Text(
+          'Peta jarang mencatat nomor rumah — isi di sini agar terapis tidak salah rumah.',
+          style: t.caption.copyWith(color: c.muted),
         ),
         OlTextField(label: 'Patokan', controller: _landmark, hint: 'Mis. pagar hijau, sebelah masjid'),
         OwToggleRow(label: 'Jadikan alamat utama', value: _isDefault, onChanged: (v) => setState(() => _isDefault = v)),
@@ -405,9 +475,12 @@ class _Suggestions extends StatelessWidget {
 }
 
 class _PointStatus extends StatelessWidget {
-  const _PointStatus({required this.source, this.lat, this.lng, this.accuracy});
+  const _PointStatus({required this.source, this.lat, this.lng, this.accuracy, this.onAdjust});
   final _PointSource source;
   final double? lat, lng, accuracy;
+
+  /// "Ubah titik di peta" (hanya bila sudah ada titik).
+  final VoidCallback? onAdjust;
 
   @override
   Widget build(BuildContext context) {
@@ -417,6 +490,7 @@ class _PointStatus extends StatelessWidget {
     final text = switch (source) {
       _PointSource.gps => 'Titik lokasi dari GPS${accuracy != null ? ' (akurasi ±${accuracy!.round()} m)' : ''}',
       _PointSource.search => 'Titik lokasi dari alamat yang dipilih',
+      _PointSource.map => 'Titik lokasi dipilih di peta',
       _PointSource.saved => 'Titik lokasi tersimpan',
       _PointSource.none => 'Belum ada titik lokasi',
     };
@@ -443,6 +517,45 @@ class _PointStatus extends StatelessWidget {
               ],
             ),
           ),
+          if (onAdjust != null) OlButton.text(label: 'Ubah di peta', small: true, onPressed: onAdjust),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionCard extends StatelessWidget {
+  const _ActionCard({required this.icon, required this.title, required this.subtitle, required this.onTap});
+  final OlIconData icon;
+  final String title, subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.ol;
+    final t = context.olText;
+    return OlCard(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(color: c.goldSoft, borderRadius: BorderRadius.circular(12)),
+            alignment: Alignment.center,
+            child: OlIcon(icon, color: c.gold, weight: OlIconWeight.duotone),
+          ),
+          const SizedBox(width: OlSpace.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: t.bodyStrong),
+                Text(subtitle, style: t.caption.copyWith(color: c.muted)),
+              ],
+            ),
+          ),
+          OlIcon(OlIcons.chevronRight, color: c.faint, size: 18),
         ],
       ),
     );

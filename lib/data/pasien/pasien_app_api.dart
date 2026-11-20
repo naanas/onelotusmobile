@@ -245,6 +245,16 @@ class PasienAppApi {
     (d) => parseList(d, (m) => (id: m['id'].toString(), name: m['name'] as String? ?? '', address: m['address'] as String? ?? '')),
   );
 
+  /// Titik lokasi cabang (pusat awal peta pilih titik bila posisi pasien belum diketahui).
+  Future<List<({double lat, double lng})>> branchPoints() => api.get(
+    '/v1/branches',
+    (d) => [
+      for (final m in (d as List? ?? const []))
+        if (m is Map && (parseDouble(m['lat']) ?? 0) != 0)
+          (lat: parseDouble(m['lat'])!, lng: parseDouble(m['lng']) ?? 0),
+    ],
+  );
+
   Future<({List<ServiceV> services, List<PackageV> packages})> catalog({String? branchId}) => api.get('/v1/patient/catalog', (d) {
     final m = asMap(d);
     return (

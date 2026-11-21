@@ -1,141 +1,92 @@
-// Tes kontrak klien aplikasi ↔ One Lotus API v1 sungguhan (backend Go). Dilewati kecuali dijalankan dengan:
-//   flutter test test/contract --dart-define=LIVE_API=http://localhost:8080 \
-//     --dart-define=OWNER=demo.owner --dart-define=THERAPIST=demo.terapis --dart-define=PASSWORD=Sip123456
-// Butuh database uji hasil migrasi 007–010 (+ data Laravel): satu cabang aktif, layanan, terapis [THERAPIST]
-// di cabang itu, dan akun [OWNER] dengan peran owner + kasir. Tes membuat jadwal besok lalu membatalkannya.
+// Tes kontrak ke backend sungguhan (hanya membaca data, lalu logout).
+//   flutter test test/contract/live_api_test.dart \
+//     --dart-define=LIVE_API=http://localhost:8080 --dart-define=USERNAME=... --dart-define=PASSWORD=...
+// Tanpa LIVE_API tes dilewati.
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:onelotus_staff/data/api/api_client.dart';
-import 'package:onelotus_staff/data/api/one_lotus_api.dart';
-import 'package:onelotus_staff/data/auth/api_auth_repository.dart';
-import 'package:onelotus_staff/data/models/models.dart';
-import 'package:onelotus_staff/data/remote/http_remote.dart';
-import 'package:onelotus_staff/data/sync/outbox.dart';
-import 'package:onelotus_staff/data/sync/sync_engine.dart';
-import 'package:onelotus_staff/data/remote/remote.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:onelotus_staff/data/api_client.dart';
+import 'package:onelotus_staff/data/klinik_api.dart';
+import 'package:onelotus_staff/data/models.dart';
 import 'package:onelotus_staff/ui/feedback/app_error.dart';
 
-const _base = String.fromEnvironment('LIVE_API');
-const _owner = String.fromEnvironment('OWNER', defaultValue: 'demo.owner');
-const _therapist = String.fromEnvironment('THERAPIST', defaultValue: 'demo.terapis');
-const _password = String.fromEnvironment('PASSWORD', defaultValue: 'Sip123456');
-
-class _Login {
-  _Login(this.client, this.user);
-  final ApiClient client;
-  final StaffUser user;
-  OneLotusApi get api => OneLotusApi(client, me: () => user);
-}
-
-Future<_Login> _login(String username) async {
-  String? token;
-  String? branch;
-  final client = ApiClient(
-    baseUrl: _base,
-    token: () => token,
-    deviceId: () => 'tes-kontrak-$username',
-    branchId: () => branch,
-  );
-  final r = await ApiAuthRepository(client, deviceId: () async => 'tes-kontrak-$username')
-      .login(username, _password);
-  token = r.token;
-  branch = r.user.branches.first.id;
-  return _Login(client, r.user);
-}
-
-DateTime _nextWorkday() {
-  var d = DateTime.now().add(const Duration(days: 1));
-  if (d.weekday == DateTime.sunday) d = d.add(const Duration(days: 1));
-  return DateTime(d.year, d.month, d.day);
-}
+const _url = String.fromEnvironment('LIVE_API');
+const _user = String.fromEnvironment('USERNAME');
+const _pass = String.fromEnvironment('PASSWORD');
 
 void main() {
+  String? token;
+  final client = ApiClient(
+    baseUrl: _url,
+    token: () => token,
+    dio: Dio(
+      BaseOptions(baseUrl: _url, receiveTimeout: const Duration(seconds: 60)),
+    ),
+  );
+  final api = KlinikApi(client);
+
+  setUpAll(() => initializeDateFormatting('id'));
+
   test(
-    'kontrak API v1 langsung',
+    'kontrak API live',
     () async {
-      final owner = await _login(_owner);
-      final terapis = await _login(_therapist);
-      expect(owner.user.roles, containsAll([Role.owner, Role.kasir]));
-      expect(terapis.user.roles, contains(Role.terapis));
-      final branchId = owner.user.branches.first.id;
-      final api = owner.api;
-      final day = _nextWorkday();
+      final login = await client.post('/v1/login', {
+        'username': _user,
+        'password': _pass,
+        'device_name': 'tes kontrak',
+      }, (d) => (d as Map).cast<String, dynamic>());
+      token = login['token'] as String;
+      final me = AppUser.fromJson((login['user'] as Map).cast());
+      expect(me.username, _user);
 
-      // Data pendukung jadwal.
-      final branch = await api.branch(branchId);
-      expect(branch.openingHours, isNotEmpty);
-      final ts = await api.therapists(branchId);
-      final me = ts.where((t) => t.id == terapis.user.id).single;
-      final svc = (await api.services(branchId)).first;
-      final slots = await api.slots(branchId: branchId, date: day, serviceId: svc.id, therapistId: me.id);
-      final free = slots.where((s) => s.available).toList();
-      expect(free, isNotEmpty);
+      final page = await api.pasien(perPage: 5);
+      expect(page.items, isNotEmpty);
+      expect(page.total, greaterThan(0));
+      final p = page.items.first;
+      expect(p.nama, isNotEmpty);
+      expect(p.ttl, isNotNull);
+      if (me.isAdmin) expect(p.tlp, isNotNull);
 
-      // Pasien: daftar berkursor, cari nomor, detail.
-      final page1 = await api.patients();
-      expect(page1.items, hasLength(20));
-      expect(page1.hasMore, isTrue);
-      final page2 = await api.patients(page: 2);
-      expect(page2.items.first.id, isNot(page1.items.first.id));
-      final target = page1.items.first;
-      final found = await api.patients(query: '#${target.number}');
-      expect(found.items.map((p) => p.id), contains(target.id));
-      final detail = await api.patient(target.id);
-      expect(detail.number, target.number);
+      final cari = await api.pasien(cari: p.nama.split(' ').first);
+      expect(cari.items.any((x) => x.id == p.id), isTrue);
 
-      // Jadwal → hadir (kasir) → mulai & rekam & selesai (terapis lewat outbox sender).
-      final session = await api.createSession(
-        patientId: target.id,
-        serviceId: svc.id,
-        branchId: branchId,
-        therapistId: me.id,
-        startAt: free.first.startAt,
-      );
-      expect(session.status, SessionStatus.scheduled);
-      expect(session.therapistId, me.id);
+      final withExam = (await api.pasien(
+        perPage: 100,
+      )).items.firstWhere((x) => x.jumlahPemeriksaan > 0);
+      final d = await api.detail(withExam.id);
+      expect(d.pasien.id, withExam.id);
+      expect(d.perawatan, isNotEmpty);
+      expect(d.perawatan.first.pasienId, withExam.id);
+      final x = await api.perawatan(d.perawatan.first.id);
+      expect(x.id, d.perawatan.first.id);
+
+      final bulan = d.perawatan.first.tanggal!;
+      final rekap = await api.rekap(DateTime(bulan.year, bulan.month));
+      expect(rekap.any((r) => r.perawatanId == x.id), isTrue);
+
+      final xlsx = await api.export(DateTime(bulan.year, bulan.month));
+      expect(String.fromCharCodes(xlsx.take(2)), 'PK');
       await expectLater(
-        api.createSession(
-          patientId: target.id,
-          serviceId: svc.id,
-          branchId: branchId,
-          therapistId: me.id,
-          startAt: free.first.startAt,
+        api.export(DateTime(2001)),
+        throwsA(
+          isA<AppError>().having((e) => e.type, 'type', ErrorCode.notFound),
         ),
-        throwsA(isA<AppError>().having((e) => e.apiCode, 'code', 'slot_unavailable')),
       );
-      final daySessions = await HttpRemote(terapis.client).sessions(
-        branchId: branchId,
-        from: day,
-        to: day.add(const Duration(days: 1)),
-        therapistId: me.id,
+
+      await api.formulir();
+      if (me.isAdmin) {
+        final users = await api.users();
+        expect(users.any((u) => u.username == _user), isTrue);
+      }
+
+      await client.post('/v1/logout', null, (_) {});
+      await expectLater(
+        client.get('/v1/me', (d) => d),
+        throwsA(
+          isA<AppError>().having((e) => e.type, 'type', ErrorCode.authExpired),
+        ),
       );
-      expect(daySessions.map((s) => s.id), contains(session.id));
-
-      // Terapis belum boleh mulai sebelum pasien datang.
-      final sender = ApiOutboxSender(terapis.client);
-      OutboxItem item(String kind, String entity, Map<String, dynamic> p, {int base = 0}) => OutboxItem(
-        id: newId(),
-        kind: kind,
-        entityId: entity,
-        payload: p,
-        baseVersion: base,
-        createdAt: DateTime.now(),
-        nextAttemptAt: DateTime.now(),
-      );
-      final early = await sender.send(item(OutboxKinds.sessionStatus, session.id, {'status': 'running'}));
-      expect(early, isA<SendError>());
-
-      // Batalkan (kasir) agar data uji bersih.
-      final cancelled = await api.setStatus(session.id, SessionStatus.cancelled, reason: 'tes kontrak');
-      expect(cancelled.status, SessionStatus.cancelled);
-
-      // Persetujuan owner dapat dibaca.
-      await api.leaves(status: 'pending');
-      await api.passwordResets();
-
-      // Catatan lama: kasir tanpa records.read_full ditolak; owner boleh.
-      await api.legacyRecords(target.id);
     },
-    skip: _base.isEmpty ? 'set --dart-define=LIVE_API=... untuk menjalankan' : false,
-    timeout: const Timeout(Duration(minutes: 2)),
+    skip: _url.isEmpty ? 'Set --dart-define=LIVE_API=...' : false,
   );
 }

@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
-import '../data/models/status.dart';
 import 'ol_icon.dart';
-
-export '../data/models/status.dart';
 
 enum OlTagTone { brand, outline, fill, ok, warn, crit, muted, strike, gold }
 
@@ -15,17 +12,6 @@ class OlTag extends StatelessWidget {
   final String label;
   final OlTagTone tone;
   final OlIconData? icon;
-
-  /// StatusTag siklus sesi (§4, §6.2).
-  factory OlTag.session(SessionStatus s, {Key? key}) =>
-      OlTag(s.label, key: key, tone: s.tone);
-
-  /// PaymentStatusBadge (§6.4.1).
-  factory OlTag.payment(PaymentStatus s, {Key? key, String? detail}) => OlTag(
-    detail == null ? s.label : '${s.label} · $detail',
-    key: key,
-    tone: s.tone,
-  );
 
   /// Salinan dengan label/warna lain (mis. label pendek di ruang sempit).
   OlTag withLabel(String label, [OlTagTone? tone]) =>
@@ -81,34 +67,4 @@ class OlTag extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Warna tag per status sesi (§4 StatusTag).
-extension SessionStatusTone on SessionStatus {
-  OlTagTone get tone => switch (this) {
-    SessionStatus.awaitingConfirmation => OlTagTone.muted,
-    SessionStatus.scheduled => OlTagTone.outline,
-    SessionStatus.arrived => OlTagTone.brand,
-    SessionStatus.running => OlTagTone.fill,
-    SessionStatus.done => OlTagTone.ok,
-    SessionStatus.unpaid => OlTagTone.warn,
-    SessionStatus.paid => OlTagTone.ok,
-    SessionStatus.noShow => OlTagTone.crit,
-    SessionStatus.cancelled => OlTagTone.strike,
-  };
-}
-
-/// Warna PaymentStatusBadge (§6.4.1).
-extension PaymentStatusTone on PaymentStatus {
-  OlTagTone get tone => switch (this) {
-    PaymentStatus.draft || PaymentStatus.expired => OlTagTone.muted,
-    PaymentStatus.refundPartial || PaymentStatus.refundFull => OlTagTone.muted,
-    PaymentStatus.unpaid ||
-    PaymentStatus.pending ||
-    PaymentStatus.partial => OlTagTone.warn,
-    PaymentStatus.pendingVerify => OlTagTone.brand,
-    PaymentStatus.paid => OlTagTone.ok,
-    PaymentStatus.failed => OlTagTone.crit,
-    PaymentStatus.cancelled => OlTagTone.strike,
-  };
 }

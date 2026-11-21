@@ -1,4 +1,4 @@
 {
-  "API_URL": "http://<ip-laptop>:8080",
+  "API_URL": "https://backendonelotusmobile.onrender.com",
   "HTTP_LOG": false
 }

@@ -210,7 +210,16 @@ class AppError implements Exception {
   String get code => apiCode ?? type.code;
   FeedbackKind get kind => type.kind;
 
-  String get message => type.template.replaceAllMapped(
+  /// Pesan server (Bahasa Indonesia, mis. "Nomor Pasien 12 sudah ada.") diutamakan; jaringan & sesi pakai katalog.
+  String get message => switch (type) {
+    ErrorCode.networkOffline ||
+    ErrorCode.networkTimeout ||
+    ErrorCode.authExpired ||
+    ErrorCode.serverError => _template,
+    _ => apiMessage ?? _template,
+  };
+
+  String get _template => type.template.replaceAllMapped(
     RegExp(r'\{(\w+)\}'),
     (m) => args[m[1]]?.toString() ?? m[0]!,
   );

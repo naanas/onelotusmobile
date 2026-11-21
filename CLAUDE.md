@@ -1,10 +1,10 @@
 # One Lotus Mobile — konteks proyek
 
-Aplikasi mobile untuk One Lotus Personal Therapy (Malang): staf (terapis, front desk/kasir, owner) + pasien.
-Backend: sistem Laravel yang sudah ada, dinaikkan versinya dan dibuka sebagai REST API (Fase 0).
+Aplikasi mobile untuk staf One Lotus Personal Therapy (Malang): admin & terapis. Fitur = sistem Laravel lama.
+Backend: One Lotus API (Go) di `../backendonelotusmobile`, database Supabase dengan struktur tabel Laravel.
 
 ## Sumber kebenaran
-- `docs/onelotus-mobile-ui-enhancement.md` — spesifikasi utama. Token desain §2, komponen §4, layar §5,
+- `docs/onelotus-mobile-ui-enhancement.md` — kini hanya acuan **tampilan** (fitur ikut Laravel). Token desain §2, komponen §4, layar §5,
   alur end-to-end §6 (pembayaran §6.4), matriks akses §7, offline §8, aksesibilitas §9, privasi §10,
   microcopy §11 (staf pakai "kamu", pasien pakai "Anda"), feedback/popup/error §12, Definition of Done §14,
   katalog 90 layar Lampiran A, aset & animasi Lampiran D (termasuk BodyMap D.2b).
@@ -15,23 +15,22 @@ Backend: sistem Laravel yang sudah ada, dinaikkan versinya dan dibuka sebagai RE
 - `docs/OneLotus-Mobile-Proposal-dan-UI.pdf` — proposal ke mitra + katalog UI.
 
 ## Keputusan yang sudah diambil
-- **Satu aplikasi untuk staf & pasien** (diputuskan user, 8 Okt 2026; menggantikan rencana aplikasi pasien terpisah).
-  Satu layar masuk (UM-04) mengenali isian otomatis: nomor HP → pasien (OTP WhatsApp), username → staf
-  (+ password, menu sesuai peran). Perkenalan pasien (PS-01) hanya saat pertama dibuka. Rute pasien berawalan
-  `/pasien/` (`lib/pasien/`). Redirect gabungan: `appRedirect` di `lib/router/routes.dart`.
+- **Aplikasi = sistem Laravel lama, persis** (diputuskan user, 21 Nov 2026; menggantikan semua keputusan sebelumnya
+  tentang aplikasi pasien, kasir/owner, jadwal, rekam sesi, home visit, pembayaran, offline). Referensi: `../referensiaja/laravel`.
+  - Hanya staf, dua peran: **admin** & **user (terapis)**. Tidak ada aplikasi pasien.
+  - Tab: Data Pasien · Rekap · (+ Tambah Pasien) · Formulir · Lainnya (Export Excel, User Management khusus admin, Keluar).
+  - Nomor HP pasien hanya untuk admin. Tambah pasien → langsung Tambah Pemeriksaan (seperti Laravel).
+  - Kode: `lib/data/` (auth, klinik_api, models — nama kolom = kolom Laravel), `lib/features/` (satu file per layar),
+    `lib/router/app_router.dart`. Komponen UI `lib/ui/` & tema `lib/theme/` tetap dipakai.
+  - Backend: `../backendonelotusmobile` (`internal/klinik`, `db/schema.sql`). Form pendaftaran publik (pengganti
+    Google Form) = Next.js `../formulir-pasien`.
+- Flutter SDK project: **3.38.x** (Dart 3.10). Flutter ≥ 3.50 gagal build karena `phosphor_flutter` 2.1.0.
 - Android dulu; iOS menyusul dari kode yang sama.
-- Mode offline wajib untuk rekam sesi (Fase 1).
-
-## Belum final
-- Stack mobile: spec masih menulis Flutter; arah yang sedang dipertimbangkan Expo (React Native + TypeScript)
-  karena dev memakai Mac Intel dan sudah familiar JS. Padanan: react-native-svg, lottie-react-native,
-  phosphor-react-native, react-native-body-highlighter (sumber asli peta tubuh).
-- 18 pertanyaan workshop di spec §16 belum dijawab mitra — jangan mengarang aturan komisi/paket/refund.
 
 ## Aturan kerja
 - Ikuti layar di `design/screens` dan aturan di spec; jangan menambah pustaka ikon lain.
 - Data di mockup (nama pasien, angka) hanyalah contoh — jangan dimasukkan ke kode aplikasi.
-- Aplikasi tidak punya mode mock: semua data dari One Lotus API (`API_URL` di `env/dev.json`,
-  `flutter run --dart-define-from-file=env/dev.json`). Layar yang
-  backend-nya belum ada memakai `OlUnavailablePage`/`OlUnavailableTab` (tanpa data contoh). Pengganti palsu
-  hanya untuk tes, di `test/support/`. Tes kontrak ke backend sungguhan: `test/contract/live_api_test.dart`.
+- Aplikasi tidak punya mode mock: semua data dari One Lotus API (`API_URL` di `env/*.json`,
+  `flutter run --dart-define-from-file=env/prod.json` atau `env/lokal.json` untuk backend di laptop).
+  Server palsu hanya untuk tes (`test/support/fake_api.dart`). Tes kontrak ke backend sungguhan:
+  `test/contract/live_api_test.dart` (butuh `--dart-define=LIVE_API=... USERNAME=... PASSWORD=...`).

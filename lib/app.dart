@@ -1,12 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/http_log.dart';
-import 'data/auth/auth_controller.dart';
-import 'data/providers.dart';
+import 'data/auth.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 import 'ui/feedback/app_feedback.dart';
@@ -32,18 +29,11 @@ class _OneLotusAppState extends ConsumerState<OneLotusApp> {
   @override
   void initState() {
     super.initState();
-    _feedback.onAuthExpired = () =>
-        ref.read(authProvider.notifier).expireSession();
+    _feedback.onAuthExpired = () => ref.read(authProvider.notifier).expire();
+    // Data pasien disamarkan di app switcher.
     _lifecycle = AppLifecycleListener(
-      // UM-07: konten disamarkan di app switcher.
       onInactive: () => setState(() => _obscured = true),
-      onResume: () {
-        setState(() => _obscured = false);
-        ref.read(authProvider.notifier).onForeground();
-        // Kembali ke aplikasi: kirim outbox sekarang tanpa menunggu jadwal coba ulang.
-        unawaited(ref.read(syncEngineProvider).retryNow());
-      },
-      onHide: () => ref.read(authProvider.notifier).onBackground(),
+      onResume: () => setState(() => _obscured = false),
     );
   }
 
@@ -61,7 +51,6 @@ class _OneLotusAppState extends ConsumerState<OneLotusApp> {
         title: 'One Lotus',
         debugShowCheckedModeBanner: false,
         theme: buildOlTheme(),
-        // Bahasa Indonesia untuk widget bawaan (pemilih tanggal, dsb.).
         locale: const Locale('id'),
         supportedLocales: const [Locale('id'), Locale('en')],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
@@ -70,8 +59,7 @@ class _OneLotusAppState extends ConsumerState<OneLotusApp> {
         builder: (context, child) => Stack(
           children: [
             child!,
-            if (_obscured && ref.read(authProvider).user != null)
-              // TODO(workshop-4): FLAG_SECURE untuk layar medis bila diputuskan (§10).
+            if (_obscured && ref.read(authProvider).loggedIn)
               const Positioned.fill(
                 child: ColoredBox(
                   color: Color(0xFF0C4A6E),

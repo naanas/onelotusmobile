@@ -25,7 +25,9 @@ abstract final class HttpLog {
           // Isi request masuk/daftar memuat password: tidak dicatat (respons tetap tercatat).
           // Isi file lampiran (rontgen dll.) tidak pernah dicatat.
           requestFilter: (o) =>
-              !o.path.startsWith('/v1/auth/') && !o.path.endsWith('/content'),
+              !o.path.startsWith('/v1/login') &&
+              !o.path.startsWith('/v1/users') &&
+              !o.path.endsWith('/content'),
           responseFilter: (r) =>
               r.requestOptions.responseType != ResponseType.bytes,
         ),

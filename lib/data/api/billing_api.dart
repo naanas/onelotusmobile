@@ -108,6 +108,13 @@ class BillingApi {
     return id;
   }
 
+  /// Rontgen yang diunggah pasien lewat form booking web (per booking / per sesi dari booking itu).
+  Future<List<IntakeFileV>> bookingAttachments(String bookingId) =>
+      api.get('/v1/bookings/$bookingId/attachments', (d) => parseList(d, IntakeFileV.fromJson));
+
+  Future<List<IntakeFileV>> sessionIntakeAttachments(String sessionId) =>
+      api.get('/v1/sessions/$sessionId/intake-attachments', (d) => parseList(d, IntakeFileV.fromJson));
+
   /// Isi lampiran (didekripsi server; tiap buka dicatat di audit log).
   Future<Uint8List> attachment(String id) => api.getBytes('/v1/attachments/$id/content');
 
@@ -342,3 +349,18 @@ class BillingApi {
 }
 
 final billingApiProvider = Provider<BillingApi>((ref) => BillingApi(ref.watch(apiClientProvider)));
+
+/// File rontgen dari form booking web (gambar atau PDF), terenkripsi di server.
+class IntakeFileV {
+  const IntakeFileV({required this.id, required this.mime, required this.sizeBytes});
+  final String id, mime;
+  final int sizeBytes;
+
+  bool get isImage => mime.startsWith('image/') && mime != 'image/heic';
+
+  factory IntakeFileV.fromJson(Map<String, dynamic> j) => IntakeFileV(
+    id: j['id'].toString(),
+    mime: j['mime'] as String? ?? '',
+    sizeBytes: parseInt(j['size_bytes']) ?? 0,
+  );
+}

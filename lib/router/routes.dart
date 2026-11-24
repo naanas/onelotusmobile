@@ -89,6 +89,7 @@ abstract final class Routes {
   static const ownerAturanKomisi = '/owner/aturan-komisi'; // OW-11
   static const ownerVoucher = '/owner/voucher'; // OW-12
   static const ownerPoin = '/owner/poin'; // OW-13
+  static const ownerBookingWeb = '/owner/booking-web';
   static const ownerTemplate = '/owner/template'; // OW-14
   static const ownerPustaka = '/owner/pustaka'; // OW-15
   static const ownerPengumuman = '/owner/pengumuman'; // OW-16

@@ -40,6 +40,7 @@ import '../features/owner/layanan_page.dart';
 import '../features/owner/paket_page.dart';
 import '../features/owner/aturan_komisi_page.dart';
 import '../features/owner/voucher_page.dart';
+import '../features/owner/booking_web_page.dart';
 import '../features/owner/poin_page.dart';
 import '../features/owner/template_page.dart';
 import '../features/owner/pustaka_page.dart';
@@ -468,6 +469,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: Routes.ownerVoucher,
         parentNavigatorKey: rootNavigatorKey,
         builder: (_, _) => const VoucherPage(),
+      ),
+      GoRoute(
+        path: Routes.ownerBookingWeb,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (_, _) => const BookingWebPage(),
       ),
       GoRoute(
         path: Routes.ownerPoin,

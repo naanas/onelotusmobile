@@ -212,6 +212,13 @@ class BillingApi {
   Future<PointsRulesV> savePointsRules(PointsRulesV r) =>
       api.put('/v1/settings/points', r.toJson(), (d) => PointsRulesV.fromJson(asMap(d)));
 
+  /// Form booking web (tanpa login): pembayaran online on/off.
+  Future<bool> webBookingPayment() =>
+      api.get('/v1/settings/web-booking', (d) => asMap(d)['payment_enabled'] as bool? ?? false);
+
+  Future<bool> setWebBookingPayment(bool on) =>
+      api.put('/v1/settings/web-booking', {'payment_enabled': on}, (d) => asMap(d)['payment_enabled'] as bool? ?? on);
+
   Future<List<TemplateV>> templates() => api.get('/v1/templates', (d) => parseList(d, TemplateV.fromJson));
 
   Future<TemplateV> saveTemplate(String? id, Map<String, dynamic> body) => id == null

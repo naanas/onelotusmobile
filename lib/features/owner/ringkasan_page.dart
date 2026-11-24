@@ -84,6 +84,11 @@ class _RingkasanPageState extends ConsumerState<RingkasanPage> {
           variant: OlButtonVariant.secondary,
         ),
         SheetAction(
+          'Formulir booking web',
+          Routes.ownerBookingWeb,
+          variant: OlButtonVariant.secondary,
+        ),
+        SheetAction(
           'Poin & referral',
           Routes.ownerPoin,
           variant: OlButtonVariant.secondary,

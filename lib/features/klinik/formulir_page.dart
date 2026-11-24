@@ -41,33 +41,44 @@ class _FormulirPageState extends ConsumerState<FormulirPage> {
   Widget build(BuildContext context) {
     final t = context.olText;
     return OlPageBody(
+      pinnedHeader: true,
       header: const OlAppHeader(title: 'Formulir'),
       onRefresh: () async => _reload(),
       children: [
         Text(
           'Pendaftaran dari form web dan booking aplikasi pasien. Setujui supaya pasien '
           'mendapat nomor pasien dan masuk Data Pasien.',
-          style: t.caption,
+          style: t.body.copyWith(color: context.ol.muted),
         ),
         OlAsync<List<Formulir>>(
           key: ValueKey(_gen),
           load: () => ref.read(klinikApiProvider).formulir(),
-          builder: (context, list, _) => [
-            if (list.isEmpty)
-              const OlCard(
-                child: EmptyState(
-                  illustration: OlIllustration.emptyInbox,
-                  title: 'Tidak ada formulir baru',
-                  message:
-                      'Kiriman form web dan booking aplikasi yang sudah dibayar akan muncul di sini.',
+          builder: (context, list, _) {
+            if (list.isEmpty) {
+              return const [
+                OlCard(
+                  child: EmptyState(
+                    illustration: OlIllustration.emptyInbox,
+                    title: 'Tidak ada formulir baru',
+                    message:
+                        'Kiriman form web dan booking aplikasi yang sudah dibayar akan muncul di sini.',
+                  ),
                 ),
-              )
-            else ...[
-              Text('${list.length} menunggu persetujuan', style: t.caption),
-              for (final f in list)
-                _FormulirCard(data: f, onTap: () => _open(f)),
-            ],
-          ],
+              ];
+            }
+            final baru = [for (final f in list) if (f.menunggu) f];
+            final lunas = [for (final f in list) if (!f.menunggu) f];
+            return [
+              if (baru.isNotEmpty) ...[
+                OlSectionHeader(title: 'Jadwal belum diterima (${baru.length})'),
+                for (final f in baru) _FormulirCard(data: f, onTap: () => _open(f)),
+              ],
+              if (lunas.isNotEmpty) ...[
+                OlSectionHeader(title: 'Sudah terjadwal (${lunas.length})'),
+                for (final f in lunas) _FormulirCard(data: f, onTap: () => _open(f)),
+              ],
+            ];
+          },
         ),
       ],
     );
@@ -93,13 +104,16 @@ class _FormulirCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text(f.nama, style: t.bodyStrong)),
+              OlAvatar(name: f.nama),
+              const SizedBox(width: OlSpace.md),
+              Expanded(child: Text(f.nama, style: t.heading)),
               OlTag(
                 f.dariAplikasi ? 'Aplikasi' : 'Form Web',
-                tone: f.dariAplikasi ? OlTagTone.brand : OlTagTone.fill,
+                tone: f.dariAplikasi ? OlTagTone.brand : OlTagTone.outline,
               ),
             ],
           ),
+          const SizedBox(height: OlSpace.sm),
           const SizedBox(height: 2),
           Text(
             nomor == null ? 'Pasien baru · nomor terbit setelah disetujui' : nomorPasien(nomor),

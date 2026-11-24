@@ -82,6 +82,25 @@ class KlinikApi {
   Future<void> hapusPemeriksaan(int id) =>
       _c.delete('$_p/pemeriksaan/$id', (_) {});
 
+  /// Foto rontgen/MRI yang diunggah pasien (isi lewat `/v1/attachments/{id}/content`).
+  Future<List<RontgenFile>> rontgen(String pasienId) =>
+      _c.get('$_p/pasien/$pasienId/rontgen', (d) => _list(d, RontgenFile.fromJson));
+
+  /// Staf mengunggah satu foto rontgen/MRI (dienkripsi server; maks. 8 MB).
+  Future<RontgenFile> unggahRontgen(String pasienId, List<int> bytes, String mime) =>
+      _c.putBytes('$_p/pasien/$pasienId/rontgen', bytes, mime, (d) => RontgenFile.fromJson(_map(d)));
+
+  /// Hanya foto yang diunggah staf.
+  Future<void> hapusRontgen(String pasienId, String fileId) =>
+      _c.delete('$_p/pasien/$pasienId/rontgen/$fileId', (_) {});
+
+  Future<Uint8List> isiFile(String fileId) => _c.getBytes('/v1/attachments/$fileId/content');
+
+  Future<List<RontgenFile>> rontgenBooking(String bookingId) => _c.get(
+    '/v1/bookings/$bookingId/attachments',
+    (d) => _list(d, (j) => RontgenFile(id: j['id'].toString(), mime: j['mime'] as String? ?? '')),
+  );
+
   // ---- Rekap & Export ------------------------------------------------------------
 
   Future<List<RekapRow>> rekap(DateTime bulan) => _c.get(

@@ -128,10 +128,14 @@ class Pemeriksaan {
     this.terapis,
     this.hasilRontgen,
     this.tanggal,
+    this.bookingId,
   });
 
   final int id;
   final String pasienId;
+
+  /// Formulir asal (foto rontgen dari pasien ikut tampil).
+  final String? bookingId;
   final String? keluhan;
   final String? penyebab;
   final String? lamaCedera;
@@ -158,6 +162,7 @@ class Pemeriksaan {
     terapis: _s(j['terapis']),
     hasilRontgen: _s(j['hasil_rontgen']),
     tanggal: _dt(j['tgl_periksa']),
+    bookingId: _s(j['booking_id']),
   );
 }
 
@@ -358,6 +363,38 @@ class Formulir {
     tamu: _s(j['tamu']),
     intake: Intake.fromJson((j['intake'] as Map?)?.cast<String, dynamic>()),
     fileRontgen: _i(j['file_rontgen']) ?? 0,
+  );
+}
+
+/// Foto rontgen/MRI pasien (unggahan pasien lewat form web/aplikasi atau unggahan staf).
+class RontgenFile {
+  const RontgenFile({
+    required this.id,
+    required this.mime,
+    this.sumber = 'pasien',
+    this.pengirim,
+    this.dikirim,
+    this.bisaHapus = false,
+  });
+
+  final String id;
+  final String mime;
+
+  /// pasien / staf.
+  final String sumber;
+  final String? pengirim;
+  final DateTime? dikirim;
+  final bool bisaHapus;
+
+  bool get isImage => mime.startsWith('image/') && mime != 'image/heic';
+
+  factory RontgenFile.fromJson(Map<String, dynamic> j) => RontgenFile(
+    id: j['id'].toString(),
+    mime: j['mime'] as String? ?? '',
+    sumber: j['sumber'] as String? ?? 'pasien',
+    pengirim: _s(j['pengirim']),
+    dikirim: _dt(j['dikirim']),
+    bisaHapus: j['bisa_hapus'] == true,
   );
 }
 

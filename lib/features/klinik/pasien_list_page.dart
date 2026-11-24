@@ -31,6 +31,7 @@ class _PasienListPageState extends ConsumerState<PasienListPage> {
   AppError? _error;
   Timer? _debounce;
   int _gen = 0;
+  int _formGen = 0;
 
   @override
   void initState() {
@@ -125,29 +126,63 @@ class _PasienListPageState extends ConsumerState<PasienListPage> {
     }
   }
 
+  String _greeting() {
+    final h = DateTime.now().hour;
+    return h < 11
+        ? 'Selamat pagi'
+        : h < 15
+        ? 'Selamat siang'
+        : h < 18
+        ? 'Selamat sore'
+        : 'Selamat malam';
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.olText;
-    final admin = ref.watch(authProvider.select((s) => s.user?.isAdmin ?? false));
+    final c = context.ol;
+    final user = ref.watch(authProvider.select((s) => s.user));
+    final admin = user?.isAdmin ?? false;
+    final first = user?.firstName;
     return OlPageBody(
+      pinnedHeader: true,
+      heroOverlap: true,
       header: OlAppHeader(
-        title: 'Data Pasien',
-        bottom: OlSearchField(
-          hint: admin
-              ? 'Cari nama, nomor pasien, alamat, no. HP'
-              : 'Cari nama, nomor pasien, alamat',
-          onChanged: _onSearch,
-        ),
+        hero: true,
+        title: first == null ? _greeting() : '${_greeting()}, $first',
+        context_: 'One Lotus · ${admin ? 'Admin' : 'Terapis'}',
       ),
-      onRefresh: () => _load(reset: true),
+      onRefresh: () async {
+        setState(() => _formGen++);
+        await _load(reset: true);
+      },
       children: [
-        if (_items.isNotEmpty || (!_loading && _error == null))
-          Text(
-            _cari.isEmpty
-                ? '$_total pasien'
-                : '$_total pasien cocok dengan "$_cari"',
-            style: t.caption,
+        OlCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Data Pasien', style: t.heading),
+              const SizedBox(height: 2),
+              Text(
+                _items.isEmpty && _loading
+                    ? 'Memuat…'
+                    : _cari.isEmpty
+                    ? '$_total pasien terdaftar'
+                    : '$_total pasien cocok dengan "$_cari"',
+                style: t.body.copyWith(color: c.muted),
+              ),
+              const SizedBox(height: OlSpace.md),
+              OlSearchField(
+                hint: admin
+                    ? 'Cari nama, nomor pasien, alamat, no. HP'
+                    : 'Cari nama, nomor pasien, alamat',
+                onChanged: _onSearch,
+              ),
+            ],
           ),
+        ),
+        _FormulirBanner(key: ValueKey(_formGen)),
+        if (_items.isNotEmpty) const OlSectionHeader(title: 'Pasien terbaru'),
         for (final p in _items)
           _PasienCard(
             pasien: p,
@@ -180,6 +215,61 @@ class _PasienListPageState extends ConsumerState<PasienListPage> {
   }
 }
 
+/// "N formulir menunggu persetujuan" → tab Formulir (seperti kartu ringkas di beranda pasien).
+class _FormulirBanner extends ConsumerStatefulWidget {
+  const _FormulirBanner({super.key});
+
+  @override
+  ConsumerState<_FormulirBanner> createState() => _FormulirBannerState();
+}
+
+class _FormulirBannerState extends ConsumerState<_FormulirBanner> {
+  late final Future<int> _count = ref
+      .read(klinikApiProvider)
+      .formulir()
+      .then((l) => l.length)
+      .catchError((_) => 0);
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<int>(
+    future: _count,
+    builder: (context, snap) {
+      final n = snap.data ?? 0;
+      if (n == 0) return const SizedBox.shrink();
+      final c = context.ol;
+      final t = context.olText;
+      return OlCard(
+        onTap: () => context.go(Routes.klinikFormulir),
+        semanticLabel: '$n formulir menunggu persetujuan',
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(color: c.brandSoft, shape: BoxShape.circle),
+              child: Center(child: OlIcon(OlIcons.receipt, color: c.brand)),
+            ),
+            const SizedBox(width: OlSpace.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('$n formulir menunggu', style: t.bodyStrong),
+                  Text(
+                    'Setujui supaya pasien mendapat nomor pasien.',
+                    style: t.caption,
+                  ),
+                ],
+              ),
+            ),
+            OlIcon(OlIcons.chevronRight, color: c.muted),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 class _PasienCard extends ConsumerWidget {
   const _PasienCard({
     required this.pasien,
@@ -202,6 +292,8 @@ class _PasienCard extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          OlAvatar(name: p.nama),
+          const SizedBox(width: OlSpace.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

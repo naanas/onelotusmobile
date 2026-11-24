@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,6 +7,7 @@ import 'klinik_models.dart';
 import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
+import 'intake_xray.dart';
 import 'widgets.dart';
 
 /// Detail pasien (Laravel detail-pasien): data diri + tabel pemeriksaan (tambah / edit / hapus).
@@ -143,10 +143,34 @@ class _DataPasien extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(p.nama, style: context.olText.heading),
-          const SizedBox(height: OlSpace.sm),
+          Row(
+            children: [
+              OlAvatar(name: p.nama, large: true),
+              const SizedBox(width: OlSpace.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(p.nama, style: context.olText.heading),
+                    const SizedBox(height: 2),
+                    Text(
+                      [nomorPasien(p.nomor), genderLabel(p.gender)].join(' · '),
+                      style: context.olText.mono.copyWith(fontSize: 13.5, color: context.ol.muted),
+                    ),
+                    if (p.kunjunganTerakhir != null)
+                      Text(
+                        'Kunjungan terakhir ${tgl(p.kunjunganTerakhir)}',
+                        style: context.olText.caption.copyWith(color: context.ol.brand, fontWeight: FontWeight.w700),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: OlSpace.md),
           for (final (i, r) in rows.indexed)
             OlInfoRow(label: r.$1, value: r.$2, divider: i < rows.length - 1),
+          IntakeXray.pasien(pasienId: p.id, editable: true),
           const SizedBox(height: OlSpace.md),
           Row(
             children: [
@@ -182,7 +206,6 @@ class _PemeriksaanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.ol;
     final t = context.olText;
     final x = data;
     final rontgen = x.hasilRontgen;
@@ -213,23 +236,7 @@ class _PemeriksaanCard extends StatelessWidget {
           LabelValue('Bagian yang ditangani', x.bagianPenenang),
           LabelValue('Kesimpulan', x.kesimpulan),
           LabelValue('Terapis', x.terapis),
-          if (rontgen != null && rontgen != '-')
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: rontgen));
-                  context.feedback.info(
-                    'Link MRI/Rontgen disalin. Tempel di browser untuk membuka.',
-                  );
-                },
-                icon: OlIcon(OlIcons.xray, size: 18, color: c.brand),
-                label: Text(
-                  'Salin link MRI/Rontgen',
-                  style: t.bodyStrong.copyWith(color: c.brand),
-                ),
-              ),
-            ),
+          LabelValue('MRI / Rontgen', rontgen == '-' ? null : rontgen),
         ],
       ),
     );

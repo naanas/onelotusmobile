@@ -223,6 +223,7 @@ class _PasienFormPageState extends ConsumerState<PasienFormPage> {
       title: _edit ? 'Edit Pasien' : 'Tambah Pasien',
       foot: [OlButton(label: 'Simpan', loading: _busy, onPressed: _save)],
       children: [
+        const OlSectionHeader(title: 'Identitas'),
         OlTextField(
           label: 'Nomor',
           isRequired: _edit,
@@ -273,30 +274,6 @@ class _PasienFormPageState extends ConsumerState<PasienFormPage> {
               ),
           ],
         ),
-        if (showTlp)
-          OlTextField(
-            label: 'Nomor Telepon',
-            isRequired: true,
-            controller: _tlp,
-            keyboardType: TextInputType.phone,
-            inputFormatters: digits,
-            error: _errors['tlp'],
-            onChanged: (_) => _clear('tlp'),
-          )
-        else
-          const OlBanner(
-            tone: OlBannerTone.info,
-            icon: OlIcons.lock,
-            message: 'Nomor telepon hanya bisa dilihat dan diubah admin.',
-          ),
-        OlTextField(
-          label: 'Alamat',
-          isRequired: true,
-          controller: _alamat,
-          maxLines: 2,
-          error: _errors['alamat'],
-          onChanged: (_) => _clear('alamat'),
-        ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -323,6 +300,32 @@ class _PasienFormPageState extends ConsumerState<PasienFormPage> {
               ),
           ],
         ),
+        const OlSectionHeader(title: 'Kontak & alamat'),
+        if (showTlp)
+          OlTextField(
+            label: 'Nomor Telepon',
+            isRequired: true,
+            controller: _tlp,
+            keyboardType: TextInputType.phone,
+            inputFormatters: digits,
+            error: _errors['tlp'],
+            onChanged: (_) => _clear('tlp'),
+          )
+        else
+          const OlBanner(
+            tone: OlBannerTone.info,
+            icon: OlIcons.lock,
+            message: 'Nomor telepon hanya bisa dilihat dan diubah admin.',
+          ),
+        OlTextField(
+          label: 'Alamat',
+          isRequired: true,
+          controller: _alamat,
+          maxLines: 2,
+          error: _errors['alamat'],
+          onChanged: (_) => _clear('alamat'),
+        ),
+        const OlSectionHeader(title: 'Lainnya'),
         OlTextField(
           label: 'Instansi',
           isRequired: true,

@@ -8,6 +8,7 @@ import 'klinik_models.dart';
 import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
+import 'intake_xray.dart';
 import 'widgets.dart';
 
 /// Tambah / Edit Pemeriksaan (Laravel tambah-pemeriksaan & edit-pemeriksaan).
@@ -264,9 +265,11 @@ class _PemeriksaanFormPageState extends ConsumerState<PemeriksaanFormPage> {
               ),
           ],
         ),
+        const OlSectionHeader(title: 'Keluhan'),
         field('Keluhan', _keluhan, 'keluhan', lines: 3),
         field('Penyebab Cedera', _penyebab, 'penyebab'),
         field('Lama Cedera', _lama, 'lama_cedera', lines: 1),
+        const OlSectionHeader(title: 'Pemeriksaan & penanganan'),
         field('Analisa dan Diagnosa', _analisa, 'analisa', lines: 3),
         field('Treatment', _treatment, 'treatment'),
         field('Bagian yang Diberikan Penanganan', _bagian, 'bagian_penenang'),
@@ -277,13 +280,15 @@ class _PemeriksaanFormPageState extends ConsumerState<PemeriksaanFormPage> {
           lines: 3,
         ),
         field('Terapis', _terapis, 'terapis', lines: 1),
+        const OlSectionHeader(title: 'Rontgen / MRI'),
         field(
-          'Link MRI / Rontgen',
+          'MRI / Rontgen',
           _rontgen,
           'hasil_rontgen',
-          lines: 1,
-          hint: 'https://drive.google.com/…',
+          lines: 2,
+          hint: 'Keterangan hasil rontgen / MRI',
         ),
+        if (_pasienId != null) IntakeXray.pasien(pasienId: _pasienId!, editable: true),
       ],
     );
   }

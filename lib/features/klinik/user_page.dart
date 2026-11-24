@@ -79,19 +79,21 @@ class _UserPageState extends ConsumerState<UserPage> {
           load: () => ref.read(klinikApiProvider).users(),
           builder: (context, users, _) => [
             Text('${users.length} user', style: t.caption),
-            for (final (i, u) in users.indexed)
+            for (final u in users)
               OlCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Row(
                       children: [
+                        OlAvatar(name: u.name),
+                        const SizedBox(width: OlSpace.md),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('${i + 1}. ${u.name}', style: t.bodyStrong),
-                              Text(u.username, style: t.caption),
+                              Text(u.saya ? '${u.name} (kamu)' : u.name, style: t.bodyStrong),
+                              Text('@${u.username}', style: t.mono.copyWith(fontSize: 13, color: context.ol.muted)),
                             ],
                           ),
                         ),
@@ -117,7 +119,7 @@ class _UserPageState extends ConsumerState<UserPage> {
                             label: 'Hapus',
                             small: true,
                             variant: OlButtonVariant.dangerSecondary,
-                            onPressed: u.id == me ? null : () => _hapus(u),
+                            onPressed: u.saya || u.id == me ? null : () => _hapus(u),
                           ),
                         ),
                       ],

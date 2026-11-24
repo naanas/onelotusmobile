@@ -15,6 +15,7 @@ import '../../../router/routes.dart';
 import '../../../theme/app_theme.dart';
 import '../../../ui/body_map/body_map.dart';
 import '../../../ui/ui.dart';
+import '../../kasir/intake_xray.dart';
 import 'lampiran_section.dart';
 
 /// TR-04 Rekam sesi (layar prioritas §5.2). Data sesi & peringatan medis dari server; isian
@@ -566,6 +567,7 @@ class _RekamSesiPageState extends ConsumerState<RekamSesiPage> {
               ),
             ],
           ),
+          IntakeXray.session(sessionId: session.id),
           LampiranSection(
             key: ValueKey(_existing?.id),
             sessionId: session.id,

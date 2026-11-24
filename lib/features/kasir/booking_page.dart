@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import '../shared/slot_sheet.dart';
 import 'billing_common.dart';
+import 'intake_xray.dart';
 
 /// KS-07 Booking masuk: booking dari aplikasi pasien / website (`GET /v1/bookings`).
 /// Terima → backend membuat sesi; Jam lain → pasien memilih di aplikasinya; Tolak → wajib alasan.
@@ -177,6 +178,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                       const SizedBox(height: OlSpace.sm),
                       _HomeVisitInfo(bookingId: b.id),
                     ],
+                    IntakeXray.booking(bookingId: b.id),
                     if (b.note != null && b.note!.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Text(

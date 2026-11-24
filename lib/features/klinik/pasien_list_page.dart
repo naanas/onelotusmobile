@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import '../../data/auth/auth_controller.dart';
 import 'klinik_api.dart';
 import 'klinik_models.dart';
+import 'notifikasi.dart';
+import 'pager.dart';
 import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
@@ -21,59 +23,28 @@ class PasienListPage extends ConsumerStatefulWidget {
   ConsumerState<PasienListPage> createState() => _PasienListPageState();
 }
 
-class _PasienListPageState extends ConsumerState<PasienListPage> {
-  final _items = <Pasien>[];
+class _PasienListPageState extends ConsumerState<PasienListPage> with VisibleReload {
   String _cari = '';
-  int _page = 0;
-  int _total = 0;
-  bool _hasMore = true;
-  bool _loading = false;
-  AppError? _error;
   Timer? _debounce;
-  int _gen = 0;
   int _formGen = 0;
+  late final _pager = Pager<Pasien>(
+    (page) => ref.read(klinikApiProvider).pasien(cari: _cari, page: page),
+  )..reload();
 
   @override
-  void initState() {
-    super.initState();
-    _load(reset: true);
+  void onVisibleAgain() {
+    _pager.reload();
+    setState(() => _formGen++);
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _pager.dispose();
     super.dispose();
   }
 
-  Future<void> _load({bool reset = false}) async {
-    if (_loading && !reset) return;
-    final gen = reset ? ++_gen : _gen;
-    setState(() {
-      _loading = true;
-      _error = null;
-      if (reset) {
-        _items.clear();
-        _page = 0;
-        _hasMore = true;
-      }
-    });
-    try {
-      final res = await ref
-          .read(klinikApiProvider)
-          .pasien(cari: _cari, page: _page + 1);
-      if (!mounted || gen != _gen) return;
-      setState(() {
-        _items.addAll(res.items);
-        _page = res.page;
-        _total = res.total;
-        _hasMore = res.hasMore;
-      });
-    } on AppError catch (e) {
-      if (mounted && gen == _gen) setState(() => _error = e);
-    } finally {
-      if (mounted && gen == _gen) setState(() => _loading = false);
-    }
-  }
+  Future<void> _load({bool reset = false}) => reset ? _pager.reload() : _pager.more();
 
   void _onSearch(String v) {
     _debounce?.cancel();
@@ -139,11 +110,23 @@ class _PasienListPageState extends ConsumerState<PasienListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final t = context.olText;
-    final c = context.ol;
     final user = ref.watch(authProvider.select((s) => s.user));
     final admin = user?.isAdmin ?? false;
     final first = user?.firstName;
+    return InfiniteScroll(
+      onEnd: _pager.more,
+      child: ListenableBuilder(
+        listenable: _pager,
+        builder: (context, _) => _body(context, admin, first),
+      ),
+    );
+  }
+
+  Widget _body(BuildContext context, bool admin, String? first) {
+    final t = context.olText;
+    final c = context.ol;
+    final p = _pager;
+    final items = p.items;
     return OlPageBody(
       pinnedHeader: true,
       heroOverlap: true,
@@ -151,10 +134,12 @@ class _PasienListPageState extends ConsumerState<PasienListPage> {
         hero: true,
         title: first == null ? _greeting() : '${_greeting()}, $first',
         context_: 'One Lotus · ${admin ? 'Admin' : 'Terapis'}',
+        actions: const [StaffNotifBell()],
       ),
       onRefresh: () async {
+        ref.read(klinikApiProvider).cache.expire();
         setState(() => _formGen++);
-        await _load(reset: true);
+        await _pager.reload();
       },
       children: [
         OlCard(
@@ -164,11 +149,11 @@ class _PasienListPageState extends ConsumerState<PasienListPage> {
               Text('Data Pasien', style: t.heading),
               const SizedBox(height: 2),
               Text(
-                _items.isEmpty && _loading
+                !p.loadedOnce
                     ? 'Memuat…'
                     : _cari.isEmpty
-                    ? '$_total pasien terdaftar'
-                    : '$_total pasien cocok dengan "$_cari"',
+                    ? '${p.total} pasien terdaftar'
+                    : '${p.total} pasien cocok dengan "$_cari"',
                 style: t.body.copyWith(color: c.muted),
               ),
               const SizedBox(height: OlSpace.md),
@@ -182,34 +167,24 @@ class _PasienListPageState extends ConsumerState<PasienListPage> {
           ),
         ),
         _FormulirBanner(key: ValueKey(_formGen)),
-        if (_items.isNotEmpty) const OlSectionHeader(title: 'Pasien terbaru'),
-        for (final p in _items)
+        if (items.isNotEmpty) const OlSectionHeader(title: 'Pasien terbaru'),
+        for (final x in items)
           _PasienCard(
-            pasien: p,
-            onTap: () => _open(Routes.klinikDetail(p.id)),
-            onMore: () => _actions(p),
+            pasien: x,
+            onTap: () => _open(Routes.klinikDetail(x.id)),
+            onMore: () => _actions(x),
           ),
-        if (_error != null)
-          OlErrorCard(
-            message: _error!.message,
-            onRetry: () => _load(reset: _items.isEmpty),
-          )
-        else if (_loading)
-          const OlLoadingCard()
-        else if (_items.isEmpty)
+        if (p.loadedOnce && items.isEmpty && p.error == null)
           OlCard(
             child: EmptyState(
               illustration: OlIllustration.emptySearch,
-              title: _cari.isEmpty
-                  ? 'Belum ada pasien'
-                  : 'Pasien tidak ditemukan',
+              title: _cari.isEmpty ? 'Belum ada pasien' : 'Pasien tidak ditemukan',
               message: _cari.isEmpty
                   ? 'Tambah pasien lewat tombol + di bawah.'
                   : 'Coba kata kunci lain, misalnya sebagian nama atau nomor pasien.',
             ),
-          )
-        else if (_hasMore)
-          OlButton.secondary(label: 'Muat lebih banyak', onPressed: _load),
+          ),
+        PagerFooter(pager: p, endLabel: 'Semua ${p.total} pasien sudah tampil'),
       ],
     );
   }
@@ -224,11 +199,7 @@ class _FormulirBanner extends ConsumerStatefulWidget {
 }
 
 class _FormulirBannerState extends ConsumerState<_FormulirBanner> {
-  late final Future<int> _count = ref
-      .read(klinikApiProvider)
-      .formulir()
-      .then((l) => l.length)
-      .catchError((_) => 0);
+  late final Future<int> _count = ref.read(klinikApiProvider).formulirCount().catchError((_) => 0);
 
   @override
   Widget build(BuildContext context) => FutureBuilder<int>(

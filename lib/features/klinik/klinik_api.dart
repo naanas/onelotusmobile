@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/api/api_client.dart';
 import '../../data/providers.dart';
+import '../../data/models/models.dart' show NotificationV;
+import 'klinik_cache.dart';
 import 'klinik_models.dart';
 
 final klinikApiProvider = Provider<KlinikApi>(
-  (ref) => KlinikApi(ref.watch(apiClientProvider)),
+  (ref) => KlinikApi(ref.watch(apiClientProvider), ref.watch(klinikCacheProvider)),
 );
 
 Map<String, dynamic> _map(Object? d) => (d as Map).cast<String, dynamic>();
@@ -15,37 +17,61 @@ List<T> _list<T>(Object? d, T Function(Map<String, dynamic>) f) => [
   for (final x in (d as List? ?? const [])) f(_map(x)),
 ];
 
+/// Satu halaman daftar (`{data, meta: {page, per_page, total}}`).
+class KPage<T> {
+  const KPage(this.items, this.total, this.page, this.perPage, [this.meta = const {}]);
+  final List<T> items;
+  final int total;
+  final int page;
+  final int perPage;
+  final Map<String, dynamic> meta;
+  bool get hasMore => page * perPage < total;
+}
+
+KPage<T> _page<T>(Object? body, T Function(Map<String, dynamic>) f, int page, int per) {
+  final m = _map(body);
+  final meta = _map(m['meta'] ?? const {});
+  return KPage(
+    _list(m['data'], f),
+    (meta['total'] as num?)?.toInt() ?? 0,
+    (meta['page'] as num?)?.toInt() ?? page,
+    (meta['per_page'] as num?)?.toInt() ?? per,
+    meta,
+  );
+}
+
+/// Isi `{data}` respons.
+Object? _data(Object? body) => ApiClient.unwrap(body);
+
 /// Menu staf versi Laravel: `/v1/klinik/*`. Semua gagal = AppError.
+/// Bacaan lewat [KlinikCache] (tanpa request bila masih segar, 304 bila tidak berubah); perubahan mengosongkan cache.
 class KlinikApi {
-  KlinikApi(this._c);
+  KlinikApi(this._c, this.cache);
   final ApiClient _c;
+  final KlinikCache cache;
 
   static const _p = '/v1/klinik';
 
+  Future<T> _get<T>(String path, T Function(Object? body) parse, {Map<String, dynamic>? query}) =>
+      cache.get(_c, path, parse, query: query);
+
+  /// Setelah tambah/edit/hapus: semua daftar & detail dimuat ulang (revalidasi) saat dibuka lagi.
+  Future<T> _changed<T>(Future<T> f) async {
+    final r = await f;
+    cache.expire();
+    return r;
+  }
+
   // ---- Data Pasien -----------------------------------------------------------
 
-  Future<PasienPage> pasien({String cari = '', int page = 1, int perPage = 30}) =>
-      _c.getBody(
-        '$_p/pasien',
-        (body) {
-          final m = _map(body);
-          final meta = _map(m['meta'] ?? const {});
-          return PasienPage(
-            _list(m['data'], Pasien.fromJson),
-            (meta['total'] as num?)?.toInt() ?? 0,
-            (meta['page'] as num?)?.toInt() ?? page,
-            (meta['per_page'] as num?)?.toInt() ?? perPage,
-          );
-        },
-        query: {
-          'cari': cari.trim().isEmpty ? null : cari.trim(),
-          'page': page,
-          'per_page': perPage,
-        },
-      );
+  Future<KPage<Pasien>> pasien({String cari = '', int page = 1, int perPage = 30}) => _get(
+    '$_p/pasien',
+    (b) => _page(b, Pasien.fromJson, page, perPage),
+    query: {'cari': cari.trim().isEmpty ? null : cari.trim(), 'page': page, 'per_page': perPage},
+  );
 
-  Future<PasienDetail> detail(String id) => _c.get('$_p/pasien/$id', (d) {
-    final m = _map(d);
+  Future<PasienDetail> detail(String id) => _get('$_p/pasien/$id', (b) {
+    final m = _map(_data(b));
     return PasienDetail(
       Pasien.fromJson(_map(m['pasien'])),
       _list(m['pemeriksaan'], Pemeriksaan.fromJson),
@@ -54,101 +80,121 @@ class KlinikApi {
 
   /// [body]: nomor (opsional), nama, ttl, tlp, alamat, gender, instansi, hobi, tb, bb, tempat_lahir.
   Future<Pasien> tambahPasien(Map<String, dynamic> body) =>
-      _c.post('$_p/pasien', body, (d) => Pasien.fromJson(_map(d)));
+      _changed(_c.post('$_p/pasien', body, (d) => Pasien.fromJson(_map(d))));
 
   Future<Pasien> editPasien(String id, Map<String, dynamic> body) =>
-      _c.put('$_p/pasien/$id', body, (d) => Pasien.fromJson(_map(d)));
+      _changed(_c.put('$_p/pasien/$id', body, (d) => Pasien.fromJson(_map(d))));
 
-  Future<void> hapusPasien(String id) => _c.delete('$_p/pasien/$id', (_) {});
+  Future<void> hapusPasien(String id) => _changed(_c.delete('$_p/pasien/$id', (_) {}));
 
   // ---- Pemeriksaan -------------------------------------------------------------
 
-  Future<Pemeriksaan> tambahPemeriksaan(String pasienId, PemeriksaanDraft d) =>
-      _c.post(
-        '$_p/pasien/$pasienId/pemeriksaan',
-        d.toJson(),
-        (x) => Pemeriksaan.fromJson(_map(x)),
-      );
-
-  Future<Pemeriksaan> pemeriksaan(int id) =>
-      _c.get('$_p/pemeriksaan/$id', (x) => Pemeriksaan.fromJson(_map(x)));
-
-  Future<Pemeriksaan> editPemeriksaan(int id, PemeriksaanDraft d) => _c.put(
-    '$_p/pemeriksaan/$id',
-    d.toJson(),
-    (x) => Pemeriksaan.fromJson(_map(x)),
+  Future<Pemeriksaan> tambahPemeriksaan(String pasienId, PemeriksaanDraft d) => _changed(
+    _c.post('$_p/pasien/$pasienId/pemeriksaan', d.toJson(), (x) => Pemeriksaan.fromJson(_map(x))),
   );
 
-  Future<void> hapusPemeriksaan(int id) =>
-      _c.delete('$_p/pemeriksaan/$id', (_) {});
+  Future<Pemeriksaan> pemeriksaan(int id) =>
+      _get('$_p/pemeriksaan/$id', (b) => Pemeriksaan.fromJson(_map(_data(b))));
 
-  /// Foto rontgen/MRI yang diunggah pasien (isi lewat `/v1/attachments/{id}/content`).
+  Future<Pemeriksaan> editPemeriksaan(int id, PemeriksaanDraft d) =>
+      _changed(_c.put('$_p/pemeriksaan/$id', d.toJson(), (x) => Pemeriksaan.fromJson(_map(x))));
+
+  Future<void> hapusPemeriksaan(int id) => _changed(_c.delete('$_p/pemeriksaan/$id', (_) {}));
+
+  /// Foto rontgen/MRI pasien (isi lewat `/v1/attachments/{id}/content`).
   Future<List<RontgenFile>> rontgen(String pasienId) =>
-      _c.get('$_p/pasien/$pasienId/rontgen', (d) => _list(d, RontgenFile.fromJson));
+      _get('$_p/pasien/$pasienId/rontgen', (b) => _list(_data(b), RontgenFile.fromJson));
 
   /// Staf mengunggah satu foto rontgen/MRI (dienkripsi server; maks. 8 MB).
-  Future<RontgenFile> unggahRontgen(String pasienId, List<int> bytes, String mime) =>
-      _c.putBytes('$_p/pasien/$pasienId/rontgen', bytes, mime, (d) => RontgenFile.fromJson(_map(d)));
+  Future<RontgenFile> unggahRontgen(String pasienId, List<int> bytes, String mime) => _changed(
+    _c.putBytes('$_p/pasien/$pasienId/rontgen', bytes, mime, (d) => RontgenFile.fromJson(_map(d))),
+  );
 
   /// Hanya foto yang diunggah staf.
   Future<void> hapusRontgen(String pasienId, String fileId) =>
-      _c.delete('$_p/pasien/$pasienId/rontgen/$fileId', (_) {});
+      _changed(_c.delete('$_p/pasien/$pasienId/rontgen/$fileId', (_) {}));
 
   Future<Uint8List> isiFile(String fileId) => _c.getBytes('/v1/attachments/$fileId/content');
 
-  Future<List<RontgenFile>> rontgenBooking(String bookingId) => _c.get(
+  Future<List<RontgenFile>> rontgenBooking(String bookingId) => _get(
     '/v1/bookings/$bookingId/attachments',
-    (d) => _list(d, (j) => RontgenFile(id: j['id'].toString(), mime: j['mime'] as String? ?? '')),
+    (b) => _list(_data(b), (j) => RontgenFile(id: j['id'].toString(), mime: j['mime'] as String? ?? '')),
   );
 
   // ---- Rekap & Export ------------------------------------------------------------
 
-  Future<List<RekapRow>> rekap(DateTime bulan) => _c.get(
+  /// meta: total (pemeriksaan) & total_pasien bulan itu.
+  Future<KPage<RekapRow>> rekap(DateTime bulan, {int page = 1, int perPage = 30}) => _get(
     '$_p/rekap',
-    (d) => _list(d, RekapRow.fromJson),
-    query: {'bulan': ym(bulan)},
+    (b) => _page(b, RekapRow.fromJson, page, perPage),
+    query: {'bulan': ym(bulan), 'page': page, 'per_page': perPage},
   );
 
   /// File .xlsx (Laravel PasienExport). Bulan tanpa data → AppError notFound.
-  Future<Uint8List> export(DateTime bulan) =>
-      _c.getBytes('$_p/export?bulan=${ym(bulan)}');
+  Future<Uint8List> export(DateTime bulan) => _c.getBytes('$_p/export?bulan=${ym(bulan)}');
 
   // ---- Formulir --------------------------------------------------------------------
 
-  Future<List<Formulir>> formulir() =>
-      _c.get('$_p/formulir', (d) => _list(d, Formulir.fromJson));
+  Future<KPage<Formulir>> formulir({int page = 1, int perPage = 20}) => _get(
+    '$_p/formulir',
+    (b) => _page(b, Formulir.fromJson, page, perPage),
+    query: {'page': page, 'per_page': perPage},
+  );
+
+  /// Jumlah kiriman yang menunggu (badge).
+  Future<int> formulirCount() => formulir(perPage: 1).then((p) => p.total);
+
+  Future<Formulir> formulirDetail(String id) =>
+      _get('$_p/formulir/$id', (b) => Formulir.fromJson(_map(_data(b))));
 
   /// Setujui kiriman → pasien mendapat nomor (bila belum) + isian awal pemeriksaan.
   Future<({Pasien pasien, Intake intake})> setujui(String id, {int? nomor}) =>
-      _c.post('$_p/formulir/$id/setujui', {'nomor': ?nomor}, (d) {
+      _changed(_c.post('$_p/formulir/$id/setujui', {'nomor': ?nomor}, (d) {
         final m = _map(d);
         return (
           pasien: Pasien.fromJson(_map(m['pasien'])),
           intake: Intake.fromJson((m['intake'] as Map?)?.cast<String, dynamic>()),
         );
-      });
+      }));
 
   Future<void> tolak(String id, String alasan) =>
-      _c.post('$_p/formulir/$id/tolak', {'alasan': alasan}, (_) {});
+      _changed(_c.post('$_p/formulir/$id/tolak', {'alasan': alasan}, (_) {}));
+
+  // ---- Notifikasi (lonceng) ----------------------------------------------------------
+
+  Future<CursorPage<NotificationV>> notifikasi({String? cursor}) =>
+      _c.getPage('/v1/notifications', NotificationV.fromJson, query: {'cursor': cursor});
+
+  /// Jumlah belum dibaca (maks. 50 dihitung; lebih → 51 = "50+").
+  Future<int> belumDibaca() => _c
+      .getPage('/v1/notifications', NotificationV.fromJson, query: {'unread_only': 'true', 'limit': '50'})
+      .then((p) => p.items.length + (p.hasMore ? 1 : 0));
+
+  Future<void> bacaSemua() => _c.post('/v1/notifications/read-all', null, (_) {});
+
+  /// Token push FCM perangkat ini (server mengirim push "pasien baru booking" ke token ini).
+  Future<void> daftarPerangkat(String token, {required String platform}) =>
+      _c.post('/v1/me/devices', {'push_token': token, 'platform': platform}, (_) {});
 
   // ---- User Management (admin) ------------------------------------------------------
 
-  Future<List<KUser>> users() =>
-      _c.get('$_p/users', (d) => _list(d, KUser.fromJson));
+  Future<List<KUser>> users() => _get('$_p/users', (b) => _list(_data(b), KUser.fromJson));
 
   Future<KUser> tambahUser({
     required String name,
     required String username,
     required String password,
     required bool admin,
-  }) => _c.post('$_p/users', {
-    'name': name,
-    'username': username,
-    'password': password,
-    'role': admin ? 'admin' : 'terapis',
-  }, (d) => KUser.fromJson(_map(d)));
+  }) => _changed(
+    _c.post('$_p/users', {
+      'name': name,
+      'username': username,
+      'password': password,
+      'role': admin ? 'admin' : 'terapis',
+    }, (d) => KUser.fromJson(_map(d))),
+  );
 
-  Future<void> hapusUser(String id) => _c.delete('$_p/users/$id', (_) {});
+  Future<void> hapusUser(String id) => _changed(_c.delete('$_p/users/$id', (_) {}));
 
   Future<void> ubahPassword(String id, String password) =>
       _c.put('$_p/users/$id/password', {'password': password}, (_) {});

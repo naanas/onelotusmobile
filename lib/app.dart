@@ -9,6 +9,7 @@ import 'data/auth/auth_controller.dart';
 import 'data/providers.dart';
 import 'pasien/pasien_session.dart';
 import 'pasien/push/pasien_push.dart';
+import 'features/klinik/staff_push.dart';
 import 'router/app_router.dart';
 import 'theme/app_theme.dart';
 import 'ui/feedback/app_feedback.dart';
@@ -50,6 +51,15 @@ class _OneLotusAppState extends ConsumerState<OneLotusApp> {
     // Push FCM: aktif selama pasien masuk; keluar → token perangkat dihapus.
     ref.listenManual(pasienSessionProvider.select((s) => s.phase == PasienPhase.ready), (was, ready) {
       final push = ref.read(pasienPushProvider);
+      if (ready) {
+        unawaited(push.start());
+      } else if (was ?? false) {
+        unawaited(push.stop());
+      }
+    }, fireImmediately: true);
+    // Push FCM staf (pasien baru booking): aktif selama admin/terapis masuk.
+    ref.listenManual(authProvider.select((s) => s.phase == AuthPhase.ready), (was, ready) {
+      final push = ref.read(staffPushProvider);
       if (ready) {
         unawaited(push.start());
       } else if (was ?? false) {

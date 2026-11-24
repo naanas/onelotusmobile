@@ -33,6 +33,7 @@ abstract final class Routes {
   static const klinikTambahPasien = '/klinik/tambah-pasien';
   static const klinikExport = '/klinik/export';
   static const klinikUser = '/klinik/user';
+  static const klinikNotifikasi = '/klinik/notifikasi';
   static String klinikDetail(String id) => '/klinik/detail-pasien/$id';
   static String klinikEditPasien(String id) => '/klinik/edit-pasien/$id';
 

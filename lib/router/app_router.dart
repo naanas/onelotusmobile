@@ -16,6 +16,7 @@ import '../features/klinik/export_page.dart';
 import '../features/klinik/formulir_page.dart';
 import '../features/klinik/klinik_models.dart';
 import '../features/klinik/lainnya_page.dart';
+import '../features/klinik/notifikasi.dart';
 import '../features/klinik/pasien_detail_page.dart';
 import '../features/klinik/pasien_form_page.dart';
 import '../features/klinik/pasien_list_page.dart';
@@ -163,6 +164,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       _root(Routes.klinikExport, (_) => const ExportPage()),
       _root(Routes.klinikUser, (_) => const UserPage()),
+      _root(Routes.klinikNotifikasi, (_) => const StaffNotifikasiPage()),
       _root(Routes.changePassword, (_) => const ChangePasswordPage()),
       _root(Routes.help, (_) => const HelpPage()),
       _root(Routes.update, (_) => const UpdatePage()),

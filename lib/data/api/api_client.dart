@@ -88,17 +88,18 @@ class ApiClient {
 
   Future<T> _send<T>(
     Future<Response<dynamic>> Function() call,
-    T Function(dynamic data) parse,
-  ) async {
+    T Function(dynamic data) parse, {
+    bool raw = false,
+  }) async {
     try {
       final res = await call();
-      return parse(res.data);
+      return raw ? res as T : parse(res.data);
     } on DioException catch (e) {
       var err = mapDioError(e);
       if (_sessionExpired(err) && await _refreshOnce()) {
         try {
           final res = await call();
-          return parse(res.data);
+          return raw ? res as T : parse(res.data);
         } on DioException catch (e2) {
           err = mapDioError(e2);
         }
@@ -106,6 +107,30 @@ class ApiClient {
       if (_sessionExpired(err)) onUnauthorized?.call();
       throw err;
     }
+  }
+
+  /// GET bersyarat (ETag). [etag] dari respons sebelumnya → server menjawab 304 bila data tidak berubah;
+  /// hasilnya `notModified: true` dan pemanggil memakai cache-nya. [body] = isi mentah (belum dibuka `{data}`).
+  Future<({bool notModified, dynamic body, String? etag})> getConditional(
+    String path, {
+    Map<String, dynamic>? query,
+    String? etag,
+  }) async {
+    Future<Response<dynamic>> call() => dio.get<dynamic>(
+      path,
+      queryParameters: _clean(query),
+      options: Options(
+        headers: {'If-None-Match': ?etag},
+        validateStatus: (s) => s != null && ((s >= 200 && s < 300) || s == 304),
+      ),
+    );
+    final res = await _send(call, (_) => null, raw: true);
+    final r = res as Response<dynamic>;
+    return (
+      notModified: r.statusCode == 304,
+      body: r.data,
+      etag: r.headers.value('etag') ?? etag,
+    );
   }
 
   /// 401 karena sesi habis. `auth_invalid` (username/password atau kode salah saat masuk) juga 401,

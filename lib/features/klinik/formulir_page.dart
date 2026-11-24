@@ -10,6 +10,7 @@ import '../../ui/ui.dart';
 import 'intake_xray.dart';
 import 'klinik_api.dart';
 import 'klinik_models.dart';
+import 'pager.dart';
 import 'widgets.dart';
 
 final _jam = DateFormat('EEE, d MMM yyyy · HH:mm', 'id');
@@ -27,60 +28,69 @@ class FormulirPage extends ConsumerStatefulWidget {
   ConsumerState<FormulirPage> createState() => _FormulirPageState();
 }
 
-class _FormulirPageState extends ConsumerState<FormulirPage> {
-  int _gen = 0;
+class _FormulirPageState extends ConsumerState<FormulirPage> with VisibleReload {
+  late final _pager = Pager<Formulir>((page) => ref.read(klinikApiProvider).formulir(page: page))..reload();
 
-  void _reload() => setState(() => _gen++);
+  @override
+  void onVisibleAgain() => _pager.reload();
+
+  @override
+  void dispose() {
+    _pager.dispose();
+    super.dispose();
+  }
 
   Future<void> _open(Formulir f) async {
     await context.push(Routes.klinikFormulirDetail(f.id), extra: f);
-    if (mounted) _reload();
+    if (mounted) _pager.reload();
   }
 
   @override
   Widget build(BuildContext context) {
     final t = context.olText;
-    return OlPageBody(
-      pinnedHeader: true,
-      header: const OlAppHeader(title: 'Formulir'),
-      onRefresh: () async => _reload(),
-      children: [
-        Text(
-          'Pendaftaran dari form web dan booking aplikasi pasien. Setujui supaya pasien '
-          'mendapat nomor pasien dan masuk Data Pasien.',
-          style: t.body.copyWith(color: context.ol.muted),
-        ),
-        OlAsync<List<Formulir>>(
-          key: ValueKey(_gen),
-          load: () => ref.read(klinikApiProvider).formulir(),
-          builder: (context, list, _) {
-            if (list.isEmpty) {
-              return const [
-                OlCard(
+    return InfiniteScroll(
+      onEnd: _pager.more,
+      child: ListenableBuilder(
+        listenable: _pager,
+        builder: (context, _) {
+          final p = _pager;
+          final baru = [for (final f in p.items) if (f.menunggu) f];
+          final lunas = [for (final f in p.items) if (!f.menunggu) f];
+          return OlPageBody(
+            pinnedHeader: true,
+            header: const OlAppHeader(title: 'Formulir'),
+            onRefresh: () {
+              ref.read(klinikApiProvider).cache.expire('/v1/klinik/formulir');
+              return _pager.reload();
+            },
+            children: [
+              Text(
+                'Pendaftaran dari form web dan booking aplikasi pasien. Setujui supaya pasien '
+                'mendapat nomor pasien dan masuk Data Pasien.',
+                style: t.body.copyWith(color: context.ol.muted),
+              ),
+              if (p.loadedOnce && p.total == 0 && p.error == null)
+                const OlCard(
                   child: EmptyState(
                     illustration: OlIllustration.emptyInbox,
                     title: 'Tidak ada formulir baru',
-                    message:
-                        'Kiriman form web dan booking aplikasi yang sudah dibayar akan muncul di sini.',
+                    message: 'Kiriman form web dan booking aplikasi yang sudah dibayar akan muncul di sini.',
                   ),
                 ),
-              ];
-            }
-            final baru = [for (final f in list) if (f.menunggu) f];
-            final lunas = [for (final f in list) if (!f.menunggu) f];
-            return [
+              if (p.total > 0) Text('${p.total} menunggu persetujuan', style: t.caption),
               if (baru.isNotEmpty) ...[
-                OlSectionHeader(title: 'Jadwal belum diterima (${baru.length})'),
+                const OlSectionHeader(title: 'Jadwal belum diterima'),
                 for (final f in baru) _FormulirCard(data: f, onTap: () => _open(f)),
               ],
               if (lunas.isNotEmpty) ...[
-                OlSectionHeader(title: 'Sudah terjadwal (${lunas.length})'),
+                const OlSectionHeader(title: 'Sudah terjadwal'),
                 for (final f in lunas) _FormulirCard(data: f, onTap: () => _open(f)),
               ],
-            ];
-          },
-        ),
-      ],
+              PagerFooter(pager: p),
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -160,18 +170,7 @@ class _FormulirDetailPageState extends ConsumerState<FormulirDetailPage> {
   bool _busy = false;
   late Future<Formulir> _future = _load();
 
-  Future<Formulir> _load() async {
-    final init = widget.initial;
-    if (init != null) return init;
-    final list = await ref.read(klinikApiProvider).formulir();
-    return list.firstWhere(
-      (f) => f.id == widget.id,
-      orElse: () => throw const AppError(
-        ErrorCode.notFound,
-        apiMessage: 'Formulir tidak ditemukan atau sudah diproses.',
-      ),
-    );
-  }
+  Future<Formulir> _load() async => widget.initial ?? ref.read(klinikApiProvider).formulirDetail(widget.id);
 
   Future<void> _setujui(Formulir f) async {
     int? nomor;

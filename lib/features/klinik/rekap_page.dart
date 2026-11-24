@@ -70,6 +70,7 @@ class _RekapPageState extends ConsumerState<RekapPage> with VisibleReload {
           }
           return OlPageBody(
             pinnedHeader: true,
+            backToTop: true,
             header: const OlAppHeader(title: 'Rekap Data'),
             onRefresh: () {
               ref.read(klinikApiProvider).cache.expire('/v1/klinik/rekap');

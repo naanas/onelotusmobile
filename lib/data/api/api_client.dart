@@ -124,8 +124,7 @@ class ApiClient {
         validateStatus: (s) => s != null && ((s >= 200 && s < 300) || s == 304),
       ),
     );
-    final res = await _send(call, (_) => null, raw: true);
-    final r = res as Response<dynamic>;
+    final r = await _send<Response<dynamic>>(call, (_) => throw StateError('raw'), raw: true);
     return (
       notModified: r.statusCode == 304,
       body: r.data,

@@ -49,6 +49,10 @@ class Pager<T> extends ChangeNotifier {
       if (res.page == 1) first = res;
     } on AppError catch (e) {
       if (gen == _gen) error = e;
+    } catch (e, st) {
+      // Bug/format tak terduga: tetap tampilkan error (bukan layar kosong) + catat untuk debug.
+      debugPrint('[pager] $e\n$st');
+      if (gen == _gen) error = const AppError(ErrorCode.unknown);
     } finally {
       if (gen == _gen) {
         loading = false;

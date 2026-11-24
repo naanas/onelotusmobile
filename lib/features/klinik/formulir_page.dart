@@ -58,6 +58,7 @@ class _FormulirPageState extends ConsumerState<FormulirPage> with VisibleReload 
           final lunas = [for (final f in p.items) if (!f.menunggu) f];
           return OlPageBody(
             pinnedHeader: true,
+            backToTop: true,
             header: const OlAppHeader(title: 'Formulir'),
             onRefresh: () {
               ref.read(klinikApiProvider).cache.expire('/v1/klinik/formulir');

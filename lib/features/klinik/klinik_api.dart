@@ -31,8 +31,11 @@ class KPage<T> {
 KPage<T> _page<T>(Object? body, T Function(Map<String, dynamic>) f, int page, int per) {
   final m = _map(body);
   final meta = _map(m['meta'] ?? const {});
+  final items = _list(m['data'], f);
+  // Backend lama (tanpa meta): semua data dalam satu halaman.
+  if (m['meta'] == null) return KPage(items, items.length, 1, items.isEmpty ? per : items.length);
   return KPage(
-    _list(m['data'], f),
+    items,
     (meta['total'] as num?)?.toInt() ?? 0,
     (meta['page'] as num?)?.toInt() ?? page,
     (meta['per_page'] as num?)?.toInt() ?? per,

@@ -26,6 +26,7 @@ class PasienListPage extends ConsumerStatefulWidget {
 class _PasienListPageState extends ConsumerState<PasienListPage> with VisibleReload {
   String _cari = '';
   Timer? _debounce;
+  final _search = TextEditingController();
   int _formGen = 0;
   late final _pager = Pager<Pasien>(
     (page) => ref.read(klinikApiProvider).pasien(cari: _cari, page: page),
@@ -40,6 +41,7 @@ class _PasienListPageState extends ConsumerState<PasienListPage> with VisibleRel
   @override
   void dispose() {
     _debounce?.cancel();
+    _search.dispose();
     _pager.dispose();
     super.dispose();
   }
@@ -127,9 +129,13 @@ class _PasienListPageState extends ConsumerState<PasienListPage> with VisibleRel
     final c = context.ol;
     final p = _pager;
     final items = p.items;
+    final hint = admin ? 'Cari nama, nomor pasien, alamat, no. HP' : 'Cari nama, nomor pasien, alamat';
     return OlPageBody(
       pinnedHeader: true,
       heroOverlap: true,
+      backToTop: true,
+      // Kolom cari ikut turun di bawah bar ringkas saat digulir (isi sama dengan kolom di kartu).
+      floatingBelow: OlSearchField(hint: hint, controller: _search, onChanged: _onSearch, elevated: true),
       header: OlAppHeader(
         hero: true,
         title: first == null ? _greeting() : '${_greeting()}, $first',
@@ -157,12 +163,7 @@ class _PasienListPageState extends ConsumerState<PasienListPage> with VisibleRel
                 style: t.body.copyWith(color: c.muted),
               ),
               const SizedBox(height: OlSpace.md),
-              OlSearchField(
-                hint: admin
-                    ? 'Cari nama, nomor pasien, alamat, no. HP'
-                    : 'Cari nama, nomor pasien, alamat',
-                onChanged: _onSearch,
-              ),
+              OlSearchField(hint: hint, controller: _search, onChanged: _onSearch),
             ],
           ),
         ),

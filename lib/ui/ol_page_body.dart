@@ -1,8 +1,11 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 import 'ol_app_header.dart';
+import 'ol_icon.dart';
 import 'ol_refresh.dart';
 
 /// Isi halaman tab: header ikut tergulir bersama konten, latar `bg` yang sama di semua tab.
@@ -24,7 +27,16 @@ class OlPageBody extends StatefulWidget {
     this.pinnedHeader = false,
     this.foot,
     this.controller,
+    this.backToTop = false,
+    this.floatingBelow,
   });
+
+  /// Tombol ↑ "Ke atas" muncul di kanan bawah setelah digulir jauh (daftar panjang).
+  final bool backToTop;
+
+  /// Hanya header hero melekat: widget yang ikut turun di bawah bar ringkas saat hero tergulir keluar
+  /// (mis. kolom cari Data Pasien), dengan animasi yang sama dengan bar.
+  final Widget? floatingBelow;
 
   /// Area tombol melekat di bawah (mis. [OlFootBar] wizard booking); tidak ikut tergulir.
   final Widget? foot;
@@ -53,6 +65,9 @@ class _OlPageBodyState extends State<OlPageBody> {
   final _headerKey = GlobalKey();
   bool _scrolled = false;
 
+  /// Tombol "Ke atas" tampil.
+  bool _far = false;
+
   /// 0..1: seberapa jauh bar ringkas hero sudah muncul.
   double _compact = 0;
 
@@ -77,6 +92,11 @@ class _OlPageBodyState extends State<OlPageBody> {
 
   void _onScroll() {
     if (widget.heroOverlap && _scroll.hasClients) _offset.value = _scroll.offset;
+    if (widget.backToTop && _scroll.hasClients) {
+      // Muncul setelah ±1,5 layar ke bawah; hilang lagi dekat atas.
+      final far = _scroll.offset > MediaQuery.sizeOf(context).height * 1.5;
+      if (far != _far) setState(() => _far = far);
+    }
     final top = MediaQuery.paddingOf(context).top;
     if (widget.pinnedHeader && widget.heroOverlap) {
       final box = _headerKey.currentContext?.findRenderObject() as RenderBox?;
@@ -103,14 +123,36 @@ class _OlPageBodyState extends State<OlPageBody> {
     if (scrolled != _scrolled) setState(() => _scrolled = scrolled);
   }
 
+  Future<void> _toTop() async {
+    if (!_scroll.hasClients) return;
+    if (OlMotion.reduced(context)) return _scroll.jumpTo(0);
+    // Daftar sangat panjang: lompat dulu ke dekat atas lalu meluncur, supaya tidak lama.
+    final h = MediaQuery.sizeOf(context).height;
+    if (_scroll.offset > h * 4) _scroll.jumpTo(h * 1.2);
+    await _scroll.animateTo(0, duration: const Duration(milliseconds: 420), curve: Curves.easeOutCubic);
+  }
+
   @override
   Widget build(BuildContext context) {
     // Struktur selalu sama (ada/tidaknya foot) agar state isi halaman tidak hilang
     // saat tombol bawah muncul, mis. setelah data dimuat.
     final foot = widget.foot;
+    Widget page = _page(context);
+    if (widget.backToTop) {
+      page = Stack(
+        children: [
+          Positioned.fill(child: page),
+          Positioned(
+            right: OlSpace.screen,
+            bottom: OlSpace.lg,
+            child: _BackToTop(visible: _far, onTap: _toTop),
+          ),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [Expanded(child: _page(context)), ?foot],
+      children: [Expanded(child: page), ?foot],
     );
   }
 
@@ -214,6 +256,23 @@ class _OlPageBodyState extends State<OlPageBody> {
                 ),
               ),
             ),
+            if (widget.floatingBelow != null)
+              Positioned(
+                top: top + _barHeight + OlSpace.sm,
+                left: OlSpace.screen,
+                right: OlSpace.screen,
+                child: IgnorePointer(
+                  ignoring: _compact < 1,
+                  child: Opacity(
+                    opacity: Curves.easeOut.transform(_compact),
+                    child: Transform.translate(
+                      // Menyusul bar: turun dari balik bar sambil muncul.
+                      offset: Offset(0, -(1 - Curves.easeOutCubic.transform(_compact)) * 28),
+                      child: widget.floatingBelow,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       );
@@ -313,6 +372,95 @@ class _CompactHeroBar extends StatelessWidget {
           ),
           ...actions,
         ],
+      ),
+    );
+  }
+}
+
+/// Pil "↑ Ke atas": kaca gelap (blur latar) + bayangan rapat — muncul dengan pegas, ditekan sedikit mengecil.
+class _BackToTop extends StatefulWidget {
+  const _BackToTop({required this.visible, required this.onTap});
+  final bool visible;
+  final VoidCallback onTap;
+
+  @override
+  State<_BackToTop> createState() => _BackToTopState();
+}
+
+class _BackToTopState extends State<_BackToTop> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.olText;
+    final reduced = OlMotion.reduced(context);
+    final v = widget.visible;
+    const radius = BorderRadius.all(Radius.circular(OlRadius.pill));
+    return IgnorePointer(
+      ignoring: !v,
+      child: AnimatedSlide(
+        offset: v ? Offset.zero : const Offset(0, .6),
+        duration: reduced ? Duration.zero : const Duration(milliseconds: 420),
+        curve: v ? Curves.easeOutBack : Curves.easeInCubic,
+        child: AnimatedOpacity(
+          opacity: v ? 1 : 0,
+          duration: reduced ? Duration.zero : const Duration(milliseconds: 220),
+          child: AnimatedScale(
+            scale: _down ? .94 : 1,
+            duration: const Duration(milliseconds: 120),
+            child: Semantics(
+              button: true,
+              label: 'Kembali ke atas',
+              child: GestureDetector(
+                onTapDown: (_) => setState(() => _down = true),
+                onTapCancel: () => setState(() => _down = false),
+                onTapUp: (_) => setState(() => _down = false),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  widget.onTap();
+                },
+                child: DecoratedBox(
+                  decoration: const BoxDecoration(
+                    borderRadius: radius,
+                    boxShadow: [
+                      BoxShadow(color: Color(0x1F0B1F2E), blurRadius: 3, offset: Offset(0, 1)),
+                      BoxShadow(color: Color(0x2E0B1F2E), blurRadius: 18, offset: Offset(0, 8), spreadRadius: -6),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: radius,
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                      child: Container(
+                        height: 40,
+                        padding: const EdgeInsets.only(left: 12, right: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0B1F2E).withValues(alpha: .78),
+                          borderRadius: radius,
+                          border: Border.all(color: Colors.white.withValues(alpha: .12)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Transform.rotate(
+                              angle: 3.14159265,
+                              child: const OlIcon(OlIcons.chevronDown, size: 18, color: Colors.white),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Ke atas',
+                              style: t.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

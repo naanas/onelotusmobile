@@ -12,24 +12,44 @@ class OlSearchField extends StatefulWidget {
     required this.hint,
     required this.onChanged,
     this.autofocus = false,
+    this.controller,
+    this.elevated = false,
   });
 
   final String hint;
   final ValueChanged<String> onChanged;
   final bool autofocus;
 
+  /// Isi bersama (mis. kolom cari di kartu & versi melayang saat digulir).
+  final TextEditingController? controller;
+
+  /// Bayangan lembut (dipakai saat melayang di atas konten).
+  final bool elevated;
+
   @override
   State<OlSearchField> createState() => _OlSearchFieldState();
 }
 
 class _OlSearchFieldState extends State<OlSearchField> {
-  final _ctrl = TextEditingController();
+  late final TextEditingController _ctrl = widget.controller ?? TextEditingController();
   Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.addListener(_sync);
+  }
+
+  /// Teks diubah dari kolom lain yang berbagi controller → tombol hapus ikut tampil/hilang.
+  void _sync() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {
     _debounce?.cancel();
-    _ctrl.dispose();
+    _ctrl.removeListener(_sync);
+    if (widget.controller == null) _ctrl.dispose();
     super.dispose();
   }
 
@@ -52,6 +72,9 @@ class _OlSearchFieldState extends State<OlSearchField> {
         color: c.surface,
         borderRadius: BorderRadius.circular(OlRadius.input + 2),
         border: Border.all(color: c.line, width: 1.5),
+        boxShadow: widget.elevated
+            ? const [BoxShadow(color: Color(0x290B1F2E), blurRadius: 18, offset: Offset(0, 6))]
+            : null,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       child: Row(

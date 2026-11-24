@@ -19,7 +19,8 @@ abstract final class Fmt {
   static String time(DateTime d) => _time.format(d);
   static String monthShort(DateTime d) => _month.format(d);
   static String money(num v) => _money.format(v).replaceAll(' ', '');
-  static String patientNo(int n) => '#${n.toString().padLeft(4, '0')}';
+  /// 0 = belum bernomor (nomor terbit setelah pendaftaran disetujui klinik).
+  static String patientNo(int n) => n <= 0 ? 'Menunggu nomor pasien' : '#${n.toString().padLeft(4, '0')}';
 
   /// Hitung mundur `04:32`.
   static String countdown(Duration d) {

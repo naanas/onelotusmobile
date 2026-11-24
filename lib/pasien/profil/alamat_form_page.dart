@@ -6,8 +6,8 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../data/pasien/pasien_app_api.dart';
-import '../../features/kasir/billing_common.dart';
-import '../../features/owner/owner_widgets.dart';
+import '../../features/common/billing_common.dart';
+import '../../features/common/owner_widgets.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import 'peta_titik_page.dart';

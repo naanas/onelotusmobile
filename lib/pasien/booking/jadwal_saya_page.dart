@@ -9,7 +9,7 @@ import '../../ui/ui.dart';
 import '../pasien_routes.dart';
 import '../pasien_session.dart';
 import '../../data/pasien/pasien_app_api.dart';
-import '../../features/kasir/billing_common.dart';
+import '../../features/common/billing_common.dart';
 import 'booking_request_card.dart';
 
 /// PS-10 Jadwal saya: booking mendatang & riwayat sesi. Ubah/batal → PS-11 (batas waktu dari server, TODO(workshop) §16 no. 8).

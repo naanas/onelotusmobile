@@ -23,7 +23,7 @@ AuthState ready(Role role) => AuthState(
 void main() {
   test('belum login hanya boleh di login & lupa password', () {
     const s = AuthState(phase: AuthPhase.signedOut);
-    expect(authRedirect(s, Routes.terapisJadwal), Routes.login);
+    expect(authRedirect(s, Routes.klinikPasien), Routes.login);
     expect(authRedirect(s, Routes.login), isNull);
     expect(authRedirect(s, Routes.forgotPassword), isNull);
     expect(authRedirect(s, Routes.splash), Routes.login);
@@ -35,10 +35,7 @@ void main() {
       Routes.splash,
     );
     expect(
-      authRedirect(
-        const AuthState(phase: AuthPhase.firstLogin),
-        Routes.kasirAntrian,
-      ),
+      authRedirect(const AuthState(phase: AuthPhase.firstLogin), Routes.klinikRekap),
       Routes.firstLogin,
     );
     expect(
@@ -46,52 +43,28 @@ void main() {
       Routes.chooseContext,
     );
     expect(
-      authRedirect(
-        const AuthState(phase: AuthPhase.locked),
-        Routes.ownerLaporan,
-      ),
+      authRedirect(const AuthState(phase: AuthPhase.locked), Routes.klinikFormulir),
       Routes.lock,
     );
     expect(
-      authRedirect(
-        const AuthState(phase: AuthPhase.sessionExpired),
-        Routes.login,
-      ),
+      authRedirect(const AuthState(phase: AuthPhase.sessionExpired), Routes.login),
       Routes.sessionExpired,
     );
   });
 
-  test('siap: halaman auth → beranda peran', () {
-    expect(
-      authRedirect(ready(Role.terapis), Routes.login),
-      Routes.terapisJadwal,
-    );
-    expect(authRedirect(ready(Role.kasir), Routes.lock), Routes.kasirAntrian);
-    expect(
-      authRedirect(ready(Role.owner), Routes.splash),
-      Routes.ownerRingkasan,
-    );
+  test('siap: halaman auth → Data Pasien (admin & terapis)', () {
+    expect(authRedirect(ready(Role.terapis), Routes.login), Routes.klinikPasien);
+    expect(authRedirect(ready(Role.admin), Routes.splash), Routes.klinikPasien);
   });
 
-  test('§7: path peran lain dialihkan ke beranda peran aktif', () {
-    expect(
-      authRedirect(ready(Role.terapis), Routes.ownerLaporan),
-      Routes.terapisJadwal,
-    );
-    expect(
-      authRedirect(ready(Role.terapis), Routes.kasirKasir),
-      Routes.terapisJadwal,
-    );
-    expect(
-      authRedirect(ready(Role.kasir), Routes.terapisPilihPasien),
-      Routes.kasirAntrian,
-    );
-    expect(authRedirect(ready(Role.terapis), Routes.terapisRiwayat), isNull);
-    expect(authRedirect(ready(Role.owner), Routes.kasirPiutang), isNull);
-    expect(
-      authRedirect(ready(Role.owner), Routes.kasirAntrian),
-      Routes.ownerRingkasan,
-    );
-    expect(authRedirect(ready(Role.owner), Routes.chooseContext), isNull);
+  test('menu Laravel: User Management hanya admin', () {
+    expect(authRedirect(ready(Role.admin), Routes.klinikUser), isNull);
+    expect(authRedirect(ready(Role.terapis), Routes.klinikUser), Routes.klinikLainnya);
+    for (final r in [Role.admin, Role.terapis]) {
+      expect(authRedirect(ready(r), Routes.klinikRekap), isNull);
+      expect(authRedirect(ready(r), Routes.klinikFormulir), isNull);
+      expect(authRedirect(ready(r), Routes.klinikExport), isNull);
+      expect(authRedirect(ready(r), Routes.klinikDetail('abc')), isNull);
+    }
   });
 }

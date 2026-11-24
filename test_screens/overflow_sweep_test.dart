@@ -26,77 +26,6 @@ const _configs = <_Cfg>[
   (width: 412, scale: 1.3),
 ];
 
-const _terapis = [
-  '/terapis/jadwal',
-  '/terapis/pasien',
-  '/terapis/riwayat',
-  '/terapis/akun',
-  '/terapis/jadwal-minggu',
-  '/terapis/cuti',
-  '/terapis/pasien/p0387',
-  '/terapis/sesi/s1',
-  '/terapis/home-visit/s4',
-  '/terapis/home-visit/s4/tagih',
-  '/terapis/kas',
-  '/terapis/komisi',
-  '/terapis/pasien/p0387/latihan',
-  '/terapis/pilih-pasien',
-  '/terapis/rekam/s2',
-  '/perbarui',
-  '/pemeliharaan',
-  '/notifikasi',
-  '/cari',
-  '/ubah-password',
-  '/pengaturan-notifikasi',
-  '/status-sinkron',
-  '/bantuan',
-];
-
-const _kasir = [
-  '/kasir/antrian',
-  '/kasir/pasien',
-  '/kasir/kasir',
-  '/kasir/akun',
-  '/kasir/pasien-form',
-  '/kasir/pasien/p0412',
-  '/kasir/buat-jadwal',
-  '/kasir/booking',
-  '/kasir/pindah-massal',
-  '/kasir/bayar',
-  '/kasir/struk',
-  '/kasir/jual-paket',
-  '/kasir/riwayat',
-  '/kasir/refund',
-  '/kasir/verifikasi-transfer',
-  '/kasir/terima-kas',
-  '/kasir/tutup-kas',
-  '/kasir/piutang',
-];
-
-const _owner = [
-  '/owner/ringkasan',
-  '/owner/jadwal',
-  '/owner/pasien',
-  '/owner/laporan',
-  '/owner/akun',
-  '/owner/ekspor',
-  '/owner/persetujuan',
-  '/owner/komisi',
-  '/owner/staf',
-  '/owner/layanan',
-  '/owner/paket',
-  '/owner/aturan-komisi',
-  '/owner/voucher',
-  '/owner/poin',
-  '/owner/template',
-  '/owner/pustaka',
-  '/owner/pengumuman',
-  '/owner/cabang',
-  '/owner/audit',
-  '/owner/rekonsiliasi',
-  '/owner/pengingat',
-];
-
 const _pasien = [
   '/pasien/beranda',
   '/pasien/latihan',
@@ -219,14 +148,6 @@ void main() {
   for (final cfg in _configs) {
     final tag = '${cfg.width.toInt()}dp × huruf ${cfg.scale}';
     for (final (name, routes, staff, pasien) in [
-      (
-        'terapis',
-        _terapis,
-        ('dimas.terapis', 'terapis123', Role.terapis),
-        false,
-      ),
-      ('kasir', _kasir, ('sinta.kasir', 'kasir123', Role.kasir), false),
-      ('owner', _owner, ('rudi.owner', 'owner123', Role.owner), false),
       ('pasien', _pasien, null, true),
     ]) {
       testWidgets('$name · $tag', (t) async {

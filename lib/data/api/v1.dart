@@ -10,17 +10,15 @@ abstract final class V1 {
 
   // ── Peran & cabang ────────────────────────────────────────────────────
 
-  /// owner/admin → Owner, cashier → Kasir, therapist → Terapis. Admin klinik menunggu workshop (§18).
+  /// owner/admin/cashier → Admin, therapist → Terapis (dua peran seperti Laravel).
   static Role? role(String? r) => switch (r) {
-    'owner' || 'admin' => Role.owner,
-    'cashier' => Role.kasir,
+    'owner' || 'admin' || 'cashier' => Role.admin,
     'therapist' => Role.terapis,
     _ => null,
   };
 
   static String roleApi(Role r) => switch (r) {
-    Role.owner => 'owner',
-    Role.kasir => 'cashier',
+    Role.admin => 'admin',
     Role.terapis => 'therapist',
   };
 
@@ -36,7 +34,8 @@ abstract final class V1 {
       br[id] = branches[id] ??
           Branch(id: id, name: r['branch_name'] as String? ?? 'Cabang', address: '');
     }
-    roles.sort((a, b) => a.index.compareTo(b.index));
+    // Satu akun satu peran (Laravel): punya peran admin → admin.
+    if (roles.contains(Role.admin)) roles.removeWhere((r) => r != Role.admin);
     return StaffUser(
       id: m['id'].toString(),
       username: m['username'] as String? ?? '',

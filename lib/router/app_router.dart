@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/auth/auth_controller.dart';
-import '../features/akun/akun_page.dart';
 import '../pasien/pasien_router.dart';
 import '../pasien/pasien_session.dart';
 import '../features/auth/choose_context_page.dart';
@@ -13,70 +12,21 @@ import '../features/auth/lock_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/auth/session_expired_page.dart';
 import '../features/auth/splash_page.dart';
-import '../features/dev/component_gallery_page.dart';
+import '../features/klinik/export_page.dart';
+import '../features/klinik/formulir_page.dart';
+import '../features/klinik/klinik_models.dart';
+import '../features/klinik/lainnya_page.dart';
+import '../features/klinik/pasien_detail_page.dart';
+import '../features/klinik/pasien_form_page.dart';
+import '../features/klinik/pasien_list_page.dart';
+import '../features/klinik/pemeriksaan_form_page.dart';
+import '../features/klinik/rekap_page.dart';
+import '../features/klinik/user_page.dart';
+import '../features/shell/role_shell.dart';
 import '../features/umum/change_password_page.dart';
 import '../features/umum/help_page.dart';
 import '../features/umum/maintenance_page.dart';
-import '../features/umum/notification_settings_page.dart';
-import '../features/umum/notifications_page.dart';
-import '../features/umum/search_page.dart';
-import '../features/umum/sync_status_page.dart';
 import '../features/umum/update_page.dart';
-import '../features/kasir/antrian_page.dart';
-import '../features/kasir/bayar_page.dart';
-import '../features/kasir/booking_page.dart';
-import '../features/kasir/buat_jadwal_page.dart';
-import '../features/kasir/detail_pasien_kasir_page.dart';
-import '../features/kasir/pasien_form_page.dart';
-import '../features/kasir/pasien_page.dart';
-import '../features/kasir/pindah_massal_page.dart';
-import '../features/kasir/struk_page.dart';
-import '../features/kasir/jual_paket_page.dart';
-import '../features/kasir/riwayat_transaksi_page.dart';
-import '../features/kasir/refund_page.dart';
-import '../features/kasir/verifikasi_transfer_page.dart';
-import '../features/owner/ekspor_page.dart';
-import '../features/owner/layanan_page.dart';
-import '../features/owner/paket_page.dart';
-import '../features/owner/aturan_komisi_page.dart';
-import '../features/owner/voucher_page.dart';
-import '../features/owner/booking_web_page.dart';
-import '../features/owner/poin_page.dart';
-import '../features/owner/template_page.dart';
-import '../features/owner/pustaka_page.dart';
-import '../features/owner/pengumuman_page.dart';
-import '../features/owner/cabang_page.dart';
-import '../features/owner/audit_page.dart';
-import '../features/owner/rekonsiliasi_page.dart';
-import '../features/owner/pengingat_page.dart';
-import '../features/owner/jadwal_owner_page.dart';
-import '../features/owner/laporan_page.dart';
-import '../features/owner/pasien_owner_page.dart';
-import '../features/owner/persetujuan_page.dart';
-import '../features/owner/rekap_komisi_page.dart';
-import '../features/owner/ringkasan_page.dart';
-import '../features/owner/staf_page.dart';
-import '../features/kasir/terima_kas_page.dart';
-import '../features/kasir/tutup_kas_page.dart';
-import '../features/kasir/piutang_page.dart';
-import '../features/kasir/tagihan_page.dart';
-import '../features/kasir/invoice_detail_page.dart';
-import '../features/shell/role_shell.dart';
-import '../features/terapis/akun/kas_dibawa_page.dart';
-import '../features/terapis/rekam/rekam_sesi_page.dart';
-import '../features/terapis/akun/komisi_page.dart';
-import '../features/terapis/home_visit/home_visit_page.dart';
-import '../features/terapis/home_visit/tagih_page.dart';
-import '../features/terapis/jadwal/ajukan_cuti_page.dart';
-import '../features/terapis/jadwal/pilih_pasien_page.dart';
-import '../features/terapis/pasien/program_latihan_page.dart';
-import '../features/terapis/jadwal/jadwal_minggu_page.dart';
-import '../features/terapis/pasien/detail_pasien_page.dart';
-import '../features/terapis/pasien/pasien_saya_page.dart';
-import '../features/terapis/riwayat/detail_sesi_page.dart';
-import '../features/terapis/riwayat/riwayat_page.dart';
-import '../features/terapis/jadwal/jadwal_controller.dart';
-import '../features/terapis/jadwal/jadwal_page.dart';
 import '../ui/ui.dart';
 import 'routes.dart';
 
@@ -95,6 +45,12 @@ Widget _fadeThrough(
 
 StatefulShellBranch _branch(String path, Widget page) =>
     StatefulShellBranch(routes: [_tab(path, page)]);
+
+GoRoute _root(String path, Widget Function(GoRouterState s) build) => GoRoute(
+  path: path,
+  parentNavigatorKey: rootNavigatorKey,
+  builder: (_, s) => build(s),
+);
 
 final routerProvider = Provider<GoRouter>((ref) {
   // Router dibuat sekali; perubahan status login memicu redirect lewat refreshListenable.
@@ -156,365 +112,62 @@ final routerProvider = Provider<GoRouter>((ref) {
         pageBuilder: (_, state) =>
             olFadePage(state, const SessionExpiredPage()),
       ),
-      GoRoute(
-        path: Routes.devComponents,
-        builder: (_, _) => const ComponentGalleryPage(),
-      ),
 
-      // ── Terapis: Jadwal · Pasien · + · Riwayat · Akun ─────────────────────
+      // ── Staf (admin & terapis): Data Pasien · Rekap · + · Formulir · Lainnya ──
       StatefulShellRoute(
         navigatorContainerBuilder: _fadeThrough,
         pageBuilder: (context, state, shell) => olFadePage(
           state,
           RoleShell(
             shell: shell,
-            fab: FabSpec(
-              'Rekam sesi atau pilih pasien',
-              Routes.terapisPilihPasien,
-              // §3: ada sesi berjalan → langsung ke rekam sesi; bila tidak → pilih pasien.
-              resolve: (ref) {
-                final running = ref.read(runningSessionProvider);
-                return running == null
-                    ? Routes.terapisPilihPasien
-                    : Routes.terapisRekam(running.id);
-              },
-            ),
+            fab: const FabSpec('Tambah pasien', Routes.klinikTambahPasien),
             tabs: const [
-              TabSpec('Jadwal', OlIcons.calendar),
-              TabSpec('Pasien', OlIcons.users),
-              TabSpec('Riwayat', OlIcons.history),
-              TabSpec('Akun', OlIcons.user),
+              TabSpec('Data Pasien', OlIcons.users),
+              TabSpec('Rekap', OlIcons.chart),
+              TabSpec('Formulir', OlIcons.receipt),
+              TabSpec('Lainnya', OlIcons.grid),
             ],
           ),
         ),
         branches: [
-          _branch(Routes.terapisJadwal, const JadwalPage()),
-          _branch(Routes.terapisPasien, const PasienSayaPage()),
-          _branch(Routes.terapisRiwayat, const RiwayatPage()),
-          _branch(Routes.terapisAkun, const AkunPage()),
+          _branch(Routes.klinikPasien, const PasienListPage()),
+          _branch(Routes.klinikRekap, const RekapPage()),
+          _branch(Routes.klinikFormulir, const FormulirPage()),
+          _branch(Routes.klinikLainnya, const LainnyaPage()),
         ],
       ),
-      GoRoute(
-        path: Routes.terapisPilihPasien,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PilihPasienPage(),
+      _root(Routes.klinikTambahPasien, (_) => const PasienFormPage()),
+      _root('/klinik/edit-pasien/:id', (s) => PasienFormPage(editId: s.pathParameters['id'])),
+      _root('/klinik/detail-pasien/:id', (s) => PasienDetailPage(id: s.pathParameters['id']!)),
+      _root(
+        '/klinik/detail-pasien/:id/tambah-pemeriksaan',
+        (s) => PemeriksaanFormPage(
+          pasienId: s.pathParameters['id'],
+          prefill: s.extra is PemeriksaanDraft ? s.extra as PemeriksaanDraft : null,
+          lanjutDetail: s.uri.queryParameters['lanjut'] == 'detail',
+        ),
       ),
-      GoRoute(
-        path: '/terapis/jadwal-minggu',
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const JadwalMingguPage(),
+      _root(
+        '/klinik/edit-pemeriksaan/:id',
+        (s) => PemeriksaanFormPage(
+          pemeriksaanId: int.tryParse(s.pathParameters['id']!) ?? 0,
+          editing: s.extra is Pemeriksaan ? s.extra as Pemeriksaan : null,
+        ),
       ),
-      GoRoute(
-        path: Routes.terapisAjukanCuti,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const AjukanCutiPage(),
+      _root(
+        '/klinik/formulir/:id',
+        (s) => FormulirDetailPage(
+          id: s.pathParameters['id']!,
+          initial: s.extra is Formulir ? s.extra as Formulir : null,
+        ),
       ),
-      GoRoute(
-        path: '/terapis/pasien/:id',
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, s) => DetailPasienPage(patientId: s.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: '/terapis/sesi/:id',
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, s) => DetailSesiPage(sessionId: s.pathParameters['id']!),
-      ),
+      _root(Routes.klinikExport, (_) => const ExportPage()),
+      _root(Routes.klinikUser, (_) => const UserPage()),
+      _root(Routes.changePassword, (_) => const ChangePasswordPage()),
+      _root(Routes.help, (_) => const HelpPage()),
+      _root(Routes.update, (_) => const UpdatePage()),
+      _root(Routes.maintenance, (_) => const MaintenancePage()),
 
-      GoRoute(
-        path: '/terapis/home-visit/:id',
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, s) => HomeVisitPage(sessionId: s.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: '/terapis/home-visit/:id/tagih',
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, s) => TagihPage(sessionId: s.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: '/terapis/pasien/:id/latihan',
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, s) =>
-            ProgramLatihanPage(patientId: s.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: Routes.terapisKas,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const KasDibawaPage(),
-      ),
-      GoRoute(
-        path: Routes.terapisKomisi,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const KomisiPage(),
-      ),
-
-      GoRoute(
-        path: '/terapis/rekam/:id',
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, s) => RekamSesiPage(sessionId: s.pathParameters['id']!),
-      ),
-
-      GoRoute(
-        path: Routes.notifications,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const NotificationsPage(),
-      ),
-      GoRoute(
-        path: Routes.search,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const SearchPage(),
-      ),
-      GoRoute(
-        path: Routes.syncStatus,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const SyncStatusPage(),
-      ),
-      GoRoute(
-        path: Routes.changePassword,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const ChangePasswordPage(),
-      ),
-      GoRoute(
-        path: Routes.notificationSettings,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const NotificationSettingsPage(),
-      ),
-      GoRoute(
-        path: Routes.help,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const HelpPage(),
-      ),
-      GoRoute(
-        path: Routes.update,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const UpdatePage(),
-      ),
-      GoRoute(
-        path: Routes.maintenance,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const MaintenancePage(),
-      ),
-
-      // ── Kasir: Antrian · Pasien · + · Kasir · Akun ────────────────────────
-      StatefulShellRoute(
-        navigatorContainerBuilder: _fadeThrough,
-        pageBuilder: (context, state, shell) => olFadePage(
-          state,
-          RoleShell(
-            shell: shell,
-            fab: const FabSpec('Tambah pasien baru', Routes.kasirPasienForm),
-            tabs: const [
-              TabSpec('Antrian', OlIcons.queue),
-              TabSpec('Pasien', OlIcons.users),
-              TabSpec('Kasir', OlIcons.receipt),
-              TabSpec('Akun', OlIcons.user),
-            ],
-          ),
-        ),
-        branches: [
-          _branch(Routes.kasirAntrian, const AntrianPage()),
-          _branch(Routes.kasirPasien, const KasirPasienPage()),
-          _branch(Routes.kasirKasir, const TagihanPage()),
-          _branch(Routes.kasirAkun, const AkunPage()),
-        ],
-      ),
-      GoRoute(
-        path: Routes.kasirPasienForm,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, state) => PasienFormPage(
-          patientId: state.uri.queryParameters['pasien'],
-        ),
-      ),
-      GoRoute(
-        path: Routes.kasirBuatJadwal,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, s) => BuatJadwalPage(
-          walkIn: s.uri.queryParameters['walkin'] == '1',
-          patientId: s.uri.queryParameters['pasien'],
-        ),
-      ),
-      GoRoute(
-        path: Routes.kasirBooking,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const BookingPage(),
-      ),
-      GoRoute(
-        path: Routes.kasirPindahMassal,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, s) => PindahMassalPage(
-          therapistId: s.uri.queryParameters['terapis'],
-          from: DateTime.tryParse(s.uri.queryParameters['dari'] ?? ''),
-          to: DateTime.tryParse(s.uri.queryParameters['sampai'] ?? ''),
-        ),
-      ),
-      GoRoute(
-        path: Routes.kasirBayar,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, s) => BayarPage(
-          invoiceId: s.uri.queryParameters['invoice'] ?? '',
-          homeVisit: s.uri.queryParameters['lokasi'] == 'home_visit',
-        ),
-      ),
-      GoRoute(
-        path: '/kasir/pasien/:id',
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, s) =>
-            DetailPasienKasirPage(patientId: s.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: Routes.kasirStruk,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, s) => StrukPage(receiptId: s.uri.queryParameters['receipt'] ?? ''),
-      ),
-      GoRoute(
-        path: Routes.kasirJualPaket,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, s) => JualPaketPage(patientId: s.uri.queryParameters['patient'] ?? ''),
-      ),
-      GoRoute(
-        path: '/kasir/tagihan/:id',
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, s) => InvoiceDetailPage(invoiceId: s.pathParameters['id']!),
-      ),
-      GoRoute(
-        path: Routes.kasirRiwayat,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const RiwayatTransaksiPage(),
-      ),
-      GoRoute(
-        path: Routes.kasirRefund,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, s) => RefundPage(invoiceId: s.uri.queryParameters['invoice'] ?? ''),
-      ),
-      GoRoute(
-        path: Routes.kasirVerifikasiTransfer,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const VerifikasiTransferPage(),
-      ),
-      GoRoute(
-        path: Routes.kasirTerimaKas,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const TerimaKasPage(),
-      ),
-      GoRoute(
-        path: Routes.kasirTutupKas,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const TutupKasPage(),
-      ),
-      GoRoute(
-        path: Routes.kasirPiutang,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PiutangPage(),
-      ),
-
-      // ── Owner: Ringkasan · Jadwal · Pasien · Laporan · Akun (tanpa FAB) ──
-      StatefulShellRoute(
-        navigatorContainerBuilder: _fadeThrough,
-        pageBuilder: (context, state, shell) => olFadePage(
-          state,
-          RoleShell(
-            shell: shell,
-            tabs: const [
-              TabSpec('Ringkasan', OlIcons.chart),
-              TabSpec('Jadwal', OlIcons.calendar),
-              TabSpec('Pasien', OlIcons.users),
-              TabSpec('Laporan', OlIcons.report),
-              TabSpec('Akun', OlIcons.user),
-            ],
-          ),
-        ),
-        branches: [
-          _branch(Routes.ownerRingkasan, const RingkasanPage()),
-          _branch(Routes.ownerJadwal, const JadwalOwnerPage()),
-          _branch(Routes.ownerPasien, const PasienOwnerPage()),
-          _branch(Routes.ownerLaporan, const LaporanPage()),
-          _branch(Routes.ownerAkun, const AkunPage()),
-        ],
-      ),
-      GoRoute(
-        path: Routes.ownerEkspor,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const EksporPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerPersetujuan,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PersetujuanPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerKomisi,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const RekapKomisiPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerStaf,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const StafPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerLayanan,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const LayananPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerPaket,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PaketPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerAturanKomisi,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const AturanKomisiPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerVoucher,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const VoucherPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerBookingWeb,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const BookingWebPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerPoin,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PoinPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerTemplate,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const TemplatePage(),
-      ),
-      GoRoute(
-        path: Routes.ownerPustaka,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PustakaPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerPengumuman,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PengumumanPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerCabang,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const CabangPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerAudit,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const AuditPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerRekonsiliasi,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const RekonsiliasiPage(),
-      ),
-      GoRoute(
-        path: Routes.ownerPengingat,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (_, _) => const PengingatPage(),
-      ),
       // ── Pasien: Beranda · Latihan · Booking · Profil (satu aplikasi) ──
       ...pasienRoutes(rootNavigatorKey),
     ],

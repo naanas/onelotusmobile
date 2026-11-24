@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/api/billing_api.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
-import 'billing_common.dart';
+import '../common/billing_common.dart';
 
 /// Rontgen yang diunggah pasien lewat form booking web. Isi diunduh lewat API (didekripsi server, tiap buka
 /// diaudit) dan hanya disimpan di memori. Tidak tampil apa-apa bila tidak ada file / peran tidak boleh melihat.

@@ -36,7 +36,7 @@ void main() {
       expect(appRedirect(out, p, Routes.splash), Routes.login);
       expect(appRedirect(out, p, Routes.login), isNull);
       expect(appRedirect(out, p, Routes.forgotPassword), isNull);
-      expect(appRedirect(out, p, Routes.kasirAntrian), Routes.login);
+      expect(appRedirect(out, p, Routes.klinikPasien), Routes.login);
       expect(appRedirect(out, p, PRoutes.beranda), Routes.login);
     });
 
@@ -60,7 +60,7 @@ void main() {
       expect(appRedirect(out, p, Routes.splash), PRoutes.beranda);
       expect(appRedirect(out, p, Routes.login), PRoutes.beranda);
       expect(appRedirect(out, p, PRoutes.paket), isNull);
-      expect(appRedirect(out, p, Routes.ownerRingkasan), PRoutes.beranda);
+      expect(appRedirect(out, p, Routes.klinikPasien), PRoutes.beranda);
     });
 
     test('sesi staf didahulukan atas bagian pasien', () {

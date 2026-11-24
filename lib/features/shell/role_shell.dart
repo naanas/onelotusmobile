@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/format.dart';
 import '../../data/auth/auth_controller.dart';
-import '../../data/models/staff_user.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 
@@ -305,11 +304,9 @@ class _FabState extends ConsumerState<_Fab> {
 /// Header konteks "Sel, 6 Okt · Klinik Pusat Malang".
 String headerContext(WidgetRef ref, DateTime now) {
   final branch = ref.watch(authProvider.select((s) => s.activeBranch));
-  final role = ref.watch(authProvider.select((s) => s.activeRole));
   final parts = <String>[
     Fmt.dayShort(now),
     if (branch != null) branch.name,
-    if (role == Role.owner && branch == null) 'semua cabang',
   ];
   return parts.join(' · ');
 }

@@ -1,8 +1,7 @@
-/// Peran staf (§3, A.1). Pasien ada di aplikasi terpisah (Fase 3).
+/// Peran staf, sama seperti sistem Laravel lama: admin (lihat nomor HP pasien & kelola user) dan terapis.
 enum Role {
-  terapis('terapis', 'Terapis', 'Jadwal, rekam sesi, home visit'),
-  kasir('kasir', 'Kasir / front desk', 'Antrian, tagihan, pembayaran'),
-  owner('owner', 'Owner', 'Ringkasan, laporan, persetujuan');
+  admin('admin', 'Admin', 'Data pasien, rekap, formulir, user management'),
+  terapis('terapis', 'Terapis', 'Data pasien, rekap, formulir');
 
   const Role(this.id, this.label, this.description);
 
@@ -59,6 +58,8 @@ class StaffUser {
 
   /// Perlu memilih di UM-08 bila punya lebih dari satu peran atau cabang.
   bool get needsContextChoice => roles.length > 1 || branches.length > 1;
+
+  bool get isAdmin => roles.contains(Role.admin);
 
   StaffUser copyWith({bool? mustChangePassword}) => StaffUser(
     id: id,

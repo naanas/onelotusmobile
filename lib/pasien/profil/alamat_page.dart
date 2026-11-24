@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/pasien/pasien_app_api.dart';
-import '../../features/kasir/billing_common.dart';
+import '../../features/common/billing_common.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import 'alamat_form_page.dart';

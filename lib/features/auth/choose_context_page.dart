@@ -99,7 +99,7 @@ class _ChooseContextPageState extends ConsumerState<ChooseContextPage> {
     ];
 
     final button = OlButton(
-      label: 'Masuk sebagai ${_role == Role.kasir ? 'Kasir' : _role.label}',
+      label: 'Masuk sebagai ${_role.label}',
       loading: _busy,
       onPressed: _submit,
     );

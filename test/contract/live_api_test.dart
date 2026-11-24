@@ -54,7 +54,7 @@ void main() {
     () async {
       final owner = await _login(_owner);
       final terapis = await _login(_therapist);
-      expect(owner.user.roles, containsAll([Role.owner, Role.kasir]));
+      expect(owner.user.roles, contains(Role.admin));
       expect(terapis.user.roles, contains(Role.terapis));
       final branchId = owner.user.branches.first.id;
       final api = owner.api;

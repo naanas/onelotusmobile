@@ -24,7 +24,7 @@ Future<void> enterPin(WidgetTester t, String pin) async {
 void main() {
   setUpAll(() => initializeDateFormatting('id_ID'));
 
-  testWidgets('kasir: login → atur PIN → notifikasi → tab Antrian', (t) async {
+  testWidgets('admin: login → atur PIN → notifikasi → menu Laravel', (t) async {
     final h = AuthHarness();
     h.device.available = false;
     t.view.physicalSize = const Size(1080, 2340);
@@ -82,18 +82,14 @@ void main() {
     await t.tap(find.text('Nanti saja'));
     await settle(t);
 
-    // Tab bar kasir.
-    for (final label in ['Antrian', 'Pasien', 'Kasir', 'Akun']) {
+    // Tab bar staf (menu Laravel).
+    for (final label in ['Data Pasien', 'Rekap', 'Formulir', 'Lainnya']) {
       expect(find.text(label), findsWidgets);
     }
-    expect(find.text('Ringkasan'), findsNothing);
-    expect(
-      find.bySemanticsLabel('Tambah pasien baru'),
-      findsOneWidget,
-    );
+    expect(find.bySemanticsLabel('Tambah pasien'), findsOneWidget);
 
-    // Akun → Keluar (dialog konfirmasi) → kembali ke login.
-    await t.tap(find.text('Akun'));
+    // Lainnya → Keluar (dialog konfirmasi) → kembali ke login.
+    await t.tap(find.text('Lainnya'));
     await settle(t);
     expect(find.text('Sinta Maharani'), findsOneWidget);
     await t.ensureVisible(find.text('Keluar'));
@@ -105,7 +101,7 @@ void main() {
     expect(find.text('Masuk ke One Lotus'), findsOneWidget);
   });
 
-  testWidgets('owner: tab bar 5 tanpa FAB', (t) async {
+  testWidgets('admin: buka ulang → PIN → menu Laravel + User Management', (t) async {
     final h = AuthHarness();
     h.device.available = false;
     t.view.physicalSize = const Size(1080, 2340);
@@ -122,7 +118,7 @@ void main() {
       await auth.setPin('123456');
       await auth.completeFirstLogin();
       await auth.chooseContext(
-        Role.owner,
+        Role.admin,
         c.read(authProvider).user!.branches.first,
       );
     });
@@ -136,12 +132,12 @@ void main() {
     expect(find.text('Halo, Rudi'), findsOneWidget);
     await enterPin(t, '123456');
     await settle(t);
-    for (final label in ['Ringkasan', 'Jadwal', 'Pasien', 'Laporan', 'Akun']) {
+    for (final label in ['Data Pasien', 'Rekap', 'Formulir', 'Lainnya']) {
       expect(find.text(label), findsWidgets);
     }
-    expect(
-      find.bySemanticsLabel(RegExp('QR intake|pilih pasien')),
-      findsNothing,
-    );
+    await t.tap(find.text('Lainnya'));
+    await settle(t);
+    expect(find.text('User Management'), findsOneWidget);
+    expect(find.text('Export Excel'), findsOneWidget);
   });
 }

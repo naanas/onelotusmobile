@@ -36,16 +36,16 @@ void main() {
       await auth().setPin('123456');
       await auth().completeFirstLogin();
       expect(state().phase, AuthPhase.ready);
-      expect(state().activeRole, Role.kasir);
+      expect(state().activeRole, Role.admin);
     },
   );
 
   test('akun >1 peran/cabang diarahkan ke UM-08', () async {
     await loginAndSetup('dimas.terapis', 'terapis123');
     expect(state().phase, AuthPhase.chooseContext);
-    await auth().chooseContext(Role.kasir, state().user!.branches.last);
+    await auth().chooseContext(Role.admin, state().user!.branches.last);
     expect(state().phase, AuthPhase.ready);
-    expect(state().activeRole, Role.kasir);
+    expect(state().activeRole, Role.admin);
     expect(state().activeBranch!.id, 'batu');
   });
 

@@ -7,7 +7,7 @@ import '../../core/format.dart';
 import '../../data/models/json.dart';
 import '../../data/models/models.dart';
 import '../../data/pasien/pasien_app_api.dart';
-import '../../features/kasir/billing_common.dart';
+import '../../features/common/billing_common.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import '../pasien_routes.dart';

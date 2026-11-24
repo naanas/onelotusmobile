@@ -32,7 +32,7 @@ class _FormulirPageState extends ConsumerState<FormulirPage> with VisibleReload 
   late final _pager = Pager<Formulir>((page) => ref.read(klinikApiProvider).formulir(page: page))..reload();
 
   @override
-  void onVisibleAgain() => _pager.reload();
+  void onVisibleAgain() => _pager.refresh();
 
   @override
   void dispose() {
@@ -42,7 +42,7 @@ class _FormulirPageState extends ConsumerState<FormulirPage> with VisibleReload 
 
   Future<void> _open(Formulir f) async {
     await context.push(Routes.klinikFormulirDetail(f.id), extra: f);
-    if (mounted) _pager.reload();
+    if (mounted) _pager.refresh();
   }
 
   @override

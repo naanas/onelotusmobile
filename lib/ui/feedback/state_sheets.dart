@@ -19,6 +19,7 @@ Future<T?> _stateSheet<T>(
 }) => showModalBottomSheet<T>(
   context: context,
   isScrollControlled: true,
+      sheetAnimationStyle: OlMotion.sheet,
   useSafeArea: true,
   builder: (ctx) {
     final t = ctx.olText;

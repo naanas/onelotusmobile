@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import 'ol_icon.dart';
+import 'ol_pressable.dart';
 
 enum OlButtonVariant {
   primary,
@@ -162,26 +163,40 @@ class OlButton extends StatelessWidget {
       child: AnimatedOpacity(
         duration: OlMotion.of(context, OlMotion.fast),
         opacity: disabled ? 0.4 : 1,
-        child: Container(
-          constraints: BoxConstraints(minHeight: height),
-          width: expand ? double.infinity : null,
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: radius,
-            border: border,
-            boxShadow: disabled ? null : shadow,
-          ),
-          child: Material(
-            type: MaterialType.transparency,
-            child: InkWell(
+        child: OlPressable(
+          scale: .96,
+          onTap: _enabled ? onPressed : null,
+          child: AnimatedContainer(
+            duration: OlMotion.of(context, OlMotion.normal),
+            curve: OlMotion.curve,
+            constraints: BoxConstraints(minHeight: height),
+            width: expand ? double.infinity : null,
+            decoration: BoxDecoration(
+              color: bg,
               borderRadius: radius,
-              onTap: _enabled ? onPressed : null,
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: small ? 14 : 18,
-                  vertical: 8,
+              border: border,
+              boxShadow: disabled ? null : shadow,
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: small ? 14 : 18,
+                vertical: 8,
+              ),
+              child: Center(
+                widthFactor: expand ? null : 1,
+                // Label ↔ "memproses" berganti halus, bukan meloncat.
+                child: AnimatedSwitcher(
+                  duration: OlMotion.of(context, OlMotion.normal),
+                  switchInCurve: OlMotion.emphasized,
+                  transitionBuilder: (child, a) => FadeTransition(
+                    opacity: a,
+                    child: ScaleTransition(
+                      scale: Tween(begin: .92, end: 1.0).animate(a),
+                      child: child,
+                    ),
+                  ),
+                  child: KeyedSubtree(key: ValueKey(loading), child: content),
                 ),
-                child: Center(widthFactor: expand ? null : 1, child: content),
               ),
             ),
           ),

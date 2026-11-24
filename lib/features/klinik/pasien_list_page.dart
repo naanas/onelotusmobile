@@ -34,7 +34,7 @@ class _PasienListPageState extends ConsumerState<PasienListPage> with VisibleRel
 
   @override
   void onVisibleAgain() {
-    _pager.reload();
+    _pager.refresh();
     setState(() => _formGen++);
   }
 
@@ -56,9 +56,9 @@ class _PasienListPageState extends ConsumerState<PasienListPage> with VisibleRel
     });
   }
 
-  Future<void> _open(String route) async {
-    await context.push(route);
-    if (mounted) _load(reset: true);
+  Future<void> _open(String route, {Object? extra}) async {
+    await context.push(route, extra: extra);
+    if (mounted) _pager.refresh();
   }
 
   Future<void> _actions(Pasien p) async {
@@ -154,14 +154,14 @@ class _PasienListPageState extends ConsumerState<PasienListPage> with VisibleRel
             children: [
               Text('Data Pasien', style: t.heading),
               const SizedBox(height: 2),
-              Text(
-                !p.loadedOnce
-                    ? 'Memuat…'
-                    : _cari.isEmpty
-                    ? '${p.total} pasien terdaftar'
-                    : '${p.total} pasien cocok dengan "$_cari"',
-                style: t.body.copyWith(color: c.muted),
-              ),
+              if (!p.loadedOnce)
+                Text('Memuat…', style: t.body.copyWith(color: c.muted))
+              else
+                OlCountUp(
+                  p.total,
+                  style: t.body.copyWith(color: c.muted),
+                  format: (n) => _cari.isEmpty ? '$n pasien terdaftar' : '$n pasien cocok dengan "$_cari"',
+                ),
               const SizedBox(height: OlSpace.md),
               OlSearchField(hint: hint, controller: _search, onChanged: _onSearch),
             ],
@@ -172,7 +172,7 @@ class _PasienListPageState extends ConsumerState<PasienListPage> with VisibleRel
         for (final x in items)
           _PasienCard(
             pasien: x,
-            onTap: () => _open(Routes.klinikDetail(x.id)),
+            onTap: () => _open(Routes.klinikDetail(x.id), extra: x),
             onMore: () => _actions(x),
           ),
         if (p.loadedOnce && items.isEmpty && p.error == null)
@@ -226,7 +226,7 @@ class _FormulirBannerState extends ConsumerState<_FormulirBanner> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('$n formulir menunggu', style: t.bodyStrong),
+                  OlCountUp(n, style: t.bodyStrong, format: (v) => '$v formulir menunggu'),
                   Text(
                     'Setujui supaya pasien mendapat nomor pasien.',
                     style: t.caption,
@@ -264,7 +264,7 @@ class _PasienCard extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          OlAvatar(name: p.nama),
+          Hero(tag: 'pasien-avatar-${p.id}', child: OlAvatar(name: p.nama)),
           const SizedBox(width: OlSpace.md),
           Expanded(
             child: Column(

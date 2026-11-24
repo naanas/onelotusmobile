@@ -12,17 +12,37 @@ import 'widgets.dart';
 
 /// Detail pasien (Laravel detail-pasien): data diri + tabel pemeriksaan (tambah / edit / hapus).
 class PasienDetailPage extends ConsumerStatefulWidget {
-  const PasienDetailPage({super.key, required this.id});
+  const PasienDetailPage({super.key, required this.id, this.initial});
   final String id;
+
+  /// Data dari kartu daftar: header langsung tampil (avatar "terbang" dari kartu) sambil detail dimuat.
+  final Pasien? initial;
 
   @override
   ConsumerState<PasienDetailPage> createState() => _PasienDetailPageState();
 }
 
 class _PasienDetailPageState extends ConsumerState<PasienDetailPage> {
+  PasienDetail? _d;
+  AppError? _error;
   int _gen = 0;
 
-  void _reload() => setState(() => _gen++);
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  Future<void> _reload() async {
+    final gen = ++_gen;
+    setState(() => _error = null);
+    try {
+      final d = await ref.read(klinikApiProvider).detail(widget.id);
+      if (mounted && gen == _gen) setState(() => _d = d);
+    } on AppError catch (e) {
+      if (mounted && gen == _gen) setState(() => _error = e);
+    }
+  }
 
   Future<void> _go(String route, {Object? extra}) async {
     await context.push(route, extra: extra);
@@ -65,46 +85,49 @@ class _PasienDetailPageState extends ConsumerState<PasienDetailPage> {
 
   @override
   Widget build(BuildContext context) {
+    final d = _d;
+    final p = d?.pasien ?? widget.initial;
     return OlDetailScaffold(
       title: 'Detail Pasien',
-      onRefresh: () async => _reload(),
+      onRefresh: () {
+        ref.read(klinikApiProvider).cache.expire('/v1/klinik/pasien/${widget.id}');
+        return _reload();
+      },
       children: [
-        OlAsync<PasienDetail>(
-          key: ValueKey(_gen),
-          load: () => ref.read(klinikApiProvider).detail(widget.id),
-          builder: (context, d, _) {
-            final p = d.pasien;
-            return [
-              _DataPasien(
-                pasien: p,
-                onEdit: () => _go(Routes.klinikEditPasien(p.id)),
-                onHapus: () => _hapusPasien(p),
+        if (p != null)
+          _DataPasien(
+            pasien: p,
+            onEdit: () => _go(Routes.klinikEditPasien(p.id)),
+            onHapus: () => _hapusPasien(p),
+          ),
+        if (_error != null && d == null)
+          OlErrorCard(message: _error!.message, onRetry: _reload)
+        else if (d == null)
+          const OlLoadingCard()
+        else ...[
+          OlSectionHeader(
+            title: 'Pemeriksaan (${d.pemeriksaan.length})',
+            actionLabel: '+ Tambah',
+            onAction: () => _go(Routes.klinikTambahPemeriksaan(d.pasien.id)),
+          ),
+          if (d.pemeriksaan.isEmpty)
+            OlCard(
+              child: EmptyState(
+                illustration: OlIllustration.emptyInbox,
+                title: 'Belum ada pemeriksaan',
+                message: 'Tidak ada data pemeriksaan pada pasien ini.',
+                actionLabel: 'Tambah Pemeriksaan',
+                onAction: () => _go(Routes.klinikTambahPemeriksaan(d.pasien.id)),
               ),
-              OlSectionHeader(
-                title: 'Pemeriksaan (${d.pemeriksaan.length})',
-                actionLabel: '+ Tambah',
-                onAction: () => _go(Routes.klinikTambahPemeriksaan(p.id)),
+            )
+          else
+            for (final x in d.pemeriksaan)
+              _PemeriksaanCard(
+                data: x,
+                onEdit: () => _go(Routes.klinikEditPemeriksaan(x.id), extra: x),
+                onHapus: () => _hapusPemeriksaan(x),
               ),
-              if (d.pemeriksaan.isEmpty)
-                OlCard(
-                  child: EmptyState(
-                    illustration: OlIllustration.emptyInbox,
-                    title: 'Belum ada pemeriksaan',
-                    message: 'Tidak ada data pemeriksaan pada pasien ini.',
-                    actionLabel: 'Tambah Pemeriksaan',
-                    onAction: () => _go(Routes.klinikTambahPemeriksaan(p.id)),
-                  ),
-                )
-              else
-                for (final x in d.pemeriksaan)
-                  _PemeriksaanCard(
-                    data: x,
-                    onEdit: () => _go(Routes.klinikEditPemeriksaan(x.id), extra: x),
-                    onHapus: () => _hapusPemeriksaan(x),
-                  ),
-            ];
-          },
-        ),
+        ],
       ],
     );
   }
@@ -145,7 +168,7 @@ class _DataPasien extends StatelessWidget {
         children: [
           Row(
             children: [
-              OlAvatar(name: p.nama, large: true),
+              Hero(tag: 'pasien-avatar-${p.id}', child: OlAvatar(name: p.nama, large: true)),
               const SizedBox(width: OlSpace.lg),
               Expanded(
                 child: Column(

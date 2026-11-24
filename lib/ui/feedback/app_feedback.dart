@@ -239,11 +239,23 @@ class AppFeedback {
     }
     _dialogOpen = true;
     try {
-      final result = await showDialog<ConfirmResult>(
+      final reduced = OlMotion.reduced(ctx);
+      final result = await showGeneralDialog<ConfirmResult>(
         context: ctx,
         barrierDismissible: true, // ketuk di luar = batal
+        barrierLabel: 'Tutup',
         barrierColor: ctx.ol.scrim,
-        builder: (_) => _ConfirmDialog(spec: spec),
+        transitionDuration: reduced ? Duration.zero : OlMotion.enter,
+        // Muncul: membesar dengan pegas dari 92% + memudar; tutup: cepat mengecil & memudar.
+        transitionBuilder: (_, a, _, child) {
+          final scale = CurvedAnimation(parent: a, curve: OlMotion.spring, reverseCurve: Curves.easeInCubic);
+          final fade = CurvedAnimation(parent: a, curve: const Interval(0, .5, curve: Curves.easeOut));
+          return FadeTransition(
+            opacity: fade,
+            child: ScaleTransition(scale: Tween(begin: .92, end: 1.0).animate(scale), child: child),
+          );
+        },
+        pageBuilder: (_, _, _) => _ConfirmDialog(spec: spec),
       );
       return result ?? const ConfirmResult(ConfirmChoice.cancel);
     } finally {
@@ -265,6 +277,7 @@ class AppFeedback {
     return showModalBottomSheet<T>(
       context: ctx,
       isScrollControlled: true,
+      sheetAnimationStyle: OlMotion.sheet,
       useSafeArea: true,
       builder: (sheetCtx) {
         final t = sheetCtx.olText;
@@ -332,6 +345,7 @@ class AppFeedback {
     return showModalBottomSheet<T>(
       context: ctx,
       isScrollControlled: true,
+      sheetAnimationStyle: OlMotion.sheet,
       useSafeArea: true,
       builder: (sheetCtx) {
         final t = sheetCtx.olText;
@@ -407,7 +421,14 @@ class _ToastContent extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
       child: Row(
         children: [
-          OlIcon(icon, size: 22, color: color),
+          // Ikon "meletup" sedikit setelah toast muncul (centang sukses terasa hidup).
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: OlMotion.reduced(context) ? 1 : .3, end: 1),
+            duration: const Duration(milliseconds: 520),
+            curve: OlMotion.spring,
+            builder: (_, v, child) => Transform.scale(scale: v, child: child),
+            child: OlIcon(icon, size: 22, color: color),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

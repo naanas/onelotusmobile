@@ -89,6 +89,24 @@ abstract final class OlMotion {
   static const slow = Duration(milliseconds: 250);
   static const curve = Curves.easeOutCubic;
 
+  /// Gerak masuk "berbobot" (Material 3 emphasized decelerate): cepat di awal, mendarat lembut.
+  static const emphasized = Cubic(0.05, 0.7, 0.1, 1.0);
+
+  /// Pegas ringan: sedikit melewati tujuan lalu kembali (tombol, badge, dialog).
+  static const spring = Cubic(0.34, 1.36, 0.64, 1.0);
+
+  /// Durasi elemen yang muncul (sheet, dialog, kartu masuk).
+  static const enter = Duration(milliseconds: 420);
+  static const exit = Duration(milliseconds: 220);
+
+  /// Bottom sheet: naik cepat lalu mendarat lembut; turun lebih cepat.
+  static const sheet = AnimationStyle(
+    duration: Duration(milliseconds: 460),
+    reverseDuration: Duration(milliseconds: 240),
+    curve: Cubic(0.16, 1, 0.3, 1),
+    reverseCurve: Curves.easeInCubic,
+  );
+
   static bool reduced(BuildContext context) =>
       MediaQuery.disableAnimationsOf(context);
 

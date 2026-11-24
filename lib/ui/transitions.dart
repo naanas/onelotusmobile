@@ -7,19 +7,20 @@ import '../theme/app_theme.dart';
 abstract final class OlTransitions {
   /// Durasi pindah layar. Sedikit di atas 250ms agar slide tidak terasa patah di HP kelas menengah.
   static const page = Duration(milliseconds: 300);
-  static const tab = Duration(milliseconds: 220);
+  static const tab = Duration(milliseconds: 280);
 }
 
-/// Shared axis horizontal: layar baru masuk sedikit dari kanan sambil memudar,
-/// layar lama bergeser sedikit ke kiri sambil memudar. Dipakai untuk push/pop biasa.
+/// Pindah layar gaya aplikasi modern (Android & iOS sama): layar baru meluncur penuh dari kanan dengan
+/// bayangan tepi, layar lama bergeser pelan ke kiri (paralaks) dan meredup. Bisa digeser dari tepi kiri
+/// untuk kembali (gestur interaktif, bisa dibatalkan di tengah). Hormati "kurangi gerakan" → tanpa animasi.
 class OlPageTransitionsBuilder extends PageTransitionsBuilder {
   const OlPageTransitionsBuilder();
 
   @override
-  Duration get transitionDuration => OlTransitions.page;
+  Duration get transitionDuration => const Duration(milliseconds: 420);
 
   @override
-  Duration get reverseTransitionDuration => OlTransitions.page;
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 360);
 
   @override
   Widget buildTransitions<T>(
@@ -30,10 +31,12 @@ class OlPageTransitionsBuilder extends PageTransitionsBuilder {
     Widget child,
   ) {
     if (OlMotion.reduced(context)) return child;
-    return SharedAxisTransition(
-      animation: animation,
-      secondaryAnimation: secondaryAnimation,
-      child: child,
+    return const CupertinoPageTransitionsBuilder().buildTransitions(
+      route,
+      context,
+      animation,
+      secondaryAnimation,
+      child,
     );
   }
 }
@@ -168,9 +171,9 @@ class _Branch extends StatelessWidget {
               ? const Interval(0.25, 1, curve: Curves.easeOut)
               : const Interval(0, 0.4, curve: Curves.easeIn),
           child: AnimatedScale(
-            scale: active ? 1 : 0.98,
+            scale: active ? 1 : 0.965,
             duration: duration,
-            curve: OlMotion.curve,
+            curve: OlMotion.emphasized,
             // TickerMode di dalam animasi wadah: tab tak aktif berhenti beranimasi,
             // tapi fade-out tab itu sendiri tetap berjalan.
             child: TickerMode(enabled: active, child: child),

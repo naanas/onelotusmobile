@@ -139,7 +139,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       _root(Routes.klinikTambahPasien, (_) => const PasienFormPage()),
       _root('/klinik/edit-pasien/:id', (s) => PasienFormPage(editId: s.pathParameters['id'])),
-      _root('/klinik/detail-pasien/:id', (s) => PasienDetailPage(id: s.pathParameters['id']!)),
+      _root(
+        '/klinik/detail-pasien/:id',
+        (s) => PasienDetailPage(id: s.pathParameters['id']!, initial: s.extra is Pasien ? s.extra as Pasien : null),
+      ),
       _root(
         '/klinik/detail-pasien/:id/tambah-pemeriksaan',
         (s) => PemeriksaanFormPage(

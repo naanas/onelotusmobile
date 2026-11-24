@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
+import 'ol_appear.dart';
 import 'ol_foot_bar.dart';
 import 'ol_icon.dart';
 import 'ol_icon_button.dart';
@@ -162,7 +163,7 @@ class OlDetailScaffold extends StatelessWidget {
                         below!,
                       ],
                       const SizedBox(height: 18),
-                      for (final (i, w) in children.indexed) ...[
+                      for (final (i, w) in OlAppear.wrap(children).indexed) ...[
                         if (i > 0) SizedBox(height: gap),
                         w,
                       ],
@@ -357,7 +358,7 @@ class _PinnedDetailState extends State<_PinnedDetail> {
                         w.below!,
                       ],
                       const SizedBox(height: 18),
-                      for (final (i, child) in w.children.indexed) ...[
+                      for (final (i, child) in OlAppear.wrap(w.children).indexed) ...[
                         if (i > 0) SizedBox(height: w.gap),
                         child,
                       ],

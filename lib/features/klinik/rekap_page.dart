@@ -36,7 +36,7 @@ class _RekapPageState extends ConsumerState<RekapPage> with VisibleReload {
   }
 
   @override
-  void onVisibleAgain() => _pager.reload();
+  void onVisibleAgain() => _pager.refresh();
 
   @override
   void dispose() {
@@ -90,9 +90,9 @@ class _RekapPageState extends ConsumerState<RekapPage> with VisibleReload {
                 OlCard(
                   child: Row(
                     children: [
-                      Expanded(child: _Stat(label: 'Pemeriksaan', value: '${p.total}')),
+                      Expanded(child: _Stat(label: 'Pemeriksaan', value: p.total)),
                       Container(width: 1, height: 36, color: c.line),
-                      Expanded(child: _Stat(label: 'Pasien', value: '$pasien')),
+                      Expanded(child: _Stat(label: 'Pasien', value: pasien)),
                     ],
                   ),
                 ),
@@ -160,14 +160,14 @@ class _RekapCard extends StatelessWidget {
 class _Stat extends StatelessWidget {
   const _Stat({required this.label, required this.value});
   final String label;
-  final String value;
+  final int value;
 
   @override
   Widget build(BuildContext context) {
     final t = context.olText;
     return Column(
       children: [
-        Text(value, style: t.heading.copyWith(color: context.ol.brand)),
+        OlCountUp(value, style: t.heading.copyWith(color: context.ol.brand, fontSize: 22)),
         Text(label, style: t.caption),
       ],
     );

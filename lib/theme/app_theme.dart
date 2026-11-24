@@ -31,12 +31,15 @@ ThemeData buildOlTheme([OlColors c = OlColors.light]) {
     scaffoldBackgroundColor: c.bg,
     fontFamily: kFontBody,
     extensions: [c],
-    splashFactory: InkSparkle.splashFactory,
+    // Tanpa riak Material lama: umpan balik sentuh lewat OlPressable (mengecil + getar halus)
+    // dan sorotan tipis di baris daftar.
+    splashFactory: NoSplash.splashFactory,
+    highlightColor: c.brand.withValues(alpha: .06),
+    hoverColor: Colors.transparent,
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
         TargetPlatform.android: OlPageTransitionsBuilder(),
-        // iOS tetap Cupertino agar gesture geser-kembali bekerja.
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.iOS: OlPageTransitionsBuilder(),
       },
     ),
     textTheme: TextTheme(

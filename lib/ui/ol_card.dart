@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import 'ol_pressable.dart';
 
 enum OlCardVariant {
   /// Kartu putih biasa, tanpa border, bayangan sh1.
@@ -78,11 +79,12 @@ class OlCard extends StatelessWidget {
       container: true,
       label: semanticLabel,
       button: onTap != null,
-      child: DecoratedBox(
-        decoration: decoration,
-        child: Material(
-          type: MaterialType.transparency,
-          child: InkWell(borderRadius: radius, onTap: onTap, child: content),
+      child: OlPressable(
+        onTap: onTap,
+        child: DecoratedBox(
+          decoration: decoration,
+          // Material transparan: sorotan baris (OlListItem) di dalam kartu tetap terlihat.
+          child: Material(type: MaterialType.transparency, borderRadius: radius, child: content),
         ),
       ),
     );

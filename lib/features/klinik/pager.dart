@@ -24,6 +24,39 @@ class Pager<T> extends ChangeNotifier {
 
   Future<void> reload() => _load(reset: true);
 
+  /// Perbarui tanpa reset: halaman 1..[page] dimuat ulang (biasanya dari cache / 304) lalu diganti sekaligus,
+  /// jadi posisi gulir tetap. Dipakai saat kembali dari detail / tab terlihat lagi.
+  Future<void> refresh() async {
+    if (!loadedOnce || page <= 1) return reload();
+    final gen = ++_gen;
+    final upto = page;
+    try {
+      final fresh = <T>[];
+      KPage<T>? last;
+      for (var i = 1; i <= upto; i++) {
+        final r = await _fetch(i);
+        if (gen != _gen || _disposed) return;
+        if (i == 1) first = r;
+        fresh.addAll(r.items);
+        last = r;
+        if (!r.hasMore) break;
+      }
+      items
+        ..clear()
+        ..addAll(fresh);
+      page = last?.page ?? upto;
+      total = last?.total ?? total;
+      hasMore = last?.hasMore ?? false;
+      error = null;
+    } on AppError {
+      // Gagal diam-diam: data lama tetap tampil.
+    } catch (_) {}
+    if (gen == _gen) {
+      loading = false;
+      _notify();
+    }
+  }
+
   Future<void> more() async {
     if (loading || !hasMore || error != null) return;
     await _load();

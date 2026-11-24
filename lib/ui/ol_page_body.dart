@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 import 'ol_app_header.dart';
+import 'ol_appear.dart';
 import 'ol_icon.dart';
 import 'ol_refresh.dart';
 
@@ -136,7 +137,14 @@ class _OlPageBodyState extends State<OlPageBody> {
   Widget build(BuildContext context) {
     // Struktur selalu sama (ada/tidaknya foot) agar state isi halaman tidak hilang
     // saat tombol bawah muncul, mis. setelah data dimuat.
-    final foot = widget.foot;
+    // Di dalam tab dengan bar bawah tembus pandang (Scaffold.extendBody): padding bawah = tinggi bar.
+    final inset = MediaQuery.paddingOf(context).bottom;
+    final foot = widget.foot == null
+        ? null
+        : Padding(
+            padding: EdgeInsets.only(bottom: inset),
+            child: MediaQuery.removePadding(context: context, removeBottom: true, child: widget.foot!),
+          );
     Widget page = _page(context);
     if (widget.backToTop) {
       page = Stack(
@@ -144,7 +152,7 @@ class _OlPageBodyState extends State<OlPageBody> {
           Positioned.fill(child: page),
           Positioned(
             right: OlSpace.screen,
-            bottom: OlSpace.lg,
+            bottom: OlSpace.lg + (widget.foot == null ? inset : 0),
             child: _BackToTop(visible: _far, onTap: _toTop),
           ),
         ],
@@ -165,7 +173,7 @@ class _OlPageBodyState extends State<OlPageBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final (i, w) in widget.children.indexed) ...[
+          for (final (i, w) in OlAppear.wrap(widget.children).indexed) ...[
             if (i > 0) const SizedBox(height: OlSpace.gap),
             w,
           ],
@@ -176,7 +184,7 @@ class _OlPageBodyState extends State<OlPageBody> {
     final list = ListView(
       controller: _scroll,
       physics: olRefreshPhysics,
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: EdgeInsets.only(bottom: 24 + (widget.foot == null ? MediaQuery.paddingOf(context).bottom : 0)),
       children: [
         if (!pinnedPlain)
           KeyedSubtree(
@@ -340,38 +348,58 @@ class _CompactHeroBar extends StatelessWidget {
     final c = context.ol;
     final t = context.olText;
     final tp = const Interval(.35, 1, curve: Curves.easeOutCubic).transform(progress);
-    return Container(
-      height: height,
-      padding: EdgeInsets.fromLTRB(OlSpace.screen, topInset, OlSpace.sm, 0),
+    final radius = BorderRadius.vertical(bottom: Radius.circular(18 * (1 - progress)));
+    final g = OlHeroBackdrop.gradient(c);
+    // Kaca biru: gradasi sedikit tembus + blur konten di bawahnya; bayangan menebal saat muncul.
+    return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: OlHeroBackdrop.gradient(c),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(18 * (1 - progress))),
+        borderRadius: radius,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0B1F2E).withValues(alpha: .22 * progress),
-            blurRadius: 18 * progress,
-            offset: Offset(0, 6 * progress),
+            color: const Color(0xFF0B1F2E).withValues(alpha: .20 * progress),
+            blurRadius: 22 * progress,
+            offset: Offset(0, 8 * progress),
+            spreadRadius: -4,
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Opacity(
-              opacity: tp,
-              child: Transform.translate(
-                offset: Offset(0, (1 - tp) * 14),
-                child: Text(
-                  title ?? '',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: t.heading.copyWith(color: Colors.white),
-                ),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            height: height,
+            padding: EdgeInsets.fromLTRB(OlSpace.screen, topInset, OlSpace.sm, 0),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: g.begin,
+                end: g.end,
+                stops: g.stops,
+                colors: [for (final x in g.colors) x.withValues(alpha: .9)],
               ),
+              border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: .08 * progress))),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Opacity(
+                    opacity: tp,
+                    child: Transform.translate(
+                      offset: Offset(0, (1 - tp) * 14),
+                      child: Text(
+                        title ?? '',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.heading.copyWith(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+                ...actions,
+              ],
             ),
           ),
-          ...actions,
-        ],
+        ),
       ),
     );
   }

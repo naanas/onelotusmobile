@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -90,6 +92,8 @@ class OlTabShell extends StatelessWidget {
     );
 
     return Scaffold(
+      // Isi halaman tergulir di balik bar bawah yang tembus pandang (blur).
+      extendBody: true,
       body: shell,
       bottomNavigationBar: _TabBar(
         fab: fab,
@@ -119,20 +123,28 @@ class _TabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.ol;
-    final bar = DecoratedBox(
-      decoration: BoxDecoration(
-        color: c.surface,
-        // Hanya garis atas: bayangan ke atas akan terpotong di ruang FAB.
-        border: Border(top: BorderSide(color: c.line)),
-      ),
-      child: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.only(bottom: 8),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(6, 8, 6, 0),
-          child: SizedBox(
-            height: _height,
-            child: Row(children: children),
+    // Kaca buram: konten yang lewat di bawah tetap samar terlihat (gaya aplikasi modern).
+    final bar = ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: c.surface.withValues(alpha: .82),
+            // Hanya garis atas: bayangan ke atas akan terpotong di ruang FAB.
+            border: Border(
+              top: BorderSide(color: c.line.withValues(alpha: .7)),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            minimum: const EdgeInsets.only(bottom: 8),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(6, 8, 6, 0),
+              child: SizedBox(
+                height: _height,
+                child: Row(children: children),
+              ),
+            ),
           ),
         ),
       ),
@@ -304,9 +316,6 @@ class _FabState extends ConsumerState<_Fab> {
 /// Header konteks "Sel, 6 Okt · Klinik Pusat Malang".
 String headerContext(WidgetRef ref, DateTime now) {
   final branch = ref.watch(authProvider.select((s) => s.activeBranch));
-  final parts = <String>[
-    Fmt.dayShort(now),
-    if (branch != null) branch.name,
-  ];
+  final parts = <String>[Fmt.dayShort(now), if (branch != null) branch.name];
   return parts.join(' · ');
 }

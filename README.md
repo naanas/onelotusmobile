@@ -25,6 +25,7 @@ One Lotus API (`../backend`); aplikasi tidak punya mode data contoh.
 ```
 flutter run --dart-define-from-file=env/prod.json                    # HP tersambung, debug
 flutter build apk --release --dart-define-from-file=env/prod.json    # APK untuk dibagikan
+flutter run --dart-define-from-file=env/prod.json --dart-define=HTTP_LOG=true # Kalo mau pake log
 ```
 
 Di VS Code: konfigurasi **One Lotus (Render)**. Instance gratis Render tidur bila lama tak dipakai;

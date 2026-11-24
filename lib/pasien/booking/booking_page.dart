@@ -14,6 +14,7 @@ import '../../ui/ui.dart';
 import '../pasien_routes.dart';
 import '../pasien_session.dart';
 import 'booking_request_card.dart';
+import 'rontgen_picker.dart';
 import 'payment_channel_picker.dart';
 import 'slot_picker.dart';
 
@@ -85,6 +86,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
   final _hobby = TextEditingController();
   String? _complaintError;
   bool _busy = false;
+  late final _xray = RontgenController(() => _api);
 
   static const _causes = [
     'Olahraga',
@@ -148,6 +150,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       c.dispose();
     }
     _scroll.dispose();
+    _xray.dispose();
     super.dispose();
   }
 
@@ -161,6 +164,10 @@ class _BookingPageState extends ConsumerState<BookingPage> {
   }
 
   Future<void> _submit(String branchId) async {
+    if (_xray.uploading) {
+      context.feedback.info('Tunggu sampai foto rontgen selesai diunggah.');
+      return;
+    }
     if (_complaint.text.trim().length < 3) {
       setState(
         () => _complaintError = 'Ceritakan singkat keluhan yang Anda rasakan.',
@@ -202,6 +209,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
     }
 
     final booking = b.$1;
+    await _attachXray(booking.id);
     var invoiceId = b.$2;
 
     // Jika booking klinik dan invoice belum terbaca dari field dp_invoice,
@@ -231,6 +239,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       _cause = null;
       _step = 0;
       _gen++;
+      _xray.clear();
     });
 
     if (invoiceId != null) {
@@ -263,6 +272,17 @@ class _BookingPageState extends ConsumerState<BookingPage> {
     }
   }
 
+  /// Rontgen yang sudah diunggah → kaitkan ke booking. Gagal tidak membatalkan booking (bisa dikirim ulang ke klinik).
+  Future<void> _attachXray(String bookingId) async {
+    final ids = _xray.ids;
+    if (ids.isEmpty) return;
+    try {
+      await _api.attachIntake(bookingId, ids);
+    } catch (_) {
+      if (mounted) context.feedback.info('Booking tercatat, tapi foto rontgen gagal dikirim. Tunjukkan langsung di klinik.');
+    }
+  }
+
   /// Booking klinik: simpan data diri (bila perlu) → buat booking → cari tagihan DP.
   /// Melempar error (ditampilkan layar bayar); mengembalikan id tagihan atau null (tanpa tagihan).
   Future<String?> _createClinicBooking(String branchId) async {
@@ -279,6 +299,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
       'start': _start!.toUtc().toIso8601String(),
       'note': _bookingNote,
     });
+    await _attachXray(b.$1.id);
     var invoiceId = b.$2;
     // Tagihan belum terbaca dari dp_invoice → ambil tagihan terbuka terbaru.
     if (invoiceId == null) {
@@ -299,6 +320,7 @@ class _BookingPageState extends ConsumerState<BookingPage> {
     _step = 0;
     _typeChosen = false;
     _gen++;
+    _xray.clear();
   });
 
   /// Geser bayar → layar bayar terbuka seketika; proses booking berjalan di sana.
@@ -895,6 +917,8 @@ class _BookingPageState extends ConsumerState<BookingPage> {
                   ),
               ],
             ),
+            const SizedBox(height: OlSpace.md),
+            RontgenPicker(controller: _xray),
           ],
         ),
       ),

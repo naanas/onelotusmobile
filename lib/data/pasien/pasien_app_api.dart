@@ -286,6 +286,14 @@ class PasienAppApi {
   /// Setujui jam usulan klinik → langsung terkonfirmasi jadi sesi.
   Future<void> acceptProposal(String id) => api.post('/v1/patient/bookings/$id/accept-proposal', null, (_) {});
 
+  /// Unggah satu foto rontgen (dienkripsi server sebelum disimpan) → id lampiran.
+  Future<String> uploadIntake(List<int> bytes, String mime) =>
+      api.putBytes('/v1/patient/intake-files', bytes, mime, (d) => asMap(d)['id'].toString());
+
+  /// Kaitkan rontgen yang sudah diunggah ke booking (hanya unggahan akun ini sendiri).
+  Future<void> attachIntake(String bookingId, List<String> ids) =>
+      api.post('/v1/patient/bookings/$bookingId/intake-files', {'ids': ids}, (_) {});
+
   Future<HomeVisitEstimateV> homeVisitEstimate({
     required String branchId,
     required String serviceId,

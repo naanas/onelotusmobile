@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../ui/feedback/app_error.dart';
 import '../auth/auth_controller.dart';
 import '../models/json.dart';
+import '../models/exam.dart';
 import '../models/models.dart';
 import '../providers.dart';
 import '../remote/http_remote.dart';
@@ -323,6 +324,20 @@ class OneLotusApi {
   }
 
   Future<List<LegacyRecord>> legacyRecords(String id) => _remote.legacyRecords(id);
+
+  // ── pemeriksaan (seperti sistem Laravel lama) ──
+
+  /// Semua pemeriksaan pasien, terbaru dulu (catatan hasil impor Laravel + input baru).
+  Future<List<ExamV>> exams(String patientId) =>
+      api.get('/v1/patients/$patientId/legacy-records', (d) => parseList(d, ExamV.fromJson));
+
+  Future<ExamV> createExam(String patientId, Map<String, dynamic> body) =>
+      api.post('/v1/patients/$patientId/examinations', body, (d) => ExamV.fromJson(asMap(d)));
+
+  Future<ExamV> updateExam(int id, Map<String, dynamic> body) =>
+      api.patch('/v1/examinations/$id', body, (d) => ExamV.fromJson(asMap(d)));
+
+  Future<void> deleteExam(int id) => api.delete('/v1/examinations/$id', (_) {});
 
   /// KS-04 tambah pasien manual. Kandidat ganda (ST-08) → [DuplicatePatientError].
   Future<Patient> createPatient(PatientDraft draft, {bool confirmNotDuplicate = false}) async {

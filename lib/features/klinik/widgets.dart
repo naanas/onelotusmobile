@@ -17,19 +17,32 @@ final dateFmt = DateFormat('dd-MM-yyyy', 'id');
 /// Tanggal gaya Laravel (dd-mm-yyyy) atau "-".
 String tgl(DateTime? d) => d == null ? '-' : dateFmt.format(d);
 
-/// Pemilih bulan ‹ November 2026 › (tidak bisa melewati bulan ini).
-class MonthSwitcher extends StatelessWidget {
-  const MonthSwitcher({
-    super.key,
-    required this.month,
-    required this.onChanged,
-  });
+/// Pemilih bulan ‹ November 2026 › (tidak bisa melewati bulan ini). Nama bulan bergeser searah perpindahan
+/// (mundur → dari kiri, maju → dari kanan).
+class MonthSwitcher extends StatefulWidget {
+  const MonthSwitcher({super.key, required this.month, required this.onChanged});
 
   final DateTime month;
   final ValueChanged<DateTime> onChanged;
 
   @override
+  State<MonthSwitcher> createState() => _MonthSwitcherState();
+}
+
+class _MonthSwitcherState extends State<MonthSwitcher> {
+  /// 1 = maju (bulan baru masuk dari kanan), -1 = mundur.
+  int _dir = 1;
+
+  @override
+  void didUpdateWidget(MonthSwitcher old) {
+    super.didUpdateWidget(old);
+    if (old.month != widget.month) _dir = widget.month.isAfter(old.month) ? 1 : -1;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final month = widget.month;
+    final onChanged = widget.onChanged;
     final now = DateTime.now();
     final atLatest = month.year == now.year && month.month == now.month;
     return OlCard(
@@ -58,22 +71,40 @@ class MonthSwitcher extends StatelessWidget {
               },
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Text(
-                  monthFmt.format(month),
-                  textAlign: TextAlign.center,
-                  style: context.olText.heading,
+                child: ClipRect(
+                  child: AnimatedSwitcher(
+                    duration: OlMotion.of(context, const Duration(milliseconds: 220)),
+                    switchInCurve: OlMotion.curve,
+                    switchOutCurve: Curves.easeIn,
+                    transitionBuilder: (child, a) {
+                      final incoming = child.key == ValueKey(month);
+                      final from = Offset(0.35 * _dir * (incoming ? 1 : -1), 0);
+                      return FadeTransition(
+                        opacity: a,
+                        child: SlideTransition(
+                          position: Tween(begin: from, end: Offset.zero).animate(a),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Text(
+                      monthFmt.format(month),
+                      key: ValueKey(month),
+                      textAlign: TextAlign.center,
+                      style: context.olText.heading,
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-          Opacity(
+          AnimatedOpacity(
             opacity: atLatest ? 0.3 : 1,
+            duration: OlMotion.of(context, OlMotion.normal),
             child: OlIconButton(
               icon: OlIcons.chevronRight,
               semanticLabel: 'Bulan berikutnya',
-              onPressed: atLatest
-                  ? null
-                  : () => onChanged(DateTime(month.year, month.month + 1)),
+              onPressed: atLatest ? null : () => onChanged(DateTime(month.year, month.month + 1)),
             ),
           ),
         ],
@@ -83,27 +114,16 @@ class MonthSwitcher extends StatelessWidget {
 }
 
 /// Unduh Excel satu bulan lalu buka lembar bagikan (simpan ke Files / kirim WhatsApp / Drive).
-Future<void> exportExcel(
-  BuildContext context,
-  WidgetRef ref,
-  DateTime month,
-) async {
+Future<void> exportExcel(BuildContext context, WidgetRef ref, DateTime month) async {
   try {
     final bytes = await ref.read(klinikApiProvider).export(month);
     final dir = await getTemporaryDirectory();
-    final name =
-        '${month.month.toString().padLeft(2, '0')}-${month.year}_data_pasien.xlsx';
+    final name = '${month.month.toString().padLeft(2, '0')}-${month.year}_data_pasien.xlsx';
     final file = File('${dir.path}/$name');
     await file.writeAsBytes(bytes, flush: true);
     await SharePlus.instance.share(
       ShareParams(
-        files: [
-          XFile(
-            file.path,
-            mimeType:
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          ),
-        ],
+        files: [XFile(file.path, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')],
         title: 'Data pasien ${monthFmt.format(month)}',
       ),
     );
@@ -151,13 +171,8 @@ class LabelValue extends StatelessWidget {
 }
 
 /// Konfirmasi hapus standar.
-Future<bool> confirmHapus(
-  BuildContext context, {
-  required String title,
-  required String message,
-}) => context.feedback.confirm(
-  ConfirmSpec(title: title, message: message, confirmLabel: 'Hapus'),
-);
+Future<bool> confirmHapus(BuildContext context, {required String title, required String message}) =>
+    context.feedback.confirm(ConfirmSpec(title: title, message: message, confirmLabel: 'Hapus'));
 
 String nomorPasien(int? n) => n == null ? 'Belum bernomor' : 'No. $n';
 

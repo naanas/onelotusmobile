@@ -424,7 +424,7 @@ class _ToastContent extends StatelessWidget {
           // Ikon "meletup" sedikit setelah toast muncul (centang sukses terasa hidup).
           TweenAnimationBuilder<double>(
             tween: Tween(begin: OlMotion.reduced(context) ? 1 : .3, end: 1),
-            duration: const Duration(milliseconds: 520),
+            duration: const Duration(milliseconds: 400),
             curve: OlMotion.spring,
             builder: (_, v, child) => Transform.scale(scale: v, child: child),
             child: OlIcon(icon, size: 22, color: color),

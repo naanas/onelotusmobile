@@ -73,7 +73,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                   OlSpace.screen,
                   24,
                 ),
-                children: [
+                children: OlAppear.wrapContent([
                   const Align(
                     alignment: Alignment.centerLeft,
                     child: OlBackButton(),
@@ -120,7 +120,7 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                           'Permintaan terkirim bila akun terdaftar. Hubungi admin bila belum ada kabar dalam 1 jam.',
                     ),
                   ],
-                ],
+                ]),
               ),
             ),
             OlFootBar(

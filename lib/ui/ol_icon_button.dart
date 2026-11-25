@@ -135,7 +135,7 @@ class _BadgePopState extends State<_BadgePop>
     with SingleTickerProviderStateMixin {
   late final _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 520),
+    duration: const Duration(milliseconds: 400),
   );
   late final _scale = TweenSequence<double>([
     TweenSequenceItem(

@@ -5,9 +5,9 @@ import '../theme/app_theme.dart';
 
 /// Pola gerak antar layar (§2.5: 150–250ms, easeOutCubic, hormati "kurangi gerakan").
 abstract final class OlTransitions {
-  /// Durasi pindah layar. Sedikit di atas 250ms agar slide tidak terasa patah di HP kelas menengah.
-  static const page = Duration(milliseconds: 300);
-  static const tab = Duration(milliseconds: 280);
+  /// Durasi pergantian fase (fade). Pendek supaya aplikasi terasa sigap.
+  static const page = Duration(milliseconds: 240);
+  static const tab = Duration(milliseconds: 200);
 }
 
 /// Pindah layar gaya aplikasi modern (Android & iOS sama): layar baru meluncur penuh dari kanan dengan
@@ -17,10 +17,12 @@ class OlPageTransitionsBuilder extends PageTransitionsBuilder {
   const OlPageTransitionsBuilder();
 
   @override
-  Duration get transitionDuration => const Duration(milliseconds: 420);
+  // Slide penuh layar butuh sedikit lebih lama dari 250ms agar tidak terasa patah, tapi tetap di bawah ~300ms.
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 300);
 
   @override
-  Duration get reverseTransitionDuration => const Duration(milliseconds: 360);
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 260);
 
   @override
   Widget buildTransitions<T>(

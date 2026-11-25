@@ -207,7 +207,7 @@ class OlHeroBackdrop extends StatelessWidget {
           base,
           TweenAnimationBuilder<double>(
             tween: Tween(begin: OlMotion.reduced(context) ? 1 : 0, end: 1),
-            duration: const Duration(milliseconds: 1100),
+            duration: const Duration(milliseconds: 700),
             curve: Curves.easeOutCubic,
             builder: (_, v, _) => CustomPaint(painter: _LotusPainter(bloom: v, scroll: scroll)),
           ),

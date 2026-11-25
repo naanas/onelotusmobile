@@ -428,7 +428,7 @@ class _BackToTopState extends State<_BackToTop> {
       ignoring: !v,
       child: AnimatedSlide(
         offset: v ? Offset.zero : const Offset(0, .6),
-        duration: reduced ? Duration.zero : const Duration(milliseconds: 420),
+        duration: reduced ? Duration.zero : const Duration(milliseconds: 300),
         curve: v ? Curves.easeOutBack : Curves.easeInCubic,
         child: AnimatedOpacity(
           opacity: v ? 1 : 0,

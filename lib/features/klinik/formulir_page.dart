@@ -81,11 +81,17 @@ class _FormulirPageState extends ConsumerState<FormulirPage> with VisibleReload 
               if (p.total > 0) Text('${p.total} menunggu persetujuan', style: t.caption),
               if (baru.isNotEmpty) ...[
                 const OlSectionHeader(title: 'Jadwal belum diterima'),
-                for (final f in baru) _FormulirCard(data: f, onTap: () => _open(f)),
+                OlAnimatedItems(children: [
+                  for (final f in baru)
+                    KeyedSubtree(key: ValueKey(f.id), child: _FormulirCard(data: f, onTap: () => _open(f))),
+                ]),
               ],
               if (lunas.isNotEmpty) ...[
                 const OlSectionHeader(title: 'Sudah terjadwal'),
-                for (final f in lunas) _FormulirCard(data: f, onTap: () => _open(f)),
+                OlAnimatedItems(children: [
+                  for (final f in lunas)
+                    KeyedSubtree(key: ValueKey(f.id), child: _FormulirCard(data: f, onTap: () => _open(f))),
+                ]),
               ],
               PagerFooter(pager: p),
             ],

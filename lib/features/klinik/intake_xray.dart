@@ -39,6 +39,7 @@ class _Pending {
   final Uint8List bytes;
   final String mime;
   String? error;
+  double progress = 0;
 }
 
 /// Foto rontgen/MRI pasien, ditampilkan langsung di aplikasi. Isi diunduh lewat API (login staf, didekripsi
@@ -48,14 +49,9 @@ class _Pending {
 /// [IntakeXray.pasien]: semua rontgen pasien + (bila [editable]) staf bisa menambah dari galeri/kamera seperti
 /// pasien di form web, dan menghapus foto yang diunggah staf. [IntakeXray.booking]: rontgen satu kiriman formulir.
 class IntakeXray extends ConsumerStatefulWidget {
-  const IntakeXray.booking({super.key, required String bookingId})
-    : id = bookingId,
-      pasien = false,
-      editable = false;
+  const IntakeXray.booking({super.key, required String bookingId}) : id = bookingId, pasien = false, editable = false;
 
-  const IntakeXray.pasien({super.key, required String pasienId, this.editable = false})
-    : id = pasienId,
-      pasien = true;
+  const IntakeXray.pasien({super.key, required String pasienId, this.editable = false}) : id = pasienId, pasien = true;
 
   final String id;
   final bool pasien;
@@ -119,9 +115,19 @@ class _IntakeXrayState extends ConsumerState<IntakeXray> {
   }
 
   Future<void> _upload(_Pending p) async {
-    setState(() => p.error = null);
+    setState(() {
+      p.error = null;
+      p.progress = 0;
+    });
     try {
-      final f = await _api.unggahRontgen(widget.id, p.bytes, p.mime);
+      final f = await _api.unggahRontgen(
+        widget.id,
+        p.bytes,
+        p.mime,
+        onProgress: (v) {
+          if (mounted) setState(() => p.progress = v.clamp(0, 1));
+        },
+      );
       if (!mounted) return;
       _bytes[f.id] = Future.value(p.bytes);
       setState(() {
@@ -141,16 +147,17 @@ class _IntakeXrayState extends ConsumerState<IntakeXray> {
   }
 
   Future<void> _hapus(RontgenFile f) async {
-    final ok = await confirmHapus(
-      context,
-      title: 'Hapus foto rontgen?',
-      message: 'Foto ini dihapus dari data pasien.',
-    );
+    final ok = await confirmHapus(context, title: 'Hapus foto rontgen?', message: 'Foto ini dihapus dari data pasien.');
     if (!ok || !mounted) return;
     try {
       await _api.hapusRontgen(widget.id, f.id);
       if (!mounted) return;
-      setState(() => _files = [for (final x in _files ?? const <RontgenFile>[]) if (x.id != f.id) x]);
+      setState(
+        () => _files = [
+          for (final x in _files ?? const <RontgenFile>[])
+            if (x.id != f.id) x,
+        ],
+      );
       context.feedback.success('Foto rontgen dihapus.');
     } on AppError catch (e) {
       if (mounted) context.feedback.error(e);
@@ -162,7 +169,10 @@ class _IntakeXrayState extends ConsumerState<IntakeXray> {
       context.feedback.info('File ${f.mime == 'application/pdf' ? 'PDF' : 'HEIC'} belum bisa ditampilkan di aplikasi.');
       return;
     }
-    final images = [for (final x in _files ?? const <RontgenFile>[]) if (x.isImage) x];
+    final images = [
+      for (final x in _files ?? const <RontgenFile>[])
+        if (x.isImage) x,
+    ];
     await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
@@ -201,18 +211,16 @@ class _IntakeXrayState extends ConsumerState<IntakeXray> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final f in files) _thumb(context, f),
-              for (final p in _pending) _pendingTile(context, p),
+              for (final f in files) _PopIn(key: ValueKey(f.id), child: _thumb(context, f)),
+              for (final p in _pending) _PopIn(key: ObjectKey(p), child: _pendingTile(context, p)),
               if (widget.editable && !loading) ...[
                 _AddTile(icon: OlIcons.upload, label: 'Galeri', onTap: () => _pick(ImageSource.gallery)),
                 _AddTile(icon: OlIcons.camera, label: 'Kamera', onTap: () => _pick(ImageSource.camera)),
               ],
-              if (loading)
-                const SizedBox(
-                  width: 84,
-                  height: 84,
-                  child: Center(child: SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))),
-                ),
+              if (loading) ...[
+                const Skeleton(width: 84, height: 84, radius: 14),
+                const Skeleton(width: 84, height: 84, radius: 14),
+              ],
             ],
           ),
           if (widget.editable) ...[
@@ -250,16 +258,21 @@ class _IntakeXrayState extends ConsumerState<IntakeXray> {
                   child: f.isImage
                       ? FutureBuilder<Uint8List>(
                           future: _load(f),
-                          builder: (context, s) => s.data != null
-                              ? Image.memory(s.data!, fit: BoxFit.cover, gaplessPlayback: true)
-                              : Center(
-                                  child: s.hasError
-                                      ? OlIcon(OlIcons.xray, color: c.muted)
-                                      : const SizedBox.square(
-                                          dimension: 20,
-                                          child: CircularProgressIndicator(strokeWidth: 2),
-                                        ),
-                                ),
+                          // Kerangka berkilau selama memuat, lalu foto memudar masuk.
+                          builder: (context, s) => AnimatedSwitcher(
+                            duration: OlMotion.of(context, OlMotion.slow),
+                            child: s.data != null
+                                ? SizedBox.expand(
+                                    key: const ValueKey('img'),
+                                    child: Image.memory(s.data!, fit: BoxFit.cover, gaplessPlayback: true),
+                                  )
+                                : s.hasError
+                                ? Center(
+                                    key: const ValueKey('err'),
+                                    child: OlIcon(OlIcons.xray, color: c.muted),
+                                  )
+                                : const Skeleton(key: ValueKey('load'), width: 84, height: 84, radius: 14),
+                          ),
                         )
                       : Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -326,12 +339,12 @@ class _IntakeXrayState extends ConsumerState<IntakeXray> {
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Center(
-                child: failed
-                    ? const OlIcon(OlIcons.refresh, color: Colors.white)
-                    : const SizedBox.square(
-                        dimension: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white),
-                      ),
+                child: AnimatedSwitcher(
+                  duration: OlMotion.of(context, OlMotion.normal),
+                  child: failed
+                      ? const OlIcon(OlIcons.refresh, key: ValueKey('retry'), color: Colors.white)
+                      : _UploadProgress(key: const ValueKey('up'), value: p.progress),
+                ),
               ),
             ),
           ),
@@ -367,9 +380,9 @@ class _AddTile extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'Tambah foto rontgen dari ${label.toLowerCase()}',
-      child: InkWell(
+      child: OlPressable(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        scale: .94,
         child: Container(
           width: 84,
           height: 84,
@@ -383,7 +396,10 @@ class _AddTile extends StatelessWidget {
             children: [
               OlIcon(icon, color: c.brand),
               const SizedBox(height: 4),
-              Text(label, style: t.caption.copyWith(color: c.brand, fontWeight: FontWeight.w700)),
+              Text(
+                label,
+                style: t.caption.copyWith(color: c.brand, fontWeight: FontWeight.w700),
+              ),
             ],
           ),
         ),
@@ -451,9 +467,11 @@ class _RontgenViewerState extends State<_RontgenViewer> {
           future: widget.load(widget.files[i]),
           builder: (context, s) {
             if (s.data != null) {
-              return InteractiveViewer(
-                maxScale: 6,
-                child: Center(child: Image.memory(s.data!, fit: BoxFit.contain, gaplessPlayback: true)),
+              return _PopIn(
+                child: InteractiveViewer(
+                  maxScale: 6,
+                  child: Center(child: Image.memory(s.data!, fit: BoxFit.contain, gaplessPlayback: true)),
+                ),
               );
             }
             if (s.hasError) {
@@ -461,10 +479,62 @@ class _RontgenViewerState extends State<_RontgenViewer> {
                 child: Text('Foto gagal dimuat. Coba lagi.', style: TextStyle(color: Colors.white70)),
               );
             }
-            return const Center(child: CircularProgressIndicator(color: Colors.white));
+            return const Center(child: CircularProgressIndicator(color: Colors.white54, strokeWidth: 2));
           },
         ),
       ),
     );
   }
+}
+
+/// Progres unggah: cincin terisi halus + persen.
+class _UploadProgress extends StatelessWidget {
+  const _UploadProgress({super.key, required this.value});
+  final double value;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(end: value),
+    duration: OlMotion.of(context, OlMotion.normal),
+    curve: OlMotion.curve,
+    builder: (context, v, _) => SizedBox.square(
+      dimension: 38,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CircularProgressIndicator(
+            // Belum ada byte terkirim → putar (menunggu koneksi), lalu terisi sesuai kemajuan.
+            value: v <= 0.01 ? null : v,
+            strokeWidth: 3,
+            color: Colors.white,
+            backgroundColor: Colors.white24,
+          ),
+          Center(
+            child: Text(
+              '${(v * 100).round()}%',
+              style: context.olText.caption.copyWith(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+/// Tile muncul: memudar sambil membesar sedikit (sekali, saat pertama dipasang).
+class _PopIn extends StatelessWidget {
+  const _PopIn({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0, end: 1),
+    duration: OlMotion.of(context, const Duration(milliseconds: 240)),
+    curve: OlMotion.curve,
+    child: child,
+    builder: (context, v, child) => Opacity(
+      opacity: v,
+      child: Transform.scale(scale: 0.92 + 0.08 * v, child: child),
+    ),
+  );
 }

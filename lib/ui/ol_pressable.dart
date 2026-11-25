@@ -65,7 +65,7 @@ class _OlPressableState extends State<OlPressable> {
         child: AnimatedScale(
           scale: _down && !reduced ? widget.scale : 1,
           // Turun cepat, naik dengan pantulan kecil.
-          duration: Duration(milliseconds: _down ? 110 : 320),
+          duration: Duration(milliseconds: _down ? 90 : 260),
           curve: _down ? Curves.easeOutCubic : OlMotion.spring,
           child: widget.child,
         ),

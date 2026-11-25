@@ -121,12 +121,17 @@ class _PasienDetailPageState extends ConsumerState<PasienDetailPage> {
               ),
             )
           else
-            for (final x in d.pemeriksaan)
-              _PemeriksaanCard(
-                data: x,
-                onEdit: () => _go(Routes.klinikEditPemeriksaan(x.id), extra: x),
-                onHapus: () => _hapusPemeriksaan(x),
-              ),
+            OlAnimatedItems(children: [
+              for (final x in d.pemeriksaan)
+                KeyedSubtree(
+                  key: ValueKey(x.id),
+                  child: _PemeriksaanCard(
+                    data: x,
+                    onEdit: () => _go(Routes.klinikEditPemeriksaan(x.id), extra: x),
+                    onHapus: () => _hapusPemeriksaan(x),
+                  ),
+                ),
+            ]),
         ],
       ],
     );

@@ -18,7 +18,7 @@ class OlCountUp extends StatelessWidget {
     if (OlMotion.reduced(context)) return Text(f(value), style: style, textAlign: textAlign);
     return TweenAnimationBuilder<double>(
       tween: Tween(end: value.toDouble()),
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 600),
       curve: Curves.easeOutExpo,
       builder: (_, v, _) => Text(f(v.round()), style: style, textAlign: textAlign),
     );

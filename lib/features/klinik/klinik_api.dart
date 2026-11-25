@@ -109,8 +109,19 @@ class KlinikApi {
       _get('$_p/pasien/$pasienId/rontgen', (b) => _list(_data(b), RontgenFile.fromJson));
 
   /// Staf mengunggah satu foto rontgen/MRI (dienkripsi server; maks. 8 MB).
-  Future<RontgenFile> unggahRontgen(String pasienId, List<int> bytes, String mime) => _changed(
-    _c.putBytes('$_p/pasien/$pasienId/rontgen', bytes, mime, (d) => RontgenFile.fromJson(_map(d))),
+  Future<RontgenFile> unggahRontgen(
+    String pasienId,
+    List<int> bytes,
+    String mime, {
+    void Function(double progress)? onProgress,
+  }) => _changed(
+    _c.putBytes(
+      '$_p/pasien/$pasienId/rontgen',
+      bytes,
+      mime,
+      (d) => RontgenFile.fromJson(_map(d)),
+      onProgress: onProgress,
+    ),
   );
 
   /// Hanya foto yang diunggah staf.

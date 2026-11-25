@@ -94,7 +94,7 @@ class _LockPageState extends ConsumerState<LockPage> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
               child: Column(
-                children: [
+                children: OlAppear.wrapContent([
                   OlAvatar(name: user.name, large: true),
                   const SizedBox(height: 20),
                   Semantics(
@@ -116,14 +116,17 @@ class _LockPageState extends ConsumerState<LockPage> {
                   const SizedBox(height: 16),
                   Semantics(
                     liveRegion: true,
-                    child: Text(
-                      _error
-                          ? 'PIN salah. Sisa $_remaining percobaan'
-                          : 'Sisa $_remaining percobaan',
+                    child: AnimatedDefaultTextStyle(
+                      duration: OlMotion.of(context, OlMotion.normal),
                       style: t.body.copyWith(
                         fontSize: 13,
                         color: _error ? c.crit : c.muted,
-                        fontWeight: _error ? FontWeight.w600 : null,
+                        fontWeight: _error ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                      child: Text(
+                        _error
+                            ? 'PIN salah. Sisa $_remaining percobaan'
+                            : 'Sisa $_remaining percobaan',
                       ),
                     ),
                   ),
@@ -149,7 +152,7 @@ class _LockPageState extends ConsumerState<LockPage> {
                     label: 'Lupa PIN? Masuk dengan password',
                     onPressed: _forgotPin,
                   ),
-                ],
+                ]),
               ),
             ),
           ),

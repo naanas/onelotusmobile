@@ -117,7 +117,7 @@ class _ChooseContextPageState extends ConsumerState<ChooseContextPage> {
                   OlSpace.screen,
                   24,
                 ),
-                children: [
+                children: OlAppear.wrapContent([
                   if (fromAccount)
                     const Align(
                       alignment: Alignment.centerLeft,
@@ -140,7 +140,7 @@ class _ChooseContextPageState extends ConsumerState<ChooseContextPage> {
                   ),
                   const SizedBox(height: 24),
                   ...body,
-                ],
+                ]),
               ),
             ),
             OlFootBar(children: [button]),

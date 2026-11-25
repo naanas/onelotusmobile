@@ -219,19 +219,28 @@ class ApiClient {
   );
 
   /// Kirim isi file mentah (server mengenkripsi sebelum menyimpan).
+  /// [onProgress]: 0..1 selama unggah (isi dikirim per potongan 64 KB supaya kemajuan terbaca).
   Future<T> putBytes<T>(
     String path,
     List<int> bytes,
     String mime,
-    T Function(dynamic data) parse,
-  ) => _send(
+    T Function(dynamic data) parse, {
+    void Function(double progress)? onProgress,
+  }) => _send(
     () => dio.put<dynamic>(
       path,
-      data: Stream.fromIterable([bytes]),
+      data: Stream.fromIterable(_chunks(bytes)),
       options: Options(headers: {'Content-Type': mime, Headers.contentLengthHeader: bytes.length}),
+      onSendProgress: onProgress == null || bytes.isEmpty ? null : (sent, total) => onProgress(sent / bytes.length),
     ),
     (d) => parse(unwrap(d)),
   );
+
+  static Iterable<List<int>> _chunks(List<int> b, [int size = 64 << 10]) sync* {
+    for (var i = 0; i < b.length; i += size) {
+      yield b.sublist(i, i + size > b.length ? b.length : i + size);
+    }
+  }
 
   static Map<String, dynamic>? _clean(Map<String, dynamic>? q) => q == null
       ? null

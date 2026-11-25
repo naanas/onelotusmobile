@@ -169,12 +169,18 @@ class _PasienListPageState extends ConsumerState<PasienListPage> with VisibleRel
         ),
         _FormulirBanner(key: ValueKey(_formGen)),
         if (items.isNotEmpty) const OlSectionHeader(title: 'Pasien terbaru'),
-        for (final x in items)
-          _PasienCard(
-            pasien: x,
-            onTap: () => _open(Routes.klinikDetail(x.id), extra: x),
-            onMore: () => _actions(x),
-          ),
+        if (items.isNotEmpty)
+          OlAnimatedItems(children: [
+            for (final x in items)
+              KeyedSubtree(
+                key: ValueKey(x.id),
+                child: _PasienCard(
+                  pasien: x,
+                  onTap: () => _open(Routes.klinikDetail(x.id), extra: x),
+                  onMore: () => _actions(x),
+                ),
+              ),
+          ]),
         if (p.loadedOnce && items.isEmpty && p.error == null)
           OlCard(
             child: EmptyState(

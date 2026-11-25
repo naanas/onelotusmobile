@@ -96,13 +96,13 @@ abstract final class OlMotion {
   static const spring = Cubic(0.34, 1.36, 0.64, 1.0);
 
   /// Durasi elemen yang muncul (sheet, dialog, kartu masuk).
-  static const enter = Duration(milliseconds: 420);
+  static const enter = Duration(milliseconds: 300);
   static const exit = Duration(milliseconds: 220);
 
   /// Bottom sheet: naik cepat lalu mendarat lembut; turun lebih cepat.
   static const sheet = AnimationStyle(
-    duration: Duration(milliseconds: 460),
-    reverseDuration: Duration(milliseconds: 240),
+    duration: Duration(milliseconds: 340),
+    reverseDuration: Duration(milliseconds: 200),
     curve: Cubic(0.16, 1, 0.3, 1),
     reverseCurve: Curves.easeInCubic,
   );

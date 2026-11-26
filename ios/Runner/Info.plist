@@ -47,6 +47,10 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Face ID dipakai untuk membuka aplikasi tanpa mengetik PIN.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Galeri dipakai untuk memilih foto rontgen/MRI pasien.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Kamera dipakai untuk memindai QR formulir pasien dan memotret rontgen.</string>
 	<key>CFBundleURLTypes</key>

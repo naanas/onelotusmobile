@@ -1,0 +1,32 @@
+# Build iOS di Codemagic tanpa akun Apple Developer berbayar.
+# Hasil: OneLotus-unsigned.ipa (tab Artifacts) → pasang ke iPhone lewat Sideloadly (ditandatangani Apple ID gratis,
+# berlaku 7 hari; pasang ulang setelahnya).
+workflows:
+  ios-unsigned:
+    name: iOS unsigned (Sideloadly)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      flutter: 3.38.10
+      xcode: latest
+      cocoapods: default
+      vars:
+        # env/*.json tidak ikut di-commit, jadi alamat API diberikan di sini (backend produksi, https).
+        API_URL: https://backendonelotusmobile.onrender.com
+    scripts:
+      - name: Ambil dependensi
+        script: flutter pub get
+      - name: Pod install
+        script: cd ios && pod install --repo-update
+      - name: Build iOS (tanpa signing)
+        script: |
+          flutter build ios --release --no-codesign \
+            --dart-define=API_URL=$API_URL \
+            --dart-define=HTTP_LOG=false
+      - name: Bungkus jadi .ipa
+        script: |
+          rm -rf build/ipa && mkdir -p build/ipa/Payload
+          cp -R build/ios/iphoneos/Runner.app build/ipa/Payload/
+          cd build/ipa && zip -qry OneLotus-unsigned.ipa Payload
+    artifacts:
+      - build/ipa/*.ipa

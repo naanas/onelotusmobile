@@ -30,11 +30,16 @@ class _OlRefreshableState extends State<OlRefreshable> {
   @override
   Widget build(BuildContext context) => OlRefreshScope._(
     loaders: _loaders,
-    child: RefreshIndicator(
-      onRefresh: _refresh,
-      color: context.ol.brand,
-      backgroundColor: context.ol.surface,
-      child: widget.child,
+    // Tanpa efek pantul (iOS) / regang (Android 12+): header di dalam daftar tidak ikut tertarik turun;
+    // yang turun hanya indikator muat ulang di atas konten.
+    child: ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(overscroll: false),
+      child: RefreshIndicator(
+        onRefresh: _refresh,
+        color: context.ol.brand,
+        backgroundColor: context.ol.surface,
+        child: widget.child,
+      ),
     ),
   );
 }
@@ -59,4 +64,5 @@ class OlRefreshScope extends InheritedWidget {
 }
 
 /// Fisika gulir yang selalu bisa ditarik walau isi layar pendek (agar tarik-untuk-muat-ulang jalan).
-const olRefreshPhysics = AlwaysScrollableScrollPhysics();
+/// Clamping di semua platform: di iOS bawaannya memantul sehingga header ikut turun saat ditarik.
+const olRefreshPhysics = AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics());

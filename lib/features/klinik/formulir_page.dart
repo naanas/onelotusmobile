@@ -8,6 +8,7 @@ import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import 'intake_xray.dart';
+import 'k_ui.dart';
 import 'klinik_api.dart';
 import 'klinik_models.dart';
 import 'pager.dart';
@@ -54,8 +55,14 @@ class _FormulirPageState extends ConsumerState<FormulirPage> with VisibleReload 
         listenable: _pager,
         builder: (context, _) {
           final p = _pager;
-          final baru = [for (final f in p.items) if (f.menunggu) f];
-          final lunas = [for (final f in p.items) if (!f.menunggu) f];
+          final baru = [
+            for (final f in p.items)
+              if (f.menunggu) f,
+          ];
+          final lunas = [
+            for (final f in p.items)
+              if (!f.menunggu) f,
+          ];
           return OlPageBody(
             pinnedHeader: true,
             backToTop: true,
@@ -65,10 +72,40 @@ class _FormulirPageState extends ConsumerState<FormulirPage> with VisibleReload 
               return _pager.reload();
             },
             children: [
-              Text(
-                'Pendaftaran dari form web dan booking aplikasi pasien. Setujui supaya pasien '
-                'mendapat nomor pasien dan masuk Data Pasien.',
-                style: t.body.copyWith(color: context.ol.muted),
+              KHero(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        if (p.total > 0) const KPulseDot(color: Color(0xFFFFC56B)),
+                        if (p.total > 0) const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            p.total > 0 ? 'Perlu persetujuan' : 'Semua formulir beres',
+                            style: t.caption.copyWith(
+                              color: Colors.white.withValues(alpha: .8),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: OlSpace.md),
+                    KStatRow(
+                      light: true,
+                      children: [
+                        KStat(value: p.loadedOnce ? baru.length : null, label: 'Jadwal belum diterima', light: true),
+                        KStat(value: p.loadedOnce ? lunas.length : null, label: 'Sudah terjadwal', light: true),
+                      ],
+                    ),
+                    const SizedBox(height: OlSpace.md),
+                    Text(
+                      'Dari form web & aplikasi pasien. Setujui supaya pasien mendapat nomor dan masuk Data Pasien.',
+                      style: t.caption.copyWith(color: Colors.white.withValues(alpha: .75), height: 1.4),
+                    ),
+                  ],
+                ),
               ),
               if (p.loadedOnce && p.total == 0 && p.error == null)
                 const OlCard(
@@ -78,20 +115,29 @@ class _FormulirPageState extends ConsumerState<FormulirPage> with VisibleReload 
                     message: 'Kiriman form web dan booking aplikasi yang sudah dibayar akan muncul di sini.',
                   ),
                 ),
-              if (p.total > 0) Text('${p.total} menunggu persetujuan', style: t.caption),
               if (baru.isNotEmpty) ...[
                 const OlSectionHeader(title: 'Jadwal belum diterima'),
-                OlAnimatedItems(children: [
-                  for (final f in baru)
-                    KeyedSubtree(key: ValueKey(f.id), child: _FormulirCard(data: f, onTap: () => _open(f))),
-                ]),
+                OlAnimatedItems(
+                  children: [
+                    for (final f in baru)
+                      KeyedSubtree(
+                        key: ValueKey(f.id),
+                        child: _FormulirCard(data: f, onTap: () => _open(f)),
+                      ),
+                  ],
+                ),
               ],
               if (lunas.isNotEmpty) ...[
                 const OlSectionHeader(title: 'Sudah terjadwal'),
-                OlAnimatedItems(children: [
-                  for (final f in lunas)
-                    KeyedSubtree(key: ValueKey(f.id), child: _FormulirCard(data: f, onTap: () => _open(f))),
-                ]),
+                OlAnimatedItems(
+                  children: [
+                    for (final f in lunas)
+                      KeyedSubtree(
+                        key: ValueKey(f.id),
+                        child: _FormulirCard(data: f, onTap: () => _open(f)),
+                      ),
+                  ],
+                ),
               ],
               PagerFooter(pager: p),
             ],
@@ -113,51 +159,86 @@ class _FormulirCard extends StatelessWidget {
     final c = context.ol;
     final f = data;
     final nomor = f.pasien?.nomor;
+    final accent = f.menunggu ? c.warn : c.ok;
     return OlCard(
       onTap: onTap,
       semanticLabel: 'Formulir ${f.nama}',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              OlAvatar(name: f.nama),
-              const SizedBox(width: OlSpace.md),
-              Expanded(child: Text(f.nama, style: t.heading)),
-              OlTag(
-                f.dariAplikasi ? 'Aplikasi' : 'Form Web',
-                tone: f.dariAplikasi ? OlTagTone.brand : OlTagTone.outline,
+      padding: EdgeInsets.zero,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(OlRadius.card),
+        child: Stack(
+          children: [
+            Positioned(left: 0, top: 0, bottom: 0, width: 5, child: ColoredBox(color: accent)),
+            Padding(
+              padding: const EdgeInsets.only(left: 5),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 14, OlSpace.lg, OlSpace.lg),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        KAvatar(name: f.nama, size: 42),
+                        const SizedBox(width: OlSpace.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                f.nama,
+                                style: t.bodyStrong.copyWith(fontSize: 15.5),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                nomor == null ? 'Pasien baru' : nomorPasien(nomor),
+                                style: t.caption.copyWith(
+                                  color: nomor == null ? c.brand : c.muted,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        KPill(
+                          f.dariAplikasi ? 'Aplikasi' : 'Form Web',
+                          icon: f.dariAplikasi ? OlIcons.user : OlIcons.attach,
+                          tone: f.dariAplikasi ? KPillTone.brand : KPillTone.muted,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: OlSpace.md),
+                    KMeta(OlIcons.package, f.layanan),
+                    KMeta(
+                      f.homeVisit ? OlIcons.homeVisit : OlIcons.calendar,
+                      '${_when(f.jadwal)}${f.homeVisit ? ' · Home visit' : ''}',
+                      color: c.fg,
+                    ),
+                    if (f.intake.keluhan != null) ...[
+                      const SizedBox(height: OlSpace.md),
+                      KQuote(f.intake.keluhan!, maxLines: 2),
+                    ],
+                    const SizedBox(height: OlSpace.md),
+                    Row(
+                      children: [
+                        KPill(
+                          f.lunas
+                              ? 'Lunas${f.total == null ? '' : ' · ${_rp.format(f.total)}'}'
+                              : (f.menunggu ? 'Jadwal belum diterima' : 'Tanpa pembayaran online'),
+                          icon: f.lunas ? OlIcons.checkCircle : (f.menunggu ? OlIcons.clock : OlIcons.info),
+                          tone: f.lunas ? KPillTone.ok : (f.menunggu ? KPillTone.warn : KPillTone.muted),
+                        ),
+                        const Spacer(),
+                        Text('Masuk ${relatif(f.dikirim).toLowerCase()}', style: t.caption.copyWith(fontSize: 11.5)),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-          const SizedBox(height: OlSpace.sm),
-          const SizedBox(height: 2),
-          Text(
-            nomor == null ? 'Pasien baru · nomor terbit setelah disetujui' : nomorPasien(nomor),
-            style: t.caption.copyWith(
-              color: nomor == null ? c.brand : c.muted,
-              fontWeight: nomor == null ? FontWeight.w700 : null,
-            ),
-          ),
-          Text('Dikirim ${_when(f.dikirim)}', style: t.caption),
-          Text('${f.layanan} · ${_when(f.jadwal)}', style: t.caption),
-          if (f.intake.keluhan != null) ...[
-            const SizedBox(height: OlSpace.xs),
-            Text(
-              f.intake.keluhan!,
-              style: t.body,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ],
-          const SizedBox(height: OlSpace.xs),
-          Text(
-            f.lunas
-                ? 'Lunas${f.total == null ? '' : ' · ${_rp.format(f.total)}'}'
-                : (f.menunggu ? 'Tanpa pembayaran online · jadwal belum diterima' : 'Tanpa pembayaran online'),
-            style: t.caption.copyWith(color: f.lunas ? c.ok : c.muted, fontWeight: FontWeight.w700),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -289,63 +370,149 @@ class _FormulirDetailPageState extends ConsumerState<FormulirDetailPage> {
     final t = context.olText;
     final p = f.pasien;
     final i = f.intake;
-    final diri = <(String, String)>[
-      ('Nomor Pasien', p?.nomor == null ? 'Belum ada (terbit setelah disetujui)' : '${p!.nomor}'),
-      ('Nama', f.nama),
-      if (p != null) ...[
-        (
-          'Tanggal Lahir',
-          [if (p.tempatLahir != null) p.tempatLahir!, tgl(p.ttl)].join(', '),
-        ),
-        if (p.tlp != null) ('Nomor Telepon', p.tlp!),
-        ('Alamat', p.alamat ?? '-'),
-        ('Jenis Kelamin', genderLabel(p.gender)),
-        ('Instansi', p.instansi ?? '-'),
-        ('Hobi / Kegiatan', p.hobi ?? '-'),
-        ('Berat Badan', p.bb == null ? '-' : '${fmtNum(p.bb!)} kg'),
-        ('Tinggi Badan', p.tb == null ? '-' : '${fmtNum(p.tb!)} cm'),
-      ],
-    ];
-    final kirim = <(String, String)>[
-      ('Sumber', f.dariAplikasi ? 'Aplikasi pasien' : 'Form web'),
-      ('Dikirim', _when(f.dikirim)),
-      ('Layanan', f.layanan),
-      ('Jadwal', '${_when(f.jadwal)}${f.homeVisit ? ' · Home visit' : ''}'),
-      (
-        'Pembayaran',
-        f.lunas ? 'Lunas${f.total == null ? '' : ' · ${_rp.format(f.total)}'}' : 'Tanpa pembayaran online',
-      ),
-      if (f.menunggu) ('Status jadwal', 'Belum diterima — diterima otomatis saat disetujui'),
-    ];
-    Widget card(String title, List<(String, String)> rows) => OlCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(title, style: t.heading),
-          const SizedBox(height: OlSpace.sm),
-          for (final (n, r) in rows.indexed)
-            OlInfoRow(label: r.$1, value: r.$2, divider: n < rows.length - 1),
-        ],
-      ),
-    );
+    final u = umur(p?.ttl);
     return [
-      card('Data Diri', diri),
-      OlCard(
+      KHero(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Keluhan', style: t.heading),
-            const SizedBox(height: OlSpace.xs),
-            Text(i.keluhan ?? '-', style: t.body),
-            LabelValue('Penyebab', i.penyebab),
-            LabelValue('Lama cedera', i.lamaCedera),
-            LabelValue('Rontgen', i.rontgen),
-            LabelValue('Catatan', i.catatan),
+            Row(
+              children: [
+                KAvatar(name: f.nama, size: 58, ring: true),
+                const SizedBox(width: OlSpace.lg),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(f.nama, style: t.title.copyWith(color: Colors.white, fontSize: 20, height: 1.15)),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          KPill(
+                            p?.nomor == null ? 'Pasien baru' : nomorPasien(p!.nomor),
+                            tone: KPillTone.glass,
+                            mono: p?.nomor != null,
+                          ),
+                          KPill(f.dariAplikasi ? 'Aplikasi pasien' : 'Form web', tone: KPillTone.glass),
+                          if (u != null) KPill('$u tahun', tone: KPillTone.glass),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: OlSpace.lg),
+            Container(
+              padding: const EdgeInsets.all(OlSpace.md),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  if (f.menunggu) const KPulseDot(color: Color(0xFFFFC56B)),
+                  if (!f.menunggu) const OlIcon(OlIcons.checkCircle, size: 18, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      f.menunggu
+                          ? 'Jadwal belum diterima — otomatis diterima saat disetujui'
+                          : (f.lunas ? 'Sudah terjadwal · lunas' : 'Sudah terjadwal'),
+                      style: t.caption.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
-      if (f.fileRontgen > 0) IntakeXray.booking(bookingId: f.id),
-      card('Kiriman', kirim),
+      KFormSection(
+        icon: OlIcons.pain,
+        title: 'Keluhan',
+        children: [
+          KQuote(i.keluhan ?? 'Tidak diisi'),
+          if (i.penyebab != null || i.lamaCedera != null || i.rontgen != null || i.catatan != null)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                KTextBlock(icon: OlIcons.alert, label: 'Penyebab', value: i.penyebab),
+                KTextBlock(icon: OlIcons.clock, label: 'Lama cedera', value: i.lamaCedera),
+                KTextBlock(icon: OlIcons.xray, label: 'Rontgen', value: i.rontgen),
+                KTextBlock(icon: OlIcons.chat, label: 'Catatan', value: i.catatan),
+              ],
+            ),
+        ],
+      ),
+      if (f.fileRontgen > 0)
+        KFormSection(
+          icon: OlIcons.xray,
+          title: 'Foto Rontgen / MRI',
+          children: [IntakeXray.booking(bookingId: f.id)],
+        ),
+      KFormSection(
+        icon: OlIcons.calendar,
+        title: 'Jadwal & Layanan',
+        children: [
+          KGrid(
+            items: [
+              KGridItem(KInfoTile(icon: OlIcons.package, label: 'Layanan', value: f.layanan), wide: true),
+              KGridItem(
+                KInfoTile(
+                  icon: f.homeVisit ? OlIcons.homeVisit : OlIcons.calendar,
+                  label: f.homeVisit ? 'Jadwal · home visit' : 'Jadwal',
+                  value: _when(f.jadwal),
+                ),
+                wide: true,
+              ),
+              KGridItem(KInfoTile(icon: OlIcons.clock, label: 'Dikirim', value: relatif(f.dikirim))),
+              KGridItem(
+                KInfoTile(
+                  icon: OlIcons.cash,
+                  label: 'Pembayaran',
+                  value: f.lunas ? 'Lunas${f.total == null ? '' : ' · ${_rp.format(f.total)}'}' : 'Belum online',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      if (p != null)
+        KFormSection(
+          icon: OlIcons.user,
+          title: 'Data Diri',
+          children: [
+            KGrid(
+              items: [
+                KGridItem(
+                  KInfoTile(
+                    icon: OlIcons.calendar,
+                    label: 'Tanggal lahir',
+                    value: [if (p.tempatLahir != null) p.tempatLahir!, tgl(p.ttl)].join(', '),
+                  ),
+                  wide: true,
+                ),
+                if (p.tlp != null)
+                  KGridItem(KInfoTile(icon: OlIcons.phone, label: 'Telepon', value: p.tlp!), wide: true),
+                KGridItem(KInfoTile(icon: OlIcons.pin, label: 'Alamat', value: p.alamat ?? '-'), wide: true),
+                KGridItem(KInfoTile(icon: OlIcons.user, label: 'Jenis kelamin', value: genderLabel(p.gender))),
+                KGridItem(KInfoTile(icon: OlIcons.branch, label: 'Instansi', value: p.instansi ?? '-')),
+                KGridItem(
+                  KInfoTile(
+                    icon: OlIcons.body,
+                    label: 'BB / TB',
+                    value:
+                        '${p.bb == null ? '-' : '${fmtNum(p.bb!)} kg'} · ${p.tb == null ? '-' : '${fmtNum(p.tb!)} cm'}',
+                  ),
+                ),
+                KGridItem(KInfoTile(icon: OlIcons.exercise, label: 'Hobi', value: p.hobi ?? '-')),
+              ],
+            ),
+          ],
+        ),
     ];
   }
 }
@@ -440,11 +607,7 @@ class _AlasanFormState extends State<_AlasanForm> {
         error: _error,
       ),
       const SizedBox(height: OlSpace.lg),
-      OlButton(
-        label: 'Tolak',
-        variant: OlButtonVariant.danger,
-        onPressed: _save,
-      ),
+      OlButton(label: 'Tolak', variant: OlButtonVariant.danger, onPressed: _save),
     ],
   );
 }

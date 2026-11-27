@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/auth/auth_controller.dart';
+import 'k_ui.dart';
 import 'klinik_api.dart';
 import 'klinik_models.dart';
 import 'notifikasi.dart';
@@ -28,9 +29,7 @@ class _PasienListPageState extends ConsumerState<PasienListPage> with VisibleRel
   Timer? _debounce;
   final _search = TextEditingController();
   int _formGen = 0;
-  late final _pager = Pager<Pasien>(
-    (page) => ref.read(klinikApiProvider).pasien(cari: _cari, page: page),
-  )..reload();
+  late final _pager = Pager<Pasien>((page) => ref.read(klinikApiProvider).pasien(cari: _cari, page: page))..reload();
 
   @override
   void onVisibleAgain() {
@@ -117,16 +116,11 @@ class _PasienListPageState extends ConsumerState<PasienListPage> with VisibleRel
     final first = user?.firstName;
     return InfiniteScroll(
       onEnd: _pager.more,
-      child: ListenableBuilder(
-        listenable: _pager,
-        builder: (context, _) => _body(context, admin, first),
-      ),
+      child: ListenableBuilder(listenable: _pager, builder: (context, _) => _body(context, admin, first)),
     );
   }
 
   Widget _body(BuildContext context, bool admin, String? first) {
-    final t = context.olText;
-    final c = context.ol;
     final p = _pager;
     final items = p.items;
     final hint = admin ? 'Cari nama, nomor pasien, alamat, no. HP' : 'Cari nama, nomor pasien, alamat';
@@ -152,35 +146,45 @@ class _PasienListPageState extends ConsumerState<PasienListPage> with VisibleRel
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text('Data Pasien', style: t.heading),
-              const SizedBox(height: 2),
-              if (!p.loadedOnce)
-                Text('Memuat…', style: t.body.copyWith(color: c.muted))
-              else
-                OlCountUp(
-                  p.total,
-                  style: t.body.copyWith(color: c.muted),
-                  format: (n) => _cari.isEmpty ? '$n pasien terdaftar' : '$n pasien cocok dengan "$_cari"',
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatTile(
+                      icon: OlIcons.users,
+                      label: _cari.isEmpty ? 'Pasien terdaftar' : 'Hasil pencarian',
+                      value: p.loadedOnce ? p.total : null,
+                    ),
+                  ),
+                  const SizedBox(width: OlSpace.sm),
+                  Expanded(child: _FormulirTile(key: ValueKey(_formGen))),
+                ],
+              ),
               const SizedBox(height: OlSpace.md),
               OlSearchField(hint: hint, controller: _search, onChanged: _onSearch),
             ],
           ),
         ),
-        _FormulirBanner(key: ValueKey(_formGen)),
-        if (items.isNotEmpty) const OlSectionHeader(title: 'Pasien terbaru'),
         if (items.isNotEmpty)
-          OlAnimatedItems(children: [
-            for (final x in items)
-              KeyedSubtree(
-                key: ValueKey(x.id),
-                child: _PasienCard(
-                  pasien: x,
-                  onTap: () => _open(Routes.klinikDetail(x.id), extra: x),
-                  onMore: () => _actions(x),
+          Row(
+            children: [
+              Expanded(child: OlSectionHeader(title: _cari.isEmpty ? 'Pasien terbaru' : 'Hasil untuk "$_cari"')),
+              KPill('${items.length} dari ${p.total}', tone: KPillTone.muted),
+            ],
+          ),
+        if (items.isNotEmpty)
+          OlAnimatedItems(
+            children: [
+              for (final x in items)
+                KeyedSubtree(
+                  key: ValueKey(x.id),
+                  child: _PasienCard(
+                    pasien: x,
+                    onTap: () => _open(Routes.klinikDetail(x.id), extra: x),
+                    onMore: () => _actions(x),
+                  ),
                 ),
-              ),
-          ]),
+            ],
+          ),
         if (p.loadedOnce && items.isEmpty && p.error == null)
           OlCard(
             child: EmptyState(
@@ -197,63 +201,93 @@ class _PasienListPageState extends ConsumerState<PasienListPage> with VisibleRel
   }
 }
 
-/// "N formulir menunggu persetujuan" → tab Formulir (seperti kartu ringkas di beranda pasien).
-class _FormulirBanner extends ConsumerStatefulWidget {
-  const _FormulirBanner({super.key});
+/// Kotak statistik kecil di kartu atas.
+class _StatTile extends StatelessWidget {
+  const _StatTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.tone,
+    this.onTap,
+    this.pulse = false,
+  });
+  final OlIconData icon;
+  final String label;
+  final int? value;
+  final (Color, Color)? tone;
+  final VoidCallback? onTap;
+  final bool pulse;
 
   @override
-  ConsumerState<_FormulirBanner> createState() => _FormulirBannerState();
+  Widget build(BuildContext context) {
+    final c = context.ol;
+    final t = context.olText;
+    final (bg, fg) = tone ?? (c.brandSoft, c.brand);
+    final box = AnimatedContainer(
+      duration: OlMotion.of(context, OlMotion.slow),
+      padding: const EdgeInsets.all(OlSpace.md),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              OlIcon(icon, size: 18, color: fg, weight: OlIconWeight.duotone),
+              const Spacer(),
+              if (pulse) KPulseDot(color: fg, size: 7),
+              if (onTap != null) OlIcon(OlIcons.chevronRight, size: 16, color: fg),
+            ],
+          ),
+          const SizedBox(height: 8),
+          value == null
+              ? const Skeleton(width: 48, height: 22)
+              : OlCountUp(value!, style: t.title.copyWith(fontSize: 24, color: fg, height: 1.1)),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: t.caption.copyWith(color: fg, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+    return onTap == null ? box : OlPressable(onTap: onTap, child: box);
+  }
 }
 
-class _FormulirBannerState extends ConsumerState<_FormulirBanner> {
+/// Jumlah formulir menunggu persetujuan → tab Formulir. Berdenyut bila ada yang menunggu.
+class _FormulirTile extends ConsumerStatefulWidget {
+  const _FormulirTile({super.key});
+
+  @override
+  ConsumerState<_FormulirTile> createState() => _FormulirTileState();
+}
+
+class _FormulirTileState extends ConsumerState<_FormulirTile> {
   late final Future<int> _count = ref.read(klinikApiProvider).formulirCount().catchError((_) => 0);
 
   @override
   Widget build(BuildContext context) => FutureBuilder<int>(
     future: _count,
     builder: (context, snap) {
-      final n = snap.data ?? 0;
-      if (n == 0) return const SizedBox.shrink();
       final c = context.ol;
-      final t = context.olText;
-      return OlCard(
+      final n = snap.data;
+      final ada = (n ?? 0) > 0;
+      return _StatTile(
+        icon: OlIcons.receipt,
+        label: ada ? 'Formulir menunggu' : 'Formulir beres',
+        value: n,
+        tone: ada ? (c.warnSoft, c.warn) : (c.okSoft, c.ok),
+        pulse: ada,
         onTap: () => context.go(Routes.klinikFormulir),
-        semanticLabel: '$n formulir menunggu persetujuan',
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(color: c.brandSoft, shape: BoxShape.circle),
-              child: Center(child: OlIcon(OlIcons.receipt, color: c.brand)),
-            ),
-            const SizedBox(width: OlSpace.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  OlCountUp(n, style: t.bodyStrong, format: (v) => '$v formulir menunggu'),
-                  Text(
-                    'Setujui supaya pasien mendapat nomor pasien.',
-                    style: t.caption,
-                  ),
-                ],
-              ),
-            ),
-            OlIcon(OlIcons.chevronRight, color: c.muted),
-          ],
-        ),
       );
     },
   );
 }
 
 class _PasienCard extends ConsumerWidget {
-  const _PasienCard({
-    required this.pasien,
-    required this.onTap,
-    required this.onMore,
-  });
+  const _PasienCard({required this.pasien, required this.onTap, required this.onMore});
 
   final Pasien pasien;
   final VoidCallback onTap;
@@ -264,54 +298,79 @@ class _PasienCard extends ConsumerWidget {
     final t = context.olText;
     final c = context.ol;
     final p = pasien;
+    final u = umur(p.ttl);
     return OlCard(
       onTap: onTap,
       semanticLabel: 'Pasien ${p.nama}',
+      padding: const EdgeInsets.fromLTRB(OlSpace.lg, 14, 6, 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Hero(tag: 'pasien-avatar-${p.id}', child: OlAvatar(name: p.nama)),
+          Hero(
+            tag: 'pasien-avatar-${p.id}',
+            child: KAvatar(name: p.nama),
+          ),
           const SizedBox(width: OlSpace.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(p.nama, style: t.bodyStrong),
-                const SizedBox(height: 2),
                 Text(
-                  [
-                    nomorPasien(p.nomor),
-                    genderLabel(p.gender),
-                    'Lahir ${tgl(p.ttl)}',
-                  ].join(' · '),
-                  style: t.caption,
-                ),
-                if (p.tlp != null)
-                  Text(p.tlp!, style: t.caption.copyWith(color: c.fg)),
-                Text(
-                  p.alamat ?? '-',
-                  style: t.caption,
+                  p.nama,
+                  style: t.bodyStrong.copyWith(fontSize: 15.5),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  p.kunjunganTerakhir == null
-                      ? 'Belum ada pemeriksaan'
-                      : 'Kunjungan terakhir ${tgl(p.kunjunganTerakhir)}',
-                  style: t.caption.copyWith(
-                    color: c.brand,
-                    fontWeight: FontWeight.w700,
-                  ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    KPill(
+                      p.nomor == null ? 'Belum bernomor' : 'No. ${p.nomor}',
+                      tone: KPillTone.brand,
+                      mono: p.nomor != null,
+                    ),
+                    KPill([genderLabel(p.gender), if (u != null) '$u th'].join(' · ')),
+                  ],
+                ),
+                if (p.tlp != null) KMeta(OlIcons.phone, p.tlp!, color: c.fg),
+                KMeta(OlIcons.pin, p.alamat ?? '-'),
+                const SizedBox(height: 10),
+                Container(height: 1, color: c.line),
+                const SizedBox(height: 9),
+                Row(
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: p.kunjunganTerakhir == null ? c.faint : c.ok,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        p.kunjunganTerakhir == null
+                            ? 'Belum ada pemeriksaan'
+                            : 'Terakhir periksa ${relatif(p.kunjunganTerakhir).toLowerCase()}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.caption.copyWith(
+                          color: p.kunjunganTerakhir == null ? c.muted : c.ok,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (p.jumlahPemeriksaan > 0)
+                      Text('${p.jumlahPemeriksaan}× periksa', style: t.caption.copyWith(fontWeight: FontWeight.w700)),
+                  ],
                 ),
               ],
             ),
           ),
-          OlIconButton(
-            icon: OlIcons.more,
-            semanticLabel: 'Aksi untuk ${p.nama}',
-            onPressed: onMore,
-          ),
+          OlIconButton(icon: OlIcons.more, semanticLabel: 'Aksi untuk ${p.nama}', onPressed: onMore),
         ],
       ),
     );

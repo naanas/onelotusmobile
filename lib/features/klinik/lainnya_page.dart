@@ -7,6 +7,7 @@ import '../../data/auth/auth_controller.dart';
 import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
+import 'k_ui.dart';
 
 /// Lainnya (gaya sama dengan Profil pasien): akun yang sedang masuk, Export Excel,
 /// User Management (khusus admin), ubah password, bantuan, keluar.
@@ -21,18 +22,6 @@ class LainnyaPage extends ConsumerWidget {
     final branch = ref.watch(authProvider.select((s) => s.activeBranch));
     final admin = user?.isAdmin ?? false;
 
-    Widget group(List<OlListItem> items) => OlCard(
-      padding: const EdgeInsets.symmetric(horizontal: OlSpace.lg),
-      child: Column(
-        children: [
-          for (final (i, it) in items.indexed)
-            i == items.length - 1 ? it.withoutDivider() : it,
-        ],
-      ),
-    );
-
-    Widget icon(OlIconData i) => OlIcon(i, color: c.brand);
-
     Future<void> logout() async {
       final ok = await context.feedback.confirm(
         const ConfirmSpec(
@@ -45,32 +34,37 @@ class LainnyaPage extends ConsumerWidget {
       if (ok) await ref.read(authProvider.notifier).logout();
     }
 
+    final purple = (const Color(0xFFEEEAFD), const Color(0xFF5B45C2));
     return OlPageBody(
       pinnedHeader: true,
       header: const OlAppHeader(title: 'Lainnya'),
       children: [
-        OlCard(
+        KHero(
           child: Row(
             children: [
-              OlAvatar(name: user?.name ?? '-', large: true),
+              KAvatar(name: user?.name ?? '-', size: 64, ring: true),
               const SizedBox(width: OlSpace.lg),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(user?.name ?? '-', style: t.heading),
+                    Text(user?.name ?? '-', style: t.title.copyWith(color: Colors.white, fontSize: 20, height: 1.15)),
                     const SizedBox(height: 2),
                     Text(
                       '@${user?.username ?? ''}',
-                      style: t.mono.copyWith(fontSize: 13.5, color: c.muted),
+                      style: t.mono.copyWith(fontSize: 13, color: Colors.white.withValues(alpha: .75)),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 10),
                     Wrap(
                       spacing: 6,
                       runSpacing: 6,
                       children: [
-                        OlTag(admin ? 'Admin' : 'Terapis', tone: admin ? OlTagTone.fill : OlTagTone.brand),
-                        if (branch != null) OlTag(branch.name, tone: OlTagTone.outline),
+                        KPill(
+                          admin ? 'Admin' : 'Terapis',
+                          icon: admin ? OlIcons.settings : OlIcons.hands,
+                          tone: KPillTone.glass,
+                        ),
+                        if (branch != null) KPill(branch.name, icon: OlIcons.branch, tone: KPillTone.glass),
                       ],
                     ),
                   ],
@@ -80,39 +74,36 @@ class LainnyaPage extends ConsumerWidget {
           ),
         ),
         const OlSectionHeader(title: 'Data'),
-        group([
-          OlListItem(
-            leading: icon(OlIcons.download),
-            title: 'Export Excel',
-            subtitle: 'Unduh data pemeriksaan per bulan',
-            showChevron: true,
-            onTap: () => context.push(Routes.klinikExport),
+        KMenuTile(
+          icon: OlIcons.download,
+          tone: (c.okSoft, c.ok),
+          title: 'Export Excel',
+          subtitle: 'Unduh data pemeriksaan per bulan',
+          onTap: () => context.push(Routes.klinikExport),
+        ),
+        if (admin)
+          KMenuTile(
+            icon: OlIcons.users,
+            tone: purple,
+            title: 'User Management',
+            subtitle: 'Tambah user, ubah password, hapus user',
+            onTap: () => context.push(Routes.klinikUser),
           ),
-          if (admin)
-            OlListItem(
-              leading: icon(OlIcons.users),
-              title: 'User Management',
-              subtitle: 'Tambah user, ubah password, hapus user',
-              showChevron: true,
-              onTap: () => context.push(Routes.klinikUser),
-            ),
-        ]),
         const OlSectionHeader(title: 'Akun'),
-        group([
-          OlListItem(
-            leading: icon(OlIcons.lock),
-            title: 'Ubah password saya',
-            showChevron: true,
-            onTap: () => context.push(Routes.changePassword),
-          ),
-          OlListItem(
-            leading: icon(OlIcons.info),
-            title: 'Bantuan',
-            showChevron: true,
-            onTap: () => context.push(Routes.help),
-          ),
-        ]),
-        OlButton.secondary(label: 'Keluar', icon: OlIcons.logout, onPressed: logout),
+        KMenuTile(
+          icon: OlIcons.lock,
+          tone: (c.goldSoft, c.gold),
+          title: 'Ubah password saya',
+          subtitle: 'Ganti password masuk aplikasi',
+          onTap: () => context.push(Routes.changePassword),
+        ),
+        KMenuTile(
+          icon: OlIcons.help,
+          title: 'Bantuan',
+          subtitle: 'Panduan & kontak dukungan',
+          onTap: () => context.push(Routes.help),
+        ),
+        KMenuTile(icon: OlIcons.logout, title: 'Keluar', danger: true, onTap: logout),
         Center(child: Text('One Lotus v$kAppVersion', style: t.caption)),
       ],
     );

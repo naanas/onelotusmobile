@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'k_ui.dart';
 import 'klinik_api.dart';
 import 'klinik_models.dart';
 import 'pager.dart';
@@ -50,10 +51,25 @@ class _RekapPageState extends ConsumerState<RekapPage> with VisibleReload {
     if (mounted) setState(() => _exporting = false);
   }
 
+  /// Rata-rata pemeriksaan per hari yang sudah lewat di bulan ini.
+  int _perHari(int total) {
+    final now = DateTime.now();
+    final last = DateTime(_month.year, _month.month + 1, 0).day;
+    final days = (_month.year == now.year && _month.month == now.month) ? now.day : last;
+    return days == 0 ? 0 : (total / days).round();
+  }
+
+  static const _hariNama = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+
+  String _hari(DateTime? d, String fallback) {
+    if (d == null) return fallback;
+    final r = relatif(d);
+    return r == 'Hari ini' || r == 'Kemarin' ? '$r · $fallback' : '${_hariNama[d.weekday - 1]}, $fallback';
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.olText;
-    final c = context.ol;
     return InfiniteScroll(
       onEnd: _pager.more,
       child: ListenableBuilder(
@@ -86,28 +102,57 @@ class _RekapPageState extends ConsumerState<RekapPage> with VisibleReload {
                     message: 'Tidak ada data pemeriksaan pasien pada bulan ini.',
                   ),
                 )
-              else if (p.loadedOnce) ...[
-                OlCard(
-                  child: Row(
+              else
+                KHero(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(child: _Stat(label: 'Pemeriksaan', value: p.total)),
-                      Container(width: 1, height: 36, color: c.line),
-                      Expanded(child: _Stat(label: 'Pasien', value: pasien)),
+                      Text(
+                        'Ringkasan ${monthFmt.format(_month)}',
+                        style: t.caption.copyWith(
+                          color: Colors.white.withValues(alpha: .8),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: OlSpace.md),
+                      KStatRow(
+                        light: true,
+                        children: [
+                          KStat(value: p.loadedOnce ? p.total : null, label: 'Pemeriksaan', light: true),
+                          KStat(value: p.loadedOnce ? pasien : null, label: 'Pasien', light: true),
+                          KStat(value: p.loadedOnce ? _perHari(p.total) : null, label: 'Per hari', light: true),
+                        ],
+                      ),
+                      const SizedBox(height: OlSpace.lg),
+                      KGlassButton(
+                        icon: OlIcons.download,
+                        label: _exporting ? 'Menyiapkan Excel…' : 'Export Excel',
+                        busy: _exporting,
+                        onTap: _export,
+                      ),
                     ],
                   ),
                 ),
-                OlButton.secondary(
-                  label: _exporting ? 'Menyiapkan Excel…' : 'Export Excel',
-                  icon: OlIcons.download,
-                  onPressed: _exporting ? null : _export,
+              for (final e in byDay.entries) ...[
+                Row(
+                  children: [
+                    Expanded(child: OlSectionHeader(title: _hari(e.value.first.tanggal, e.key))),
+                    KPill('${e.value.length} pasien', tone: KPillTone.brand),
+                  ],
+                ),
+                Column(
+                  children: [
+                    for (final (i, r) in e.value.indexed)
+                      KTimelineTile(
+                        last: i == e.value.length - 1,
+                        child: _RekapCard(row: r),
+                      ),
+                  ],
                 ),
               ],
-              for (final e in byDay.entries) ...[
-                OlSectionHeader(title: e.key),
-                for (final r in e.value) _RekapCard(row: r),
-              ],
               PagerFooter(pager: p, endLabel: 'Semua ${p.total} pemeriksaan sudah tampil'),
-              if (rows.isNotEmpty) Text('${rows.length} dari ${p.total} ditampilkan', style: t.caption, textAlign: TextAlign.center),
+              if (rows.isNotEmpty)
+                Text('${rows.length} dari ${p.total} ditampilkan', style: t.caption, textAlign: TextAlign.center),
             ],
           );
         },
@@ -125,51 +170,49 @@ class _RekapCard extends StatelessWidget {
     final t = context.olText;
     final c = context.ol;
     final r = row;
+    final u = umur(r.ttl);
     return OlCard(
       onTap: () => context.push(Routes.klinikDetail(r.pasienId)),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      semanticLabel: 'Pemeriksaan ${r.nama}',
+      padding: const EdgeInsets.fromLTRB(14, 14, 10, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          OlAvatar(name: r.nama),
-          const SizedBox(width: OlSpace.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(r.nama, style: t.bodyStrong),
-                Text(
-                  [nomorPasien(r.nomor), genderLabel(r.gender), 'Lahir ${tgl(r.ttl)}'].join(' · '),
-                  style: t.caption,
+          Row(
+            children: [
+              KAvatar(name: r.nama, size: 40),
+              const SizedBox(width: OlSpace.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(r.nama, style: t.bodyStrong, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(
+                      [nomorPasien(r.nomor), genderLabel(r.gender), if (u != null) '$u th'].join(' · '),
+                      style: t.caption,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: OlSpace.xs),
-                LabelValue('Keluhan', r.keluhan),
-                LabelValue('Diagnosa', r.analisa),
-                LabelValue('Treatment', r.treatment),
-                LabelValue('Bagian yang ditangani', r.bagianPenenang),
-                LabelValue('Terapis', r.terapis),
-              ],
-            ),
+              ),
+              OlIcon(OlIcons.chevronRight, size: 18, color: c.faint),
+            ],
           ),
-          OlIcon(OlIcons.chevronRight, color: c.muted),
+          if (r.keluhan != null) ...[const SizedBox(height: 10), KQuote(r.keluhan!, maxLines: 2)],
+          KTextBlock(icon: OlIcons.report, label: 'Diagnosa', value: r.analisa),
+          KTextBlock(
+            icon: OlIcons.hands,
+            label: 'Treatment',
+            value: [r.treatment, if (r.bagianPenenang != null) '(${r.bagianPenenang})'].whereType<String>().join(' '),
+          ),
+          if (r.terapis != null) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: KPill(r.terapis!, icon: OlIcons.user, tone: KPillTone.brand),
+            ),
+          ],
         ],
       ),
-    );
-  }
-}
-
-class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
-  final String label;
-  final int value;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.olText;
-    return Column(
-      children: [
-        OlCountUp(value, style: t.heading.copyWith(color: context.ol.brand, fontSize: 22)),
-        Text(label, style: t.caption),
-      ],
     );
   }
 }

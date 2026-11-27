@@ -6,9 +6,9 @@ import '../../data/auth/auth_controller.dart';
 import 'klinik_api.dart';
 import 'klinik_models.dart';
 import '../../router/routes.dart';
-import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import 'intake_xray.dart';
+import 'k_ui.dart';
 import 'widgets.dart';
 
 /// Tambah / Edit Pemeriksaan (Laravel tambah-pemeriksaan & edit-pemeriksaan).
@@ -30,8 +30,7 @@ class PemeriksaanFormPage extends ConsumerStatefulWidget {
   final bool lanjutDetail;
 
   @override
-  ConsumerState<PemeriksaanFormPage> createState() =>
-      _PemeriksaanFormPageState();
+  ConsumerState<PemeriksaanFormPage> createState() => _PemeriksaanFormPageState();
 }
 
 class _PemeriksaanFormPageState extends ConsumerState<PemeriksaanFormPage> {
@@ -53,9 +52,26 @@ class _PemeriksaanFormPageState extends ConsumerState<PemeriksaanFormPage> {
 
   bool get _edit => widget.pemeriksaanId != null;
 
+  List<TextEditingController> get _ctls => [
+    _keluhan,
+    _penyebab,
+    _lama,
+    _analisa,
+    _treatment,
+    _bagian,
+    _kesimpulan,
+    _terapis,
+    _rontgen,
+  ];
+
+  void _changed() => setState(() {});
+
   @override
   void initState() {
     super.initState();
+    for (final c in _ctls) {
+      c.addListener(_changed);
+    }
     _pasienId = widget.pasienId;
     if (_edit) {
       final e = widget.editing;
@@ -96,9 +112,7 @@ class _PemeriksaanFormPageState extends ConsumerState<PemeriksaanFormPage> {
       _loadError = null;
     });
     try {
-      final e = await ref
-          .read(klinikApiProvider)
-          .pemeriksaan(widget.pemeriksaanId!);
+      final e = await ref.read(klinikApiProvider).pemeriksaan(widget.pemeriksaanId!);
       if (mounted) setState(() => _fill(e));
     } on AppError catch (e) {
       if (mounted) setState(() => _loadError = e);
@@ -109,17 +123,8 @@ class _PemeriksaanFormPageState extends ConsumerState<PemeriksaanFormPage> {
 
   @override
   void dispose() {
-    for (final c in [
-      _keluhan,
-      _penyebab,
-      _lama,
-      _analisa,
-      _treatment,
-      _bagian,
-      _kesimpulan,
-      _terapis,
-      _rontgen,
-    ]) {
+    for (final c in _ctls) {
+      c.removeListener(_changed);
       c.dispose();
     }
     super.dispose();
@@ -137,8 +142,7 @@ class _PemeriksaanFormPageState extends ConsumerState<PemeriksaanFormPage> {
     if (picked != null) setState(() => _tanggal = picked);
   }
 
-  String? _v(TextEditingController c) =>
-      c.text.trim().isEmpty ? null : c.text.trim();
+  String? _v(TextEditingController c) => c.text.trim().isEmpty ? null : c.text.trim();
 
   Future<void> _save() async {
     final draft = PemeriksaanDraft(
@@ -179,11 +183,7 @@ class _PemeriksaanFormPageState extends ConsumerState<PemeriksaanFormPage> {
     } on AppError catch (e) {
       if (!mounted) return;
       if (e.fieldErrors.isNotEmpty) {
-        setState(
-          () => _errors = {
-            for (final f in e.fieldErrors.entries) f.key: f.value.first,
-          },
-        );
+        setState(() => _errors = {for (final f in e.fieldErrors.entries) f.key: f.value.first});
         context.feedback.info(e.message);
       } else {
         context.feedback.error(e, retry: _save);
@@ -195,8 +195,6 @@ class _PemeriksaanFormPageState extends ConsumerState<PemeriksaanFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.ol;
-    final t = context.olText;
     final title = _edit ? 'Edit Pemeriksaan' : 'Tambah Pemeriksaan';
     if (_loading || _loadError != null) {
       return OlDetailScaffold(
@@ -215,80 +213,82 @@ class _PemeriksaanFormPageState extends ConsumerState<PemeriksaanFormPage> {
       String key, {
       int lines = 2,
       String? hint,
-    }) => OlTextField(
-      label: label,
-      controller: ctl,
-      maxLines: lines,
-      hint: hint,
-      error: _errors[key],
-    );
+      OlIconData? icon,
+    }) => OlTextField(label: label, icon: icon, controller: ctl, maxLines: lines, hint: hint, error: _errors[key]);
+    int n(List<TextEditingController> cs) => cs.where((x) => x.text.trim().isNotEmpty).length;
+    final keluhanN = n([_keluhan, _penyebab, _lama]);
+    final tanganN = n([_analisa, _treatment, _bagian]);
+    final tutupN = n([_kesimpulan, _terapis]);
+    final filled = keluhanN + tanganN + tutupN + n([_rontgen]);
+    final tanggal = _tanggal ?? (_edit ? null : DateTime.now());
     return OlDetailScaffold(
       title: title,
-      foot: [OlButton(label: 'Simpan', loading: _busy, onPressed: _save)],
+      foot: [OlButton(label: _edit ? 'Simpan Perubahan' : 'Simpan Pemeriksaan', loading: _busy, onPressed: _save)],
       children: [
         if (widget.prefill != null)
           const OlBanner(
             tone: OlBannerTone.info,
             icon: OlIcons.info,
-            message:
-                'Keluhan, penyebab, lama cedera, dan keterangan rontgen diisi dari formulir pendaftaran.',
+            message: 'Keluhan, penyebab, lama cedera, dan keterangan rontgen diisi dari formulir pendaftaran.',
           ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        KFormProgress(done: filled, total: 9, label: 'Isian pemeriksaan', doneLabel: 'Semua isian terisi'),
+        KFormSection(
+          icon: OlIcons.calendar,
+          title: 'Sesi',
+          subtitle: 'Kapan & oleh siapa',
           children: [
-            Text('Tanggal Pemeriksaan', style: t.fieldLabel),
-            const SizedBox(height: 6),
-            OlCard(
+            KPickerField(
+              label: 'Tanggal Pemeriksaan',
+              value: tanggal == null ? null : tgl(tanggal),
+              placeholder: '-',
+              trailing: tanggal == null ? null : relatif(tanggal),
               onTap: _pickTanggal,
-              semanticLabel: 'Pilih tanggal pemeriksaan',
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _tanggal == null
-                          ? (_edit ? '-' : 'Hari ini')
-                          : tgl(_tanggal),
-                      style: t.body,
-                    ),
-                  ),
-                  OlIcon(OlIcons.calendar, color: c.brand),
-                ],
-              ),
+              error: _errors['tgl_periksa'],
             ),
-            if (_errors['tgl_periksa'] != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 6),
-                child: Text(
-                  _errors['tgl_periksa']!,
-                  style: t.caption.copyWith(color: c.crit),
-                ),
-              ),
+            field('Terapis', _terapis, 'terapis', lines: 1, icon: OlIcons.user),
           ],
         ),
-        const OlSectionHeader(title: 'Keluhan'),
-        field('Keluhan', _keluhan, 'keluhan', lines: 3),
-        field('Penyebab Cedera', _penyebab, 'penyebab'),
-        field('Lama Cedera', _lama, 'lama_cedera', lines: 1),
-        const OlSectionHeader(title: 'Pemeriksaan & penanganan'),
-        field('Analisa dan Diagnosa', _analisa, 'analisa', lines: 3),
-        field('Treatment', _treatment, 'treatment'),
-        field('Bagian yang Diberikan Penanganan', _bagian, 'bagian_penenang'),
-        field(
-          'Kesimpulan dan Rekomendasi',
-          _kesimpulan,
-          'kesimpulan',
-          lines: 3,
+        KFormSection(
+          icon: OlIcons.pain,
+          title: 'Keluhan',
+          subtitle: 'Apa yang dirasakan pasien',
+          done: keluhanN,
+          total: 3,
+          children: [
+            field('Keluhan', _keluhan, 'keluhan', lines: 3, hint: 'Mis. nyeri punggung bawah saat bangun tidur'),
+            field('Penyebab Cedera', _penyebab, 'penyebab'),
+            field('Lama Cedera', _lama, 'lama_cedera', lines: 1, icon: OlIcons.clock, hint: 'Mis. 2 minggu'),
+          ],
         ),
-        field('Terapis', _terapis, 'terapis', lines: 1),
-        const OlSectionHeader(title: 'Rontgen / MRI'),
-        field(
-          'MRI / Rontgen',
-          _rontgen,
-          'hasil_rontgen',
-          lines: 2,
-          hint: 'Keterangan hasil rontgen / MRI',
+        KFormSection(
+          icon: OlIcons.hands,
+          title: 'Pemeriksaan & Penanganan',
+          subtitle: 'Diagnosa dan tindakan terapis',
+          done: tanganN,
+          total: 3,
+          children: [
+            field('Analisa dan Diagnosa', _analisa, 'analisa', lines: 3),
+            field('Treatment', _treatment, 'treatment'),
+            field('Bagian yang Diberikan Penanganan', _bagian, 'bagian_penenang', icon: OlIcons.body),
+          ],
         ),
-        if (_pasienId != null) IntakeXray.pasien(pasienId: _pasienId!, editable: true),
+        KFormSection(
+          icon: OlIcons.checkCircle,
+          title: 'Kesimpulan',
+          subtitle: 'Rekomendasi untuk pasien',
+          done: n([_kesimpulan]),
+          total: 1,
+          children: [field('Kesimpulan dan Rekomendasi', _kesimpulan, 'kesimpulan', lines: 3)],
+        ),
+        KFormSection(
+          icon: OlIcons.xray,
+          title: 'Rontgen / MRI',
+          subtitle: 'Keterangan & foto (opsional)',
+          children: [
+            field('Keterangan', _rontgen, 'hasil_rontgen', lines: 2, hint: 'Keterangan hasil rontgen / MRI'),
+            if (_pasienId != null) IntakeXray.pasien(pasienId: _pasienId!, editable: true),
+          ],
+        ),
       ],
     );
   }

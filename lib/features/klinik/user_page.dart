@@ -6,6 +6,7 @@ import 'klinik_api.dart';
 import 'klinik_models.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
+import 'k_ui.dart';
 import 'widgets.dart';
 
 /// User Management (khusus admin, Laravel /user): daftar user, Tambah User, Ubah Password, Hapus.
@@ -36,8 +37,7 @@ class _UserPageState extends ConsumerState<UserPage> {
   Future<void> _ubahPassword(KUser u) async {
     final ok = await context.feedback.formSheet<bool>(
       title: 'Ubah Password',
-      message:
-          '${u.name} (${u.username}). Sesi login lain milik user ini akan dikeluarkan.',
+      message: '${u.name} (${u.username}). Sesi login lain milik user ini akan dikeluarkan.',
       builder: (ctx, close) => _PasswordForm(userId: u.id, onDone: close),
     );
     if (ok == true && mounted) {
@@ -49,8 +49,7 @@ class _UserPageState extends ConsumerState<UserPage> {
     final ok = await confirmHapus(
       context,
       title: 'Hapus user ${u.name}?',
-      message:
-          'User tidak bisa masuk lagi. Data pasien & pemeriksaan tidak ikut terhapus.',
+      message: 'User tidak bisa masuk lagi. Data pasien & pemeriksaan tidak ikut terhapus.',
     );
     if (!ok || !mounted) return;
     try {
@@ -70,58 +69,100 @@ class _UserPageState extends ConsumerState<UserPage> {
     return OlDetailScaffold(
       title: 'User Management',
       onRefresh: () async => _reload(),
-      foot: [
-        OlButton(label: 'Tambah User', icon: OlIcons.plus, onPressed: _tambah),
-      ],
+      foot: [OlButton(label: 'Tambah User', icon: OlIcons.plus, onPressed: _tambah)],
       children: [
         OlAsync<List<KUser>>(
           key: ValueKey(_gen),
           load: () => ref.read(klinikApiProvider).users(),
           builder: (context, users, _) => [
-            Text('${users.length} user', style: t.caption),
+            KHero(
+              child: KStatRow(
+                light: true,
+                children: [
+                  KStat(value: users.length, label: 'Total user', icon: OlIcons.users, light: true),
+                  KStat(
+                    value: users.where((u) => u.isAdmin).length,
+                    label: 'Admin',
+                    icon: OlIcons.settings,
+                    light: true,
+                  ),
+                  KStat(
+                    value: users.where((u) => !u.isAdmin).length,
+                    label: 'Terapis',
+                    icon: OlIcons.hands,
+                    light: true,
+                  ),
+                ],
+              ),
+            ),
             for (final u in users)
               OlCard(
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Row(
                       children: [
-                        OlAvatar(name: u.name),
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            KAvatar(name: u.name),
+                            if (u.saya)
+                              Positioned(
+                                right: -2,
+                                bottom: -2,
+                                child: Container(
+                                  width: 16,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: context.ol.ok,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: context.ol.surface, width: 2.5),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                         const SizedBox(width: OlSpace.md),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(u.saya ? '${u.name} (kamu)' : u.name, style: t.bodyStrong),
-                              Text('@${u.username}', style: t.mono.copyWith(fontSize: 13, color: context.ol.muted)),
+                              Text('@${u.username}', style: t.mono.copyWith(fontSize: 12.5, color: context.ol.muted)),
                             ],
                           ),
                         ),
-                        OlTag(
+                        KPill(
                           u.roleLabel,
-                          tone: u.isAdmin ? OlTagTone.fill : OlTagTone.brand,
+                          icon: u.isAdmin ? OlIcons.settings : OlIcons.hands,
+                          tone: u.isAdmin ? KPillTone.gold : KPillTone.brand,
                         ),
                       ],
                     ),
-                    const SizedBox(height: OlSpace.sm),
+                    const SizedBox(height: OlSpace.md),
                     Row(
                       children: [
                         Expanded(
                           child: OlButton.secondary(
-                            label: 'Ubah Password',
+                            label: 'Password',
+                            icon: OlIcons.lock,
                             small: true,
                             onPressed: () => _ubahPassword(u),
                           ),
                         ),
-                        const SizedBox(width: OlSpace.sm),
-                        Expanded(
-                          child: OlButton(
-                            label: 'Hapus',
-                            small: true,
-                            variant: OlButtonVariant.dangerSecondary,
-                            onPressed: u.saya || u.id == me ? null : () => _hapus(u),
+                        if (!(u.saya || u.id == me)) ...[
+                          const SizedBox(width: OlSpace.sm),
+                          Expanded(
+                            child: OlButton(
+                              label: 'Hapus',
+                              icon: OlIcons.archive,
+                              small: true,
+                              variant: OlButtonVariant.dangerSecondary,
+                              onPressed: () => _hapus(u),
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ],
@@ -180,11 +221,7 @@ class _TambahUserFormState extends ConsumerState<_TambahUserForm> {
     } on AppError catch (err) {
       if (!mounted) return;
       if (err.fieldErrors.isNotEmpty) {
-        setState(
-          () => _errors = {
-            for (final f in err.fieldErrors.entries) f.key: f.value.first,
-          },
-        );
+        setState(() => _errors = {for (final f in err.fieldErrors.entries) f.key: f.value.first});
       } else {
         context.feedback.error(err);
       }
@@ -197,19 +234,9 @@ class _TambahUserFormState extends ConsumerState<_TambahUserForm> {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      OlTextField(
-        label: 'Nama',
-        isRequired: true,
-        controller: _name,
-        error: _errors['name'],
-      ),
+      OlTextField(label: 'Nama', isRequired: true, controller: _name, error: _errors['name']),
       const SizedBox(height: OlSpace.md),
-      OlTextField(
-        label: 'Username',
-        isRequired: true,
-        controller: _username,
-        error: _errors['username'],
-      ),
+      OlTextField(label: 'Username', isRequired: true, controller: _username, error: _errors['username']),
       const SizedBox(height: OlSpace.md),
       OlTextField(
         label: 'Password',
@@ -263,9 +290,7 @@ class _PasswordFormState extends ConsumerState<_PasswordForm> {
     }
     setState(() => _busy = true);
     try {
-      await ref
-          .read(klinikApiProvider)
-          .ubahPassword(widget.userId, _password.text);
+      await ref.read(klinikApiProvider).ubahPassword(widget.userId, _password.text);
       widget.onDone(true);
     } on AppError catch (e) {
       if (!mounted) return;

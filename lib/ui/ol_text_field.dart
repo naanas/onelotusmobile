@@ -27,6 +27,7 @@ class OlTextField extends StatefulWidget {
     this.maxLines = 1,
     this.autofillHints,
     this.focusNode,
+    this.icon,
   });
 
   final String label;
@@ -54,6 +55,9 @@ class OlTextField extends StatefulWidget {
   final int maxLines;
   final Iterable<String>? autofillHints;
   final FocusNode? focusNode;
+
+  /// Ikon di kiri isian; berwarna merek saat fokus.
+  final OlIconData? icon;
 
   @override
   State<OlTextField> createState() => _OlTextFieldState();
@@ -130,12 +134,21 @@ class _OlTextFieldState extends State<OlTextField> {
             ),
             boxShadow: ring,
           ),
-          padding: EdgeInsets.only(left: 16, right: widget.obscure ? 4 : 16),
+          padding: EdgeInsets.only(left: widget.icon == null ? 16 : 14, right: widget.obscure ? 4 : 16),
           child: Row(
             crossAxisAlignment: multiline
                 ? CrossAxisAlignment.start
                 : CrossAxisAlignment.center,
             children: [
+              if (widget.icon != null)
+                Padding(
+                  padding: EdgeInsets.only(right: 10, top: multiline ? 14 : 0),
+                  child: OlIcon(
+                    widget.icon!,
+                    size: 20,
+                    color: hasError ? c.crit : (focused ? c.brand : c.faint),
+                  ),
+                ),
               Expanded(
                 child: TextFormField(
                   controller: widget.controller,

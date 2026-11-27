@@ -8,6 +8,7 @@ import '../../router/routes.dart';
 import '../../theme/app_theme.dart';
 import '../../ui/ui.dart';
 import 'intake_xray.dart';
+import 'k_ui.dart';
 import 'widgets.dart';
 
 /// Detail pasien (Laravel detail-pasien): data diri + tabel pemeriksaan (tambah / edit / hapus).
@@ -95,20 +96,36 @@ class _PasienDetailPageState extends ConsumerState<PasienDetailPage> {
       },
       children: [
         if (p != null)
-          _DataPasien(
+          _HeroPasien(
             pasien: p,
+            jumlahPeriksa: d?.pemeriksaan.length,
             onEdit: () => _go(Routes.klinikEditPasien(p.id)),
             onHapus: () => _hapusPasien(p),
+          ),
+        if (p != null) _DataDiri(pasien: p),
+        if (p != null)
+          KFormSection(
+            icon: OlIcons.xray,
+            title: 'Rontgen / MRI',
+            subtitle: 'Terenkripsi, hanya untuk staf',
+            children: [IntakeXray.pasien(pasienId: p.id, editable: true)],
           ),
         if (_error != null && d == null)
           OlErrorCard(message: _error!.message, onRetry: _reload)
         else if (d == null)
           const OlLoadingCard()
         else ...[
-          OlSectionHeader(
-            title: 'Pemeriksaan (${d.pemeriksaan.length})',
-            actionLabel: '+ Tambah',
-            onAction: () => _go(Routes.klinikTambahPemeriksaan(d.pasien.id)),
+          Row(
+            children: [
+              Expanded(child: OlSectionHeader(title: 'Riwayat Pemeriksaan')),
+              OlButton(
+                label: 'Tambah',
+                icon: OlIcons.plus,
+                small: true,
+                expand: false,
+                onPressed: () => _go(Routes.klinikTambahPemeriksaan(d.pasien.id)),
+              ),
+            ],
           ),
           if (d.pemeriksaan.isEmpty)
             OlCard(
@@ -121,98 +138,89 @@ class _PasienDetailPageState extends ConsumerState<PasienDetailPage> {
               ),
             )
           else
-            OlAnimatedItems(children: [
-              for (final x in d.pemeriksaan)
-                KeyedSubtree(
-                  key: ValueKey(x.id),
-                  child: _PemeriksaanCard(
-                    data: x,
-                    onEdit: () => _go(Routes.klinikEditPemeriksaan(x.id), extra: x),
-                    onHapus: () => _hapusPemeriksaan(x),
+            OlAnimatedItems(
+              spacing: 0,
+              children: [
+                for (final (i, x) in d.pemeriksaan.indexed)
+                  KeyedSubtree(
+                    key: ValueKey(x.id),
+                    child: KTimelineTile(
+                      first: i == 0,
+                      last: i == d.pemeriksaan.length - 1,
+                      child: _PemeriksaanCard(
+                        data: x,
+                        terbaru: i == 0,
+                        onEdit: () => _go(Routes.klinikEditPemeriksaan(x.id), extra: x),
+                        onHapus: () => _hapusPemeriksaan(x),
+                      ),
+                    ),
                   ),
-                ),
-            ]),
+              ],
+            ),
         ],
       ],
     );
   }
 }
 
-class _DataPasien extends StatelessWidget {
-  const _DataPasien({
-    required this.pasien,
-    required this.onEdit,
-    required this.onHapus,
-  });
+class _HeroPasien extends StatelessWidget {
+  const _HeroPasien({required this.pasien, required this.jumlahPeriksa, required this.onEdit, required this.onHapus});
 
   final Pasien pasien;
+  final int? jumlahPeriksa;
   final VoidCallback onEdit;
   final VoidCallback onHapus;
 
   @override
   Widget build(BuildContext context) {
+    final t = context.olText;
     final p = pasien;
-    final rows = <(String, String)>[
-      ('Nomor Pasien', p.nomor == null ? '-' : '${p.nomor}'),
-      ('Nama', p.nama),
-      (
-        'Tanggal Lahir',
-        [if (p.tempatLahir != null) p.tempatLahir!, tgl(p.ttl)].join(', '),
-      ),
-      if (p.tlp != null) ('Nomor Telepon', p.tlp!),
-      ('Alamat', p.alamat ?? '-'),
-      ('Berat Badan', p.bb == null ? '-' : '${fmtNum(p.bb!)} kg'),
-      ('Tinggi Badan', p.tb == null ? '-' : '${fmtNum(p.tb!)} cm'),
-      ('Jenis Kelamin', genderLabel(p.gender)),
-      ('Instansi', p.instansi ?? '-'),
-      ('Hobi / Kegiatan', p.hobi ?? '-'),
-    ];
-    return OlCard(
+    return KHero(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Hero(tag: 'pasien-avatar-${p.id}', child: OlAvatar(name: p.nama, large: true)),
+              Hero(
+                tag: 'pasien-avatar-${p.id}',
+                child: KAvatar(name: p.nama, size: 64, ring: true),
+              ),
               const SizedBox(width: OlSpace.lg),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(p.nama, style: context.olText.heading),
-                    const SizedBox(height: 2),
-                    Text(
-                      [nomorPasien(p.nomor), genderLabel(p.gender)].join(' · '),
-                      style: context.olText.mono.copyWith(fontSize: 13.5, color: context.ol.muted),
+                    Text(p.nama, style: t.title.copyWith(color: Colors.white, fontSize: 20, height: 1.15)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        KPill(nomorPasien(p.nomor), tone: KPillTone.glass, mono: p.nomor != null),
+                        KPill(genderLabel(p.gender), tone: KPillTone.glass),
+                      ],
                     ),
-                    if (p.kunjunganTerakhir != null)
-                      Text(
-                        'Kunjungan terakhir ${tgl(p.kunjunganTerakhir)}',
-                        style: context.olText.caption.copyWith(color: context.ol.brand, fontWeight: FontWeight.w700),
-                      ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: OlSpace.md),
-          for (final (i, r) in rows.indexed)
-            OlInfoRow(label: r.$1, value: r.$2, divider: i < rows.length - 1),
-          IntakeXray.pasien(pasienId: p.id, editable: true),
-          const SizedBox(height: OlSpace.md),
+          const SizedBox(height: OlSpace.xl),
+          KStatRow(
+            light: true,
+            children: [
+              KStat(value: umur(p.ttl), label: 'Umur', suffix: ' th', light: true),
+              KStat(value: p.bb?.round(), label: 'Berat', suffix: ' kg', light: true),
+              KStat(value: p.tb?.round(), label: 'Tinggi', suffix: ' cm', light: true),
+              KStat(value: jumlahPeriksa, label: 'Periksa', suffix: '×', light: true),
+            ],
+          ),
+          const SizedBox(height: OlSpace.lg),
           Row(
             children: [
-              Expanded(
-                child: OlButton.secondary(label: 'Edit', onPressed: onEdit),
-              ),
+              KGlassButton(icon: OlIcons.edit, label: 'Edit data', onTap: onEdit),
               const SizedBox(width: OlSpace.sm),
-              Expanded(
-                child: OlButton(
-                  label: 'Hapus',
-                  variant: OlButtonVariant.dangerSecondary,
-                  onPressed: onHapus,
-                ),
-              ),
+              KGlassButton(icon: OlIcons.archive, label: 'Hapus', onTap: onHapus),
             ],
           ),
         ],
@@ -221,16 +229,45 @@ class _DataPasien extends StatelessWidget {
   }
 }
 
+class _DataDiri extends StatelessWidget {
+  const _DataDiri({required this.pasien});
+  final Pasien pasien;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = pasien;
+    return KFormSection(
+      icon: OlIcons.user,
+      title: 'Data Diri',
+      children: [
+        KGrid(
+          items: [
+            KGridItem(
+              KInfoTile(
+                icon: OlIcons.calendar,
+                label: 'Tanggal lahir',
+                value: [if (p.tempatLahir != null) p.tempatLahir!, tgl(p.ttl)].join(', '),
+              ),
+              wide: true,
+            ),
+            if (p.tlp != null) KGridItem(KInfoTile(icon: OlIcons.phone, label: 'Telepon', value: p.tlp!), wide: true),
+            KGridItem(KInfoTile(icon: OlIcons.pin, label: 'Alamat', value: p.alamat ?? '-'), wide: true),
+            KGridItem(KInfoTile(icon: OlIcons.branch, label: 'Instansi', value: p.instansi ?? '-')),
+            KGridItem(KInfoTile(icon: OlIcons.exercise, label: 'Hobi / kegiatan', value: p.hobi ?? '-')),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class _PemeriksaanCard extends StatelessWidget {
-  const _PemeriksaanCard({
-    required this.data,
-    required this.onEdit,
-    required this.onHapus,
-  });
+  const _PemeriksaanCard({required this.data, required this.onEdit, required this.onHapus, this.terbaru = false});
 
   final Pemeriksaan data;
   final VoidCallback onEdit;
   final VoidCallback onHapus;
+  final bool terbaru;
 
   @override
   Widget build(BuildContext context) {
@@ -238,33 +275,65 @@ class _PemeriksaanCard extends StatelessWidget {
     final x = data;
     final rontgen = x.hasilRontgen;
     return OlCard(
+      padding: const EdgeInsets.fromLTRB(14, 14, 6, OlSpace.lg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(child: Text(tgl(x.tanggal), style: t.bodyStrong)),
-              OlIconButton(
-                icon: OlIcons.edit,
-                semanticLabel: 'Edit pemeriksaan',
-                onPressed: onEdit,
+              KDateBadge(date: x.tanggal, highlight: terbaru),
+              const SizedBox(width: OlSpace.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 2),
+                    Text(
+                      x.keluhan ?? 'Tanpa keluhan tercatat',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodyStrong.copyWith(height: 1.3),
+                    ),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        if (terbaru) const KPill('Terbaru', tone: KPillTone.ok),
+                        KPill(relatif(x.tanggal), icon: OlIcons.clock),
+                        if (x.terapis != null) KPill(x.terapis!, icon: OlIcons.user, tone: KPillTone.brand),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              OlIconButton(
-                icon: OlIcons.archive,
-                semanticLabel: 'Hapus pemeriksaan',
-                onPressed: onHapus,
+              Column(
+                children: [
+                  OlIconButton(icon: OlIcons.edit, semanticLabel: 'Edit pemeriksaan', onPressed: onEdit),
+                  OlIconButton(icon: OlIcons.archive, semanticLabel: 'Hapus pemeriksaan', onPressed: onHapus),
+                ],
               ),
             ],
           ),
-          LabelValue('Keluhan', x.keluhan),
-          LabelValue('Penyebab', x.penyebab),
-          LabelValue('Lama Cedera', x.lamaCedera),
-          LabelValue('Diagnosa', x.analisa),
-          LabelValue('Treatment', x.treatment),
-          LabelValue('Bagian yang ditangani', x.bagianPenenang),
-          LabelValue('Kesimpulan', x.kesimpulan),
-          LabelValue('Terapis', x.terapis),
-          LabelValue('MRI / Rontgen', rontgen == '-' ? null : rontgen),
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                KTextBlock(
+                  icon: OlIcons.alert,
+                  label: 'Penyebab · lama cedera',
+                  value: [x.penyebab, x.lamaCedera].whereType<String>().join(' · '),
+                ),
+                KTextBlock(icon: OlIcons.report, label: 'Diagnosa', value: x.analisa),
+                KTextBlock(icon: OlIcons.hands, label: 'Treatment', value: x.treatment),
+                KTextBlock(icon: OlIcons.body, label: 'Bagian yang ditangani', value: x.bagianPenenang),
+                KTextBlock(icon: OlIcons.checkCircle, label: 'Kesimpulan', value: x.kesimpulan),
+                KTextBlock(icon: OlIcons.xray, label: 'MRI / Rontgen', value: rontgen),
+              ],
+            ),
+          ),
         ],
       ),
     );

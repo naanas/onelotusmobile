@@ -76,12 +76,13 @@ class _OlAppearState extends State<OlAppear> with SingleTickerProviderStateMixin
   }
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _t,
-    child: widget.child,
-    builder: (_, child) => Opacity(
-      opacity: _t.value,
-      child: Transform.translate(offset: Offset(0, (1 - _t.value) * 12), child: child),
+  // FadeTransition (bukan Opacity di builder): opasitas diterapkan di layer tanpa membangun ulang anak tiap frame.
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: _t,
+    child: AnimatedBuilder(
+      animation: _t,
+      child: widget.child,
+      builder: (_, child) => Transform.translate(offset: Offset(0, (1 - _t.value) * 12), child: child),
     ),
   );
 }

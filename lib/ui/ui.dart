@@ -52,3 +52,4 @@ export 'ol_unavailable.dart';
 export 'ol_async.dart';
 export 'ol_refresh.dart';
 export 'ol_animated_items.dart';
+export 'ol_frosted.dart';

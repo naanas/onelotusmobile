@@ -89,8 +89,10 @@ class _KHeroState extends State<KHero> with SingleTickerProviderStateMixin {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (OlMotion.reduced(context)) {
+    // Cahaya bergerak hanya di iOS: di Android repaint terus-menerus (apalagi di bawah header kaca) memberatkan.
+    if (OlMotion.reduced(context) || !OlFrosted.enabled) {
       _c.stop();
+      _c.value = .15;
     } else if (!_c.isAnimating) {
       _c.repeat();
     }
@@ -111,10 +113,13 @@ class _KHeroState extends State<KHero> with SingleTickerProviderStateMixin {
         decoration: BoxDecoration(gradient: OlHeroBackdrop.gradient(c)),
         child: Stack(
           children: [
+            // RepaintBoundary: repaint cahaya tidak ikut menggambar ulang isi kartu.
             Positioned.fill(
-              child: AnimatedBuilder(
-                animation: _c,
-                builder: (context, _) => CustomPaint(painter: _GlowPainter(_c.value, c.brand)),
+              child: RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: _c,
+                  builder: (context, _) => CustomPaint(painter: _GlowPainter(_c.value, c.brand)),
+                ),
               ),
             ),
             Padding(padding: widget.padding, child: widget.child),
@@ -354,27 +359,29 @@ class _KPulseDotState extends State<KPulseDot> with SingleTickerProviderStateMix
   }
 
   @override
-  Widget build(BuildContext context) => SizedBox.square(
-    dimension: widget.size * 2.4,
-    child: AnimatedBuilder(
-      animation: _c,
-      builder: (context, _) => Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: widget.size * (1 + 1.4 * _c.value),
-            height: widget.size * (1 + 1.4 * _c.value),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: widget.color.withValues(alpha: .35 * (1 - _c.value)),
+  Widget build(BuildContext context) => RepaintBoundary(
+    child: SizedBox.square(
+      dimension: widget.size * 2.4,
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, _) => Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: widget.size * (1 + 1.4 * _c.value),
+              height: widget.size * (1 + 1.4 * _c.value),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.color.withValues(alpha: .35 * (1 - _c.value)),
+              ),
             ),
-          ),
-          Container(
-            width: widget.size,
-            height: widget.size,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: widget.color),
-          ),
-        ],
+            Container(
+              width: widget.size,
+              height: widget.size,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: widget.color),
+            ),
+          ],
+        ),
       ),
     ),
   );

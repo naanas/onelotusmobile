@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -125,11 +123,11 @@ class _TabBar extends StatelessWidget {
     final c = context.ol;
     // Kaca buram: konten yang lewat di bawah tetap samar terlihat (gaya aplikasi modern).
     final bar = ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+      child: OlFrosted(
+        sigma: 22,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: c.surface.withValues(alpha: .82),
+            color: c.surface.withValues(alpha: OlFrosted.alpha(.82)),
             // Hanya garis atas: bayangan ke atas akan terpotong di ruang FAB.
             border: Border(
               top: BorderSide(color: c.line.withValues(alpha: .7)),

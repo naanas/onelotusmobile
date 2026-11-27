@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -8,6 +6,7 @@ import 'ol_app_header.dart';
 import 'ol_appear.dart';
 import 'ol_icon.dart';
 import 'ol_refresh.dart';
+import 'ol_frosted.dart';
 
 /// Isi halaman tab: header ikut tergulir bersama konten, latar `bg` yang sama di semua tab.
 /// Dengan [heroOverlap], konten pertama menumpuk 56dp ke dalam header hero (D.5).
@@ -365,8 +364,8 @@ class _CompactHeroBar extends StatelessWidget {
       ),
       child: ClipRRect(
         borderRadius: radius,
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: OlFrosted(
+          sigma: 18,
           child: Container(
             height: height,
             padding: EdgeInsets.fromLTRB(OlSpace.screen, topInset, OlSpace.sm, 0),
@@ -375,7 +374,7 @@ class _CompactHeroBar extends StatelessWidget {
                 begin: g.begin,
                 end: g.end,
                 stops: g.stops,
-                colors: [for (final x in g.colors) x.withValues(alpha: .9)],
+                colors: [for (final x in g.colors) x.withValues(alpha: OlFrosted.alpha(.9, solid: 1))],
               ),
               border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: .08 * progress))),
             ),
@@ -457,13 +456,13 @@ class _BackToTopState extends State<_BackToTop> {
                   ),
                   child: ClipRRect(
                     borderRadius: radius,
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                    child: OlFrosted(
+                      sigma: 14,
                       child: Container(
                         height: 40,
                         padding: const EdgeInsets.only(left: 12, right: 16),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0B1F2E).withValues(alpha: .78),
+                          color: const Color(0xFF0B1F2E).withValues(alpha: OlFrosted.alpha(.78, solid: .92)),
                           borderRadius: radius,
                           border: Border.all(color: Colors.white.withValues(alpha: .12)),
                         ),
